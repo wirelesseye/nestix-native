@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{
-    Shared, component, derive_props, effect, prop::PropValue, provide_handle, use_context,
+    Shared, closure, component, derive_props, effect, on_destroy, prop::PropValue, provide_handle, use_context
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
@@ -53,6 +53,10 @@ pub fn AppkitButton(props: &AppkitButtonProps) {
         button.setTarget(Some(&handler));
         button.setAction(Some(sel!(clicked)));
     }
+
+    on_destroy(closure!(button_id => || {
+        HANDLERS.with_borrow_mut(|handlers| handlers.remove(&button_id));
+    }));
 
     HANDLERS.with_borrow_mut(|handlers| handlers.insert(button_id, handler));
 
