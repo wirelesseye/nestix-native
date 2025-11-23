@@ -3,7 +3,7 @@ use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
 
-use crate::stack_view::AppkitStackViewContext;
+use crate::stack_view::ParentViewContext;
 
 #[derive_props]
 pub struct AppkitLabelProps {
@@ -48,9 +48,8 @@ pub fn AppkitLabel(props: &AppkitLabelProps) {
         label.setStringValue(&ns_string);
     });
 
-    let parent = use_context::<AppkitStackViewContext>();
+    let parent = use_context::<ParentViewContext>();
     if let Some(parent) = parent {
-        let parent_view = &parent.view;
-        parent_view.addSubview(&label);
+        (parent.add_child)(&label);
     }
 }

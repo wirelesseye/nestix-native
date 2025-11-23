@@ -9,7 +9,7 @@ use objc2::{
 use objc2_app_kit::NSButton;
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 
-use crate::stack_view::AppkitStackViewContext;
+use crate::stack_view::ParentViewContext;
 
 #[derive_props]
 pub struct AppkitButtonProps {
@@ -75,10 +75,9 @@ pub fn AppkitButton(props: &AppkitButtonProps) {
         button.setTitle(&ns_string);
     });
 
-    let parent = use_context::<AppkitStackViewContext>();
+    let parent = use_context::<ParentViewContext>();
     if let Some(parent) = parent {
-        let parent_view = &parent.view;
-        parent_view.addSubview(&button);
+        (parent.add_child)(&button);
     }
 }
 

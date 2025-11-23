@@ -1,6 +1,6 @@
 use nestix::{
-    Element, component, components::ContextProvider, derive_props, layout, provide_handle,
-    use_context,
+    Element, Shared, callback, component, components::ContextProvider, derive_props, layout,
+    provide_handle, use_context,
 };
 use objc2::{MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::NSView;
@@ -12,8 +12,8 @@ pub struct AppkitStackViewProps {
 }
 
 #[derive(Clone)]
-pub struct AppkitStackViewContext {
-    pub view: Retained<NSView>,
+pub struct ParentViewContext {
+    pub add_child: Shared<dyn Fn(&NSView)>,
 }
 
 #[component]
@@ -23,16 +23,17 @@ pub fn AppkitStackView(props: &AppkitStackViewProps) -> Element {
 
     provide_handle(view.as_ref() as *const NSView);
 
-    let parent = use_context::<AppkitStackViewContext>();
+    let parent = use_context::<ParentViewContext>();
     if let Some(parent) = parent {
-        let parent_view = &parent.view;
-        parent_view.addSubview(&view);
+        (parent.add_child)(&view);
     }
 
     layout! {
-        ContextProvider<AppkitStackViewContext>(
-            .value = AppkitStackViewContext {
-                view: view.downcast::<NSView>().unwrap()
+        ContextProvider<ParentViewContext>(
+            .value = ParentViewContext {
+                add_child: callback!(view => |subview: &NSView| {
+                    view.addSubview(subview);
+                })
             },
             .children = props.children.clone(),
         )

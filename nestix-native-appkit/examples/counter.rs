@@ -1,6 +1,6 @@
 use nestix::{Element, callback, component, computed, create_model, create_state, layout};
 use nestix_native_appkit::{
-    app::AppkitApp, button::AppkitButton, label::AppkitLabel, stack_view::AppkitStackView,
+    app::AppkitApp, button::AppkitButton, label::AppkitLabel, list_view::AppkitListView,
     window::AppkitWindow,
 };
 
@@ -23,11 +23,10 @@ fn App() -> Element {
                 .width = 300,
                 .height = 300,
                 .view = layout! {
-                    AppkitStackView {
+                    AppkitListView {
                         AppkitLabel(.text = computed!(count => || format!("Count: {}", count.get())))
                         AppkitButton(
                             .title = "Click",
-                            .y = 20,
                             .on_click = callback!(count => || {
                                 count.mutate(|count| *count += 1);
                             })
