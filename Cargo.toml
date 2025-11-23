@@ -1,0 +1,4 @@
+[workspace]
+members = ["nestix-native", "nestix-native-*"]
+default-members = ["nestix-native", "nestix-native-*"]
+resolver = "2"
