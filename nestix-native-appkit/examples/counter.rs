@@ -15,7 +15,9 @@ fn App() -> Element {
     let count = create_state(0);
 
     layout! {
-        AppkitApp {
+        AppkitApp(
+            .should_terminate_after_last_window_closed = true
+        ) {
             AppkitWindow(
                 .title = "Counter",
                 .width = 300,
