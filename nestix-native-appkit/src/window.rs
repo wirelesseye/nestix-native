@@ -1,22 +1,8 @@
-use nestix::{
-    Element, component, components::ContextProvider, derive_props, effect, layout, provide_handle,
-};
+use nestix::{Element, component, components::ContextProvider, effect, layout};
+use nestix_native_core::WindowProps;
 use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSView, NSWindow, NSWindowStyleMask};
 use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
-
-#[derive_props]
-pub struct AppkitWindowProps {
-    view: Option<Element>,
-
-    #[props(default)]
-    title: String,
-
-    #[props(default = 800.0)]
-    width: f64,
-    #[props(default = 600.0)]
-    height: f64,
-}
 
 #[derive(Clone)]
 pub struct AppkitWindowContext {
@@ -24,7 +10,7 @@ pub struct AppkitWindowContext {
 }
 
 #[component]
-pub fn AppkitWindow(props: &AppkitWindowProps) -> Element {
+pub fn AppkitWindow(props: &WindowProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
 
     let masks = NSWindowStyleMask::Closable
@@ -36,7 +22,7 @@ pub fn AppkitWindow(props: &AppkitWindowProps) -> Element {
     window.setStyleMask(masks);
     window.makeKeyAndOrderFront(None);
 
-    provide_handle(window.as_ref() as *const NSWindow);
+    element.provide_handle(window.as_ref() as *const NSWindow);
 
     effect!(window, props.title => || {
         let ns_string = NSString::from_str(&title.get());
@@ -66,8 +52,7 @@ pub fn AppkitWindow(props: &AppkitWindowProps) -> Element {
                 window
             },
         ) {
-            #![clone(props.view)]
-            yield $option(view.get())
+            $option(props.view.get())
         }
     }
 }

@@ -1,14 +1,25 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+pub mod app;
+pub mod button;
+pub mod label;
+pub mod view;
+pub mod window;
+
+use std::rc::Rc;
+
+pub use app::*;
+pub use button::*;
+pub use label::*;
+pub use view::*;
+pub use window::*;
+
+use nestix_native_appkit::AppkitBackend;
+use nestix_native_core::Backend;
+
+pub fn default_backend() -> Rc<dyn Backend> {
+    Rc::new(AppkitBackend)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[derive(Clone)]
+pub struct BackendContext {
+    backend: Rc<dyn Backend>,
 }

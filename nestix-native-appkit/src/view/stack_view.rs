@@ -1,29 +1,19 @@
-use nestix::{
-    Element, Shared, callback, component, components::ContextProvider, derive_props, layout,
-    provide_handle, use_context,
-};
+use nestix::{Element, callback, component, components::ContextProvider, layout};
+use nestix_native_core::StackViewProps;
 use objc2::{MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::NSView;
 use objc2_foundation::NSObjectProtocol;
 
-#[derive_props]
-pub struct AppkitStackViewProps {
-    children: Option<Vec<Element>>,
-}
-
-#[derive(Clone)]
-pub struct ParentViewContext {
-    pub add_child: Shared<dyn Fn(&NSView)>,
-}
+use crate::ParentViewContext;
 
 #[component]
-pub fn AppkitStackView(props: &AppkitStackViewProps) -> Element {
+pub fn AppkitStackView(props: &StackViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NNStackView::new(mtm);
 
-    provide_handle(view.as_ref() as *const NSView);
+    element.provide_handle(view.as_ref() as *const NSView);
 
-    let parent = use_context::<ParentViewContext>();
+    let parent = element.context::<ParentViewContext>();
     if let Some(parent) = parent {
         (parent.add_child)(&view);
     }

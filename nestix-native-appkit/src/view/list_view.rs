@@ -1,32 +1,20 @@
 use nestix::{
-    Element, callback, component, components::ContextProvider, derive_props, effect, layout, provide_handle, use_context
+    Element, callback, component, components::ContextProvider, effect, layout,
 };
+use nestix_native_core::{ListViewDirection, ListViewProps};
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSStackView, NSUserInterfaceLayoutOrientation, NSView};
 
-use crate::stack_view::ParentViewContext;
-
-#[derive(Clone, Copy)]
-pub enum ListViewDirection {
-    Horizontal,
-    Vertical,
-}
-
-#[derive_props]
-pub struct AppkitListViewProps {
-    #[props(default = ListViewDirection::Vertical)]
-    direction: ListViewDirection,
-    children: Option<Vec<Element>>,
-}
+use crate::ParentViewContext;
 
 #[component]
-pub fn AppkitListView(props: &AppkitListViewProps) -> Element {
+pub fn AppkitListView(props: &ListViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NSStackView::new(mtm);
 
-    provide_handle(view.as_ref() as *const NSView);
+    element.provide_handle(view.as_ref() as *const NSView);
 
-    let parent = use_context::<ParentViewContext>();
+    let parent = element.context::<ParentViewContext>();
     if let Some(parent) = parent {
         (parent.add_child)(&view);
     }

@@ -1,8 +1,5 @@
 use nestix::{Element, callback, component, computed, create_state, layout, render};
-use nestix_native_appkit::{
-    app::AppkitApp, button::AppkitButton, label::AppkitLabel, list_view::AppkitListView,
-    window::AppkitWindow,
-};
+use nestix_native::{App, Button, Label, ListView, Window};
 
 fn main() {
     render(&layout! {CounterApp});
@@ -13,15 +10,15 @@ fn CounterApp() -> Element {
     let count = create_state(0);
 
     layout! {
-        AppkitApp {
-            AppkitWindow(
+        App {
+            Window(
                 .title = "Counter",
                 .width = 300,
                 .height = 300,
                 .view = layout! {
-                    AppkitListView {
-                        AppkitLabel(.text = computed!(count => || format!("Count: {}", count.get())))
-                        AppkitButton(
+                    ListView {
+                        Label(.text = computed!(count => || format!("Count: {}", count.get())))
+                        Button(
                             .title = "Click",
                             .on_click = callback!(count => || {
                                 count.mutate(|count| *count += 1);

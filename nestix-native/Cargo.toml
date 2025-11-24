@@ -4,3 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+nestix = { path = "../../nestix/nestix" }
+nestix-native-core = { path = "../nestix-native-core" }
+nestix-native-appkit = { path = "../nestix-native-appkit" }

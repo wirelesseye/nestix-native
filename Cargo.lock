@@ -124,6 +124,11 @@ dependencies = [
 [[package]]
 name = "nestix-native"
 version = "0.1.0"
+dependencies = [
+ "nestix",
+ "nestix-native-appkit",
+ "nestix-native-core",
+]
 
 [[package]]
 name = "nestix-native-appkit"

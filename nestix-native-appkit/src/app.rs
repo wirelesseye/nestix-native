@@ -1,7 +1,5 @@
-use nestix::{
-    Element, closure, component, components::ContextProvider, derive_props, layout, post_update,
-    prop::PropValue, provide_handle,
-};
+use nestix::{Element, closure, component, components::ContextProvider, layout, prop::PropValue};
+use nestix_native_core::AppProps;
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -9,21 +7,13 @@ use objc2::{
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate};
 use objc2_foundation::{NSObject, NSObjectProtocol};
 
-#[derive_props]
-pub struct AppkitAppProps {
-    children: Option<Vec<Element>>,
-    
-    #[props(default)]
-    should_terminate_after_last_window_closed: bool,
-}
-
 #[derive(Clone)]
 pub struct AppkitAppContext {
     pub app: Retained<NSApplication>,
 }
 
 #[component]
-pub fn AppkitApp(props: &AppkitAppProps) -> Element {
+pub fn AppkitApp(props: &AppProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let app = NSApplication::sharedApplication(mtm);
 
@@ -32,16 +22,14 @@ pub fn AppkitApp(props: &AppkitAppProps) -> Element {
     let app_delegate = AppDelegate::new(
         mtm,
         AppState {
-            should_terminate_after_last_window_closed: props
-                .should_terminate_after_last_window_closed
-                .clone(),
+            should_terminate_after_last_window_closed: props.quit_when_no_windows.clone(),
         },
     );
     app.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
 
-    provide_handle(app.as_ref() as *const NSApplication);
+    element.provide_handle(app.as_ref() as *const NSApplication);
 
-    post_update(closure!(app => || {
+    element.post_update(closure!(app => || {
         app.run();
     }));
 
