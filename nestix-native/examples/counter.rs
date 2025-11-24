@@ -1,7 +1,9 @@
+use env_logger::Env;
 use nestix::{Element, callback, component, computed, create_state, layout, render};
 use nestix_native::{App, Button, Label, ListView, Window};
 
 fn main() {
+    env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
     render(&layout! {CounterApp});
 }
 

@@ -7,3 +7,7 @@ edition = "2024"
 nestix = { path = "../../nestix/nestix" }
 nestix-native-core = { path = "../nestix-native-core" }
 nestix-native-appkit = { path = "../nestix-native-appkit" }
+
+[dev-dependencies]
+log = { version = "0.4.28"}
+env_logger = { version = "0.11.8" }
