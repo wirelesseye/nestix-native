@@ -52,6 +52,9 @@ fn Counter() -> Element {
                     count.mutate(|count| *count += 1);
                 })
             )
+            if count.get() % 2 == 0 {
+                Label(.text = "Is Even!")
+            }
         }
     }
 }

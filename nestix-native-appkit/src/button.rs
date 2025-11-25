@@ -31,7 +31,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     };
 
     let button_id = nanoid::nanoid!();
-    element.on_destroy(closure!(button_id => || {
+    element.on_destroy(closure!(button_id, button => || {
+        button.removeFromSuperview();
         HANDLERS.with_borrow_mut(|handlers| handlers.remove(&button_id));
     }));
     HANDLERS.with_borrow_mut(|handlers| handlers.insert(button_id, handler));

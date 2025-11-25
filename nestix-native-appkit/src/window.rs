@@ -38,6 +38,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     window.center();
 
+    let ns_object: Retained<NSObject> = unsafe {
+        Retained::cast_unchecked(window.clone())
+    };
+
     layout! {
         ContextProvider<WindowContext>(
             .value = WindowContext {
@@ -46,6 +50,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         ) {
             ContextProvider<ParentContext>(
                 .value = ParentContext {
+                    ns_object: Some(ns_object),
                     add_child: Some(callback!(window => |child: &NSObject| {
                         let view = child.downcast_ref::<NSView>().unwrap();
                         window.setContentView(Some(view));

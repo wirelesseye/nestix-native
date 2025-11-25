@@ -1,4 +1,4 @@
-use nestix::{Element, callback, component, components::ContextProvider, layout};
+use nestix::{Element, callback, closure, component, components::ContextProvider, layout};
 use nestix_native_core::StackViewProps;
 use objc2::{MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::NSView;
@@ -20,9 +20,18 @@ pub fn StackView(props: &StackViewProps, element: &Element) -> Element {
         }
     }
 
+    element.on_destroy(closure!(view => || {
+        view.removeFromSuperview();
+    }));
+
+    let ns_object: Retained<NSObject> = unsafe {
+        Retained::cast_unchecked(view.clone())
+    };
+
     layout! {
         ContextProvider<ParentContext>(
             .value = ParentContext {
+                ns_object: Some(ns_object),
                 add_child: Some(callback!(view => |child: &NSObject| {
                     view.addSubview(child.downcast_ref::<NSView>().unwrap());
                 }))

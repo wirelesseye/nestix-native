@@ -30,7 +30,8 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     let input_id = nanoid::nanoid!();
 
-    element.on_destroy(closure!(input_id => || {
+    element.on_destroy(closure!(input_id, input => || {
+        input.removeFromSuperview();
         DELEGATES.with_borrow_mut(|delegates| delegates.remove(&input_id));
     }));
 

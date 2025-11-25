@@ -1,6 +1,6 @@
-use nestix::{Element, callback, component, components::ContextProvider, effect, layout};
+use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{ListViewAlignment, ListViewDirection, ListViewProps};
-use objc2::MainThreadMarker;
+use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSLayoutAttribute, NSStackView, NSUserInterfaceLayoutOrientation, NSView};
 use objc2_foundation::NSObject;
 
@@ -19,6 +19,10 @@ pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
             add_child(&view);
         }
     }
+
+    element.on_destroy(closure!(view => || {
+        view.removeFromSuperview();
+    }));
 
     effect!(view, props.direction => || {
         let orientation = match direction.get() {
@@ -50,9 +54,14 @@ pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
         view.setAlignment(alignment);
     });
 
+    let ns_object: Retained<NSObject> = unsafe {
+        Retained::cast_unchecked(view.clone())
+    };
+    
     layout! {
         ContextProvider<ParentContext>(
             .value = ParentContext {
+                ns_object: Some(ns_object),
                 add_child: Some(callback!(view => |child: &NSObject| {
                     view.addArrangedSubview(child.downcast_ref::<NSView>().unwrap());
                 }))

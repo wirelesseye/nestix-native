@@ -1,4 +1,4 @@
-use nestix::{Element, component, effect};
+use nestix::{Element, closure, component, effect};
 use nestix_native_core::LabelProps;
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
@@ -26,6 +26,10 @@ pub fn Label(props: &LabelProps, element: &Element) {
         let ns_string = NSString::from_str(&text.get());
         label.setStringValue(&ns_string);
     });
+
+    element.on_destroy(closure!(label => || {
+        label.removeFromSuperview();
+    }));
 
     let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {
