@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use env_logger::Env;
 use nestix::{
-    Element, callback, component, components::For, computed, create_state, layout, render,
+    Element, callback, component, components::For, computed, create_state, layout, render_root,
 };
 use nestix_native::{App, Button, Input, Label, ListView, TabView, TabViewItem, Window};
 use nestix_native_core::ListViewDirection;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    render(&layout! {ExampleApp});
+    render_root(&layout! {ExampleApp});
 }
 
 #[component]
