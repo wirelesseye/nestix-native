@@ -13,7 +13,7 @@ thread_local! {
 }
 
 #[component]
-pub fn AppkitInput(props: &InputProps, element: &Element) {
+pub fn Input(props: &InputProps, element: &Element) {
     let mtm = MainThreadMarker::new().unwrap();
     let string_value = NSString::from_str(&props.value.get());
     let input = NSTextField::textFieldWithString(&string_value, mtm);

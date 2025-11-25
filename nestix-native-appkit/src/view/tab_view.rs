@@ -7,7 +7,7 @@ use objc2_foundation::{NSObject, NSString};
 use crate::ParentContext;
 
 #[component]
-pub fn AppkitTabView(props: &TabViewProps, element: &Element) -> Element {
+pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NSTabView::new(mtm);
 
@@ -33,7 +33,7 @@ pub fn AppkitTabView(props: &TabViewProps, element: &Element) -> Element {
 }
 
 #[component]
-pub fn AppkitTabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
+pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let id = NSString::from_str(&props.id.get());
     let item = unsafe { NSTabViewItem::initWithIdentifier(mtm.alloc(), Some(&id)) };

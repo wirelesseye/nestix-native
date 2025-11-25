@@ -5,32 +5,32 @@ use nestix::{
     Element, callback, component, components::For, computed, create_state, layout, render,
 };
 use nestix_native_appkit::{
-    AppkitInput, AppkitTabView, AppkitTabViewItem, app::AppkitApp, button::AppkitButton,
-    label::AppkitLabel, list_view::AppkitListView, window::AppkitWindow,
+    Input, TabView, TabViewItem, app::App, button::Button,
+    label::Label, list_view::ListView, window::Window,
 };
 use nestix_native_core::ListViewDirection;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    render(&layout! {BasicApp});
+    render(&layout! {ExampleApp});
 }
 
 #[component]
-fn BasicApp() -> Element {
+fn ExampleApp() -> Element {
     layout! {
-        AppkitApp {
-            AppkitWindow(
+        App {
+            Window(
                 .title = "Counter",
                 .width = 300,
                 .height = 300,
                 .view = layout! {
-                    AppkitTabView {
-                        AppkitTabViewItem(
+                    TabView {
+                        TabViewItem(
                             .id = "counter",
                             .title = "Counter",
                             .view = layout! {Counter}
                         )
-                        AppkitTabViewItem(
+                        TabViewItem(
                             .id = "todo_list",
                             .title = "Todo List",
                             .view = layout! {TodoList}
@@ -47,9 +47,9 @@ fn Counter() -> Element {
     let count = create_state(0);
 
     layout! {
-        AppkitListView {
-            AppkitLabel(.text = computed!(count => || format!("Count: {}", count.get())))
-            AppkitButton(
+        ListView {
+            Label(.text = computed!(count => || format!("Count: {}", count.get())))
+            Button(
                 .title = "Click",
                 .on_click = callback!(count => || {
                     count.mutate(|count| *count += 1);
@@ -79,17 +79,17 @@ fn TodoList() -> Element {
     });
 
     layout! {
-        AppkitListView {
-            AppkitListView(.direction = ListViewDirection::Horizontal) {
-                AppkitInput(.value = input_text, .on_text_change = on_text_change)
-                AppkitButton(.title = "Add", .on_click = add)
+        ListView {
+            ListView(.direction = ListViewDirection::Horizontal) {
+                Input(.value = input_text, .on_text_change = on_text_change)
+                Button(.title = "Add", .on_click = add)
             }
-            AppkitListView {
+            ListView {
                 For<_, HashMap<String, String>, String>(
                     .data = items,
                     .key = callback!(|(k, _): &(String, String)| k.clone()),
                     .constructor = callback!(|(_, v): &(String, String)| layout! {
-                        AppkitLabel(.text = v.clone())
+                        Label(.text = v.clone())
                     })
                 )
             }

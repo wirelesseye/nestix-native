@@ -8,12 +8,12 @@ use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationD
 use objc2_foundation::{NSObject, NSObjectProtocol};
 
 #[derive(Clone)]
-pub struct AppkitAppContext {
+pub struct AppContext {
     pub app: Retained<NSApplication>,
 }
 
 #[component]
-pub fn AppkitApp(props: &AppProps, element: &Element) -> Element {
+pub fn App(props: &AppProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let app = NSApplication::sharedApplication(mtm);
 
@@ -34,8 +34,8 @@ pub fn AppkitApp(props: &AppProps, element: &Element) -> Element {
     }));
 
     layout! {
-        ContextProvider<AppkitAppContext>(
-            .value = AppkitAppContext {
+        ContextProvider<AppContext>(
+            .value = AppContext {
                 app
             },
             .children = props.children.clone(),

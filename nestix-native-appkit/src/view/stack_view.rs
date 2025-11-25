@@ -7,7 +7,7 @@ use objc2_foundation::{NSObject, NSObjectProtocol};
 use crate::ParentContext;
 
 #[component]
-pub fn AppkitStackView(props: &StackViewProps, element: &Element) -> Element {
+pub fn StackView(props: &StackViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NNStackView::new(mtm);
 

@@ -9,11 +9,11 @@ use nestix_native_core::ListViewDirection;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    render(&layout! {BasicApp});
+    render(&layout! {ExampleApp});
 }
 
 #[component]
-fn BasicApp() -> Element {
+fn ExampleApp() -> Element {
     layout! {
         App {
             Window(

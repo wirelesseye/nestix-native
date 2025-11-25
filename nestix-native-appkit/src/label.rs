@@ -7,7 +7,7 @@ use objc2_foundation::{NSObject, NSPoint, NSSize, NSString};
 use crate::ParentContext;
 
 #[component]
-pub fn AppkitLabel(props: &LabelProps, element: &Element) {
+pub fn Label(props: &LabelProps, element: &Element) {
     let mtm = MainThreadMarker::new().unwrap();
     let ns_string = NSString::from_str(&props.text.get());
     let label = NSTextField::labelWithString(&ns_string, mtm);

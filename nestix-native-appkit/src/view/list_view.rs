@@ -7,7 +7,7 @@ use objc2_foundation::NSObject;
 use crate::ParentContext;
 
 #[component]
-pub fn AppkitListView(props: &ListViewProps, element: &Element) -> Element {
+pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NSStackView::new(mtm);
 

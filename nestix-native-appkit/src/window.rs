@@ -7,12 +7,12 @@ use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
 use crate::ParentContext;
 
 #[derive(Clone)]
-pub struct AppkitWindowContext {
+pub struct WindowContext {
     pub window: Retained<NSWindow>,
 }
 
 #[component]
-pub fn AppkitWindow(props: &WindowProps, element: &Element) -> Element {
+pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
 
     let masks = NSWindowStyleMask::Closable
@@ -39,8 +39,8 @@ pub fn AppkitWindow(props: &WindowProps, element: &Element) -> Element {
     window.center();
 
     layout! {
-        ContextProvider<AppkitWindowContext>(
-            .value = AppkitWindowContext {
+        ContextProvider<WindowContext>(
+            .value = WindowContext {
                 window: window.clone(),
             },
         ) {

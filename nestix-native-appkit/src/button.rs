@@ -15,7 +15,7 @@ thread_local! {
 }
 
 #[component]
-pub fn AppkitButton(props: &ButtonProps, element: &Element) {
+pub fn Button(props: &ButtonProps, element: &Element) {
     let mtm = MainThreadMarker::new().unwrap();
 
     let title = NSString::from_str(&props.title.get());
