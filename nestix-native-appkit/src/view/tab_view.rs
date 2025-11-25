@@ -4,7 +4,7 @@ use objc2::MainThreadMarker;
 use objc2_app_kit::{NSTabView, NSTabViewItem, NSView};
 use objc2_foundation::{NSObject, NSString};
 
-use crate::ParentViewContext;
+use crate::ParentContext;
 
 #[component]
 pub fn AppkitTabView(props: &TabViewProps, element: &Element) -> Element {
@@ -13,7 +13,7 @@ pub fn AppkitTabView(props: &TabViewProps, element: &Element) -> Element {
 
     element.provide_handle(view.as_ref() as *const NSObject);
 
-    let parent = element.context::<ParentViewContext>();
+    let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {
         if let Some(add_child) = &parent.add_child {
             add_child(&view);
@@ -21,8 +21,8 @@ pub fn AppkitTabView(props: &TabViewProps, element: &Element) -> Element {
     }
 
     layout! {
-        ContextProvider<ParentViewContext>(
-            .value = ParentViewContext {
+        ContextProvider<ParentContext>(
+            .value = ParentContext {
                 add_child: Some(callback!(view => |child: &NSObject| {
                     view.addTabViewItem(child.downcast_ref::<NSTabViewItem>().unwrap());
                 }))
@@ -38,9 +38,9 @@ pub fn AppkitTabViewItem(props: &TabViewItemProps, element: &Element) -> Element
     let id = NSString::from_str(&props.id.get());
     let item = unsafe { NSTabViewItem::initWithIdentifier(mtm.alloc(), Some(&id)) };
 
-    element.provide_handle(item.as_ref() as *const NSTabViewItem);
+    element.provide_handle(item.as_ref() as *const NSObject);
 
-    let parent = element.context::<ParentViewContext>();
+    let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {
         if let Some(add_child) = &parent.add_child {
             add_child(&item);
@@ -52,21 +52,13 @@ pub fn AppkitTabViewItem(props: &TabViewItemProps, element: &Element) -> Element
         item.setLabel(&ns_string);
     });
 
-    effect!(item, props.view => || {
-        if let Some(element) = view.get() {
-            if let Some(handle) = element.handle().get() {
-                let ns_object = handle.downcast_ref::<*const NSObject>().unwrap();
-                let ns_object = unsafe { &**ns_object };
-                let view = ns_object.downcast_ref::<NSView>().unwrap();
-                item.setView(Some(view));
-            }
-        }
-    });
-
     layout! {
-        ContextProvider<ParentViewContext>(
-            .value = ParentViewContext {
-                add_child: None
+        ContextProvider<ParentContext>(
+            .value = ParentContext {
+                add_child: Some(callback!(item => |child: &NSObject| {
+                    let view = child.downcast_ref::<NSView>().unwrap();
+                    item.setView(Some(view));
+                }))
             },
         ) {
             $option(props.view.get())

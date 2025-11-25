@@ -1,6 +1,6 @@
 use nestix::{Element, component};
 
-pub use nestix_native_core::ListViewProps;
+pub use nestix_native_core::{ListViewAlignment, ListViewDirection, ListViewProps};
 
 use crate::BackendContext;
 

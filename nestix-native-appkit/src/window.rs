@@ -1,8 +1,10 @@
-use nestix::{Element, component, components::ContextProvider, effect, layout};
+use nestix::{Element, callback, component, components::ContextProvider, effect, layout};
 use nestix_native_core::WindowProps;
 use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSView, NSWindow, NSWindowStyleMask};
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
+
+use crate::ParentContext;
 
 #[derive(Clone)]
 pub struct AppkitWindowContext {
@@ -22,7 +24,7 @@ pub fn AppkitWindow(props: &WindowProps, element: &Element) -> Element {
     window.setStyleMask(masks);
     window.makeKeyAndOrderFront(None);
 
-    element.provide_handle(window.as_ref() as *const NSWindow);
+    element.provide_handle(window.as_ref() as *const NSObject);
 
     effect!(window, props.title => || {
         let ns_string = NSString::from_str(&title.get());
@@ -36,24 +38,22 @@ pub fn AppkitWindow(props: &WindowProps, element: &Element) -> Element {
 
     window.center();
 
-    effect!(window, props.view => || {
-        if let Some(element) = view.get() {
-            if let Some(handle) = element.handle().get() {
-                let ns_object = handle.downcast_ref::<*const NSObject>().unwrap();
-                let ns_object = unsafe { &**ns_object };
-                let view = ns_object.downcast_ref::<NSView>().unwrap();
-                window.setContentView(Some(view));
-            }
-        }
-    });
-
     layout! {
         ContextProvider<AppkitWindowContext>(
             .value = AppkitWindowContext {
-                window
+                window: window.clone(),
             },
         ) {
-            $option(props.view.get())
+            ContextProvider<ParentContext>(
+                .value = ParentContext {
+                    add_child: Some(callback!(window => |child: &NSObject| {
+                        let view = child.downcast_ref::<NSView>().unwrap();
+                        window.setContentView(Some(view));
+                    }))
+                }
+            ) {
+                $option(props.view.get())
+            }
         }
     }
 }

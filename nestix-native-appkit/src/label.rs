@@ -2,24 +2,17 @@ use nestix::{Element, component, effect};
 use nestix_native_core::LabelProps;
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
-use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{NSObject, NSPoint, NSSize, NSString};
 
-use crate::ParentViewContext;
+use crate::ParentContext;
 
 #[component]
 pub fn AppkitLabel(props: &LabelProps, element: &Element) {
     let mtm = MainThreadMarker::new().unwrap();
-    let rect = NSRect::new(
-        NSPoint::new(props.x.get(), props.y.get()),
-        NSSize::new(props.width.get(), props.height.get()),
-    );
-    let label = NSTextField::initWithFrame(mtm.alloc(), rect);
-    label.setBezeled(false);
-    label.setDrawsBackground(false);
-    label.setEditable(false);
-    label.setSelectable(false);
+    let ns_string = NSString::from_str(&props.text.get());
+    let label = NSTextField::labelWithString(&ns_string, mtm);
 
-    element.provide_handle(label.as_ref() as *const NSTextField);
+    element.provide_handle(label.as_ref() as *const NSObject);
 
     effect!(label, props.x, props.y => || {
         label.setFrameOrigin(NSPoint::new(x.get(), y.get()));
@@ -34,7 +27,7 @@ pub fn AppkitLabel(props: &LabelProps, element: &Element) {
         label.setStringValue(&ns_string);
     });
 
-    let parent = element.context::<ParentViewContext>();
+    let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {
         if let Some(add_child) = &parent.add_child {
             add_child(&label);

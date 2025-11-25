@@ -10,6 +10,6 @@ use nestix::Shared;
 use objc2_foundation::NSObject;
 
 #[derive(Clone)]
-pub struct ParentViewContext {
+pub struct ParentContext {
     pub add_child: Option<Shared<dyn Fn(&NSObject)>>,
 }

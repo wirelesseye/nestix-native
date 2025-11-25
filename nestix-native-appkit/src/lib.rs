@@ -1,11 +1,13 @@
 pub mod app;
 pub mod button;
+pub mod input;
 pub mod label;
 pub mod view;
 pub mod window;
 
 pub use app::*;
 pub use button::*;
+pub use input::*;
 pub use label::*;
 pub use view::*;
 pub use window::*;
@@ -22,6 +24,10 @@ impl Backend for AppkitBackend {
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {
         Some(create_element::<AppkitButton>(props))
+    }
+
+    fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {
+        Some(create_element::<AppkitInput>(props))
     }
 
     fn create_label(&self, props: nestix_native_core::LabelProps) -> Option<nestix::Element> {

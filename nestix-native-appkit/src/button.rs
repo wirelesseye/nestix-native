@@ -6,9 +6,9 @@ use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
 };
 use objc2_app_kit::NSButton;
-use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSSize, NSString};
 
-use crate::ParentViewContext;
+use crate::ParentContext;
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<ButtonHandler>>> = RefCell::new(HashMap::new());
@@ -17,32 +17,26 @@ thread_local! {
 #[component]
 pub fn AppkitButton(props: &ButtonProps, element: &Element) {
     let mtm = MainThreadMarker::new().unwrap();
-    let rect = NSRect::new(
-        NSPoint::new(props.x.get(), props.y.get()),
-        NSSize::new(props.width.get(), props.height.get()),
-    );
-    let button = NSButton::initWithFrame(mtm.alloc(), rect);
 
-    let button_id = nanoid::nanoid!();
-
+    let title = NSString::from_str(&props.title.get());
     let handler = ButtonHandler::new(
         mtm,
         ButtonHandlerState {
             on_click: props.on_click.clone(),
         },
     );
-    unsafe {
-        button.setTarget(Some(&handler));
-        button.setAction(Some(sel!(clicked)));
-    }
 
+    let button = unsafe {
+        NSButton::buttonWithTitle_target_action(&title, Some(&handler), Some(sel!(clicked)), mtm)
+    };
+
+    let button_id = nanoid::nanoid!();
     element.on_destroy(closure!(button_id => || {
         HANDLERS.with_borrow_mut(|handlers| handlers.remove(&button_id));
     }));
-
     HANDLERS.with_borrow_mut(|handlers| handlers.insert(button_id, handler));
 
-    element.provide_handle(button.as_ref() as *const NSButton);
+    element.provide_handle(button.as_ref() as *const NSObject);
 
     effect!(button, props.x, props.y => || {
         button.setFrameOrigin(NSPoint::new(x.get(), y.get()));
@@ -57,7 +51,7 @@ pub fn AppkitButton(props: &ButtonProps, element: &Element) {
         button.setTitle(&ns_string);
     });
 
-    let parent = element.context::<ParentViewContext>();
+    let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {
         if let Some(add_child) = &parent.add_child {
             add_child(&button);

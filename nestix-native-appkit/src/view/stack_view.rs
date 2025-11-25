@@ -4,7 +4,7 @@ use objc2::{MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retain
 use objc2_app_kit::NSView;
 use objc2_foundation::{NSObject, NSObjectProtocol};
 
-use crate::ParentViewContext;
+use crate::ParentContext;
 
 #[component]
 pub fn AppkitStackView(props: &StackViewProps, element: &Element) -> Element {
@@ -13,7 +13,7 @@ pub fn AppkitStackView(props: &StackViewProps, element: &Element) -> Element {
 
     element.provide_handle(view.as_ref() as *const NSObject);
 
-    let parent = element.context::<ParentViewContext>();
+    let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {
         if let Some(add_child) = &parent.add_child {
             add_child(&view);
@@ -21,8 +21,8 @@ pub fn AppkitStackView(props: &StackViewProps, element: &Element) -> Element {
     }
 
     layout! {
-        ContextProvider<ParentViewContext>(
-            .value = ParentViewContext {
+        ContextProvider<ParentContext>(
+            .value = ParentContext {
                 add_child: Some(callback!(view => |child: &NSObject| {
                     view.addSubview(child.downcast_ref::<NSView>().unwrap());
                 }))

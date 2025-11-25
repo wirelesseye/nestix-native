@@ -1,11 +1,13 @@
 pub mod app;
 pub mod button;
+pub mod input;
 pub mod label;
 pub mod view;
 pub mod window;
 
 pub use app::*;
 pub use button::*;
+pub use input::*;
 pub use label::*;
 pub use view::*;
 pub use window::*;
@@ -16,6 +18,8 @@ pub trait Backend {
     fn create_app(&self, props: AppProps) -> Option<Element>;
 
     fn create_button(&self, props: ButtonProps) -> Option<Element>;
+
+    fn create_input(&self, props: InputProps) -> Option<Element>;
 
     fn create_label(&self, props: LabelProps) -> Option<Element>;
 

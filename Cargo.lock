@@ -244,7 +244,7 @@ name = "nestix-native"
 version = "0.1.0"
 dependencies = [
  "env_logger",
- "log",
+ "nanoid",
  "nestix",
  "nestix-native-appkit",
  "nestix-native-core",
@@ -254,6 +254,7 @@ dependencies = [
 name = "nestix-native-appkit"
 version = "0.1.0"
 dependencies = [
+ "env_logger",
  "nanoid",
  "nestix",
  "nestix-native-core",

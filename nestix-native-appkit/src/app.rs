@@ -27,7 +27,7 @@ pub fn AppkitApp(props: &AppProps, element: &Element) -> Element {
     );
     app.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
 
-    element.provide_handle(app.as_ref() as *const NSApplication);
+    element.provide_handle(app.as_ref() as *const NSObject);
 
     element.post_update(closure!(app => || {
         app.run();
