@@ -42,6 +42,17 @@ impl Backend for AppkitBackend {
         Some(create_element::<AppkitStackView>(props))
     }
 
+    fn create_tab_view(&self, props: nestix_native_core::TabViewProps) -> Option<nestix::Element> {
+        Some(create_element::<AppkitTabView>(props))
+    }
+
+    fn create_tab_view_item(
+        &self,
+        props: nestix_native_core::TabViewItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<AppkitTabViewItem>(props))
+    }
+
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<nestix::Element> {
         Some(create_element::<AppkitWindow>(props))
     }

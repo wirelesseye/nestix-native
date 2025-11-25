@@ -2,7 +2,7 @@ use nestix::{Element, component, components::ContextProvider, effect, layout};
 use nestix_native_core::WindowProps;
 use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSView, NSWindow, NSWindowStyleMask};
-use objc2_foundation::{NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
 
 #[derive(Clone)]
 pub struct AppkitWindowContext {
@@ -39,9 +39,10 @@ pub fn AppkitWindow(props: &WindowProps, element: &Element) -> Element {
     effect!(window, props.view => || {
         if let Some(element) = view.get() {
             if let Some(handle) = element.handle().get() {
-                let ns_view = handle.downcast_ref::<*const NSView>().unwrap();
-                let ns_view = unsafe { &**ns_view };
-                window.setContentView(Some(ns_view));
+                let ns_object = handle.downcast_ref::<*const NSObject>().unwrap();
+                let ns_object = unsafe { &**ns_object };
+                let view = ns_object.downcast_ref::<NSView>().unwrap();
+                window.setContentView(Some(view));
             }
         }
     });

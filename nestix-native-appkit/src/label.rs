@@ -36,6 +36,8 @@ pub fn AppkitLabel(props: &LabelProps, element: &Element) {
 
     let parent = element.context::<ParentViewContext>();
     if let Some(parent) = parent {
-        (parent.add_child)(&label);
+        if let Some(add_child) = &parent.add_child {
+            add_child(&label);
+        }
     }
 }

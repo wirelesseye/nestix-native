@@ -23,5 +23,9 @@ pub trait Backend {
 
     fn create_stack_view(&self, props: StackViewProps) -> Option<Element>;
 
+    fn create_tab_view(&self, props: TabViewProps) -> Option<Element>;
+
+    fn create_tab_view_item(&self, props: TabViewItemProps) -> Option<Element>;
+
     fn create_window(&self, props: WindowProps) -> Option<Element>;
 }

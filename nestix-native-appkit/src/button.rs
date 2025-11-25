@@ -59,7 +59,9 @@ pub fn AppkitButton(props: &ButtonProps, element: &Element) {
 
     let parent = element.context::<ParentViewContext>();
     if let Some(parent) = parent {
-        (parent.add_child)(&button);
+        if let Some(add_child) = &parent.add_child {
+            add_child(&button);
+        }
     }
 }
 

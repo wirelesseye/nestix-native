@@ -1,9 +1,8 @@
-use nestix::{
-    Element, callback, component, components::ContextProvider, effect, layout,
-};
+use nestix::{Element, callback, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{ListViewDirection, ListViewProps};
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSStackView, NSUserInterfaceLayoutOrientation, NSView};
+use objc2_foundation::NSObject;
 
 use crate::ParentViewContext;
 
@@ -12,11 +11,13 @@ pub fn AppkitListView(props: &ListViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NSStackView::new(mtm);
 
-    element.provide_handle(view.as_ref() as *const NSView);
+    element.provide_handle(view.as_ref() as *const NSObject);
 
     let parent = element.context::<ParentViewContext>();
     if let Some(parent) = parent {
-        (parent.add_child)(&view);
+        if let Some(add_child) = &parent.add_child {
+            add_child(&view);
+        }
     }
 
     effect!(view, props.direction => || {
@@ -30,9 +31,9 @@ pub fn AppkitListView(props: &ListViewProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ParentViewContext>(
             .value = ParentViewContext {
-                add_child: callback!(view => |subview: &NSView| {
-                    view.addArrangedSubview(subview);
-                })
+                add_child: Some(callback!(view => |child: &NSObject| {
+                    view.addArrangedSubview(child.downcast_ref::<NSView>().unwrap());
+                }))
             },
             .children = props.children.clone(),
         )
