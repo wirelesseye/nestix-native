@@ -6,7 +6,12 @@ edition = "2024"
 [dependencies]
 nestix = { path = "../../nestix/nestix" }
 nestix-native-core = { path = "../nestix-native-core" }
+
+[target.'cfg(macos)'.dependencies]
 nestix-native-appkit = { path = "../nestix-native-appkit" }
+
+[target.'cfg(windows)'.dependencies]
+nestix-native-win32 = { path = "../nestix-native-win32" }
 
 [dev-dependencies]
 nanoid = "0.4.0"

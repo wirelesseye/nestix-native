@@ -1,45 +1,35 @@
 pub mod app;
-pub mod button;
-pub mod input;
 pub mod label;
-pub mod list_view;
 pub mod stack_view;
-pub mod tab_view;
 pub mod window;
 
 pub use app::*;
-pub use button::*;
-pub use input::*;
 pub use label::*;
-pub use list_view::*;
 pub use stack_view::*;
-pub use tab_view::*;
 pub use window::*;
 
-use nestix::{Shared, create_element};
+use nestix::create_element;
 use nestix_native_core::Backend;
-use objc2::rc::Retained;
-use objc2_foundation::NSObject;
+use windows::Win32::Foundation::HWND;
 
 #[derive(Clone)]
 pub struct ParentContext {
-    pub ns_object: Option<Retained<NSObject>>,
-    pub add_child: Option<Shared<dyn Fn(&NSObject)>>,
+    pub hwnd: Option<HWND>,
 }
 
-pub struct AppkitBackend;
+pub struct Win32Backend;
 
-impl Backend for AppkitBackend {
+impl Backend for Win32Backend {
     fn create_app(&self, props: nestix_native_core::AppProps) -> Option<nestix::Element> {
         Some(create_element::<App>(props))
     }
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {
-        Some(create_element::<Button>(props))
+        None
     }
 
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {
-        Some(create_element::<Input>(props))
+        None
     }
 
     fn create_label(&self, props: nestix_native_core::LabelProps) -> Option<nestix::Element> {
@@ -50,7 +40,7 @@ impl Backend for AppkitBackend {
         &self,
         props: nestix_native_core::ListViewProps,
     ) -> Option<nestix::Element> {
-        Some(create_element::<ListView>(props))
+        None
     }
 
     fn create_stack_view(
@@ -61,14 +51,14 @@ impl Backend for AppkitBackend {
     }
 
     fn create_tab_view(&self, props: nestix_native_core::TabViewProps) -> Option<nestix::Element> {
-        Some(create_element::<TabView>(props))
+        None
     }
 
     fn create_tab_view_item(
         &self,
         props: nestix_native_core::TabViewItemProps,
     ) -> Option<nestix::Element> {
-        Some(create_element::<TabViewItem>(props))
+        None
     }
 
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<nestix::Element> {

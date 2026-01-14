@@ -2,14 +2,18 @@ pub mod app;
 pub mod button;
 pub mod input;
 pub mod label;
-pub mod view;
+pub mod list_view;
+pub mod stack_view;
+pub mod tab_view;
 pub mod window;
 
 pub use app::*;
 pub use button::*;
 pub use input::*;
 pub use label::*;
-pub use view::*;
+pub use list_view::*;
+pub use stack_view::*;
+pub use tab_view::*;
 pub use window::*;
 
 use nestix::Element;

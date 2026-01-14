@@ -6,5 +6,5 @@ pub struct AppProps {
     pub children: Option<Vec<Element>>,
     
     #[props(default = true)]
-    pub quit_when_no_windows: bool,
+    pub quit_when_all_windows_closed: bool,
 }

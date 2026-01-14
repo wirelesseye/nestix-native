@@ -22,7 +22,7 @@ pub fn App(props: &AppProps, element: &Element) -> Element {
     let app_delegate = AppDelegate::new(
         mtm,
         AppState {
-            should_terminate_after_last_window_closed: props.quit_when_no_windows.clone(),
+            should_terminate_after_last_window_closed: props.quit_when_all_windows_closed.clone(),
         },
     );
     app.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
