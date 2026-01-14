@@ -1,6 +1,6 @@
-use nestix::{Shared, derive_props};
+use nestix::{Shared, props};
 
-#[derive_props]
+#[props]
 #[derive(Debug, Clone)]
 pub struct InputProps {
     #[props(default)]

@@ -1,6 +1,6 @@
-use nestix::{Element, derive_props};
+use nestix::{Element, props};
 
-#[derive_props]
+#[props]
 #[derive(Debug, Clone)]
 pub struct WindowProps {
     pub view: Option<Element>,

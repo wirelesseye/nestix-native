@@ -1,4 +1,4 @@
-use nestix::{Element, derive_props};
+use nestix::{Element, props};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ListViewDirection {
@@ -14,7 +14,7 @@ pub enum ListViewAlignment {
     Center,
 }
 
-#[derive_props]
+#[props]
 #[derive(Debug, Clone)]
 pub struct ListViewProps {
     #[props(default = ListViewDirection::Vertical)]

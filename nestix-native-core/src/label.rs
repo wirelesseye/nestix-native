@@ -1,6 +1,6 @@
-use nestix::derive_props;
+use nestix::props;
 
-#[derive_props]
+#[props]
 #[derive(Debug, Clone)]
 pub struct LabelProps {
     pub text: String,
