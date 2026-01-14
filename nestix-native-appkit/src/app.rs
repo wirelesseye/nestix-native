@@ -29,7 +29,7 @@ pub fn App(props: &AppProps, element: &Element) -> Element {
 
     element.provide_handle(app.as_ref() as *const NSObject);
 
-    element.post_update(closure!(app => || {
+    element.after_render(closure!(app => || {
         app.run();
     }));
 

@@ -89,7 +89,7 @@ pub fn App(props: &AppProps, element: &Element) -> Element {
             .clone()
     });
 
-    element.post_update(closure!(app_state => || {
+    element.after_render(closure!(app_state => || {
         app_state.run();
     }));
 
