@@ -16,7 +16,8 @@ pub use stack_view::*;
 pub use tab_view::*;
 pub use window::*;
 
-use nestix_native_core::Backend;
+pub use nestix_native_core::*;
+
 use std::rc::Rc;
 
 #[cfg(target_os = "macos")]

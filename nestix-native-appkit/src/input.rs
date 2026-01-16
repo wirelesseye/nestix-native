@@ -1,12 +1,15 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, Shared, closure, component, effect, prop::PropValue};
-use nestix_native_core::InputProps;
-use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, runtime::ProtocolObject};
+use nestix_native_core::{ExtendsViewProps, InputProps, Length};
+use objc2::{
+    DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
+    runtime::ProtocolObject,
+};
 use objc2_app_kit::{NSControlTextEditingDelegate, NSTextField, NSTextFieldDelegate};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSPoint, NSSize, NSString};
 
-use crate::ParentContext;
+use crate::{ParentContext, WindowContext};
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<InputDelegate>>> = RefCell::new(HashMap::new());
@@ -14,6 +17,8 @@ thread_local! {
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
+    let window_context = element.context::<WindowContext>().unwrap();
+
     let mtm = MainThreadMarker::new().unwrap();
     let string_value = NSString::from_str(&props.value.get());
     let input = NSTextField::textFieldWithString(&string_value, mtm);
@@ -44,12 +49,30 @@ pub fn Input(props: &InputProps, element: &Element) {
         input.setStringValue(&string_value);
     });
 
-    effect!(input, props.x, props.y => || {
-        input.setFrameOrigin(NSPoint::new(x.get(), y.get()));
+    effect!(input, window_context.scale_factor, props.x(), props.y() => || {
+        let scale_factor = scale_factor.get();
+        let x: f64 = match x.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        let y: f64 = match y.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        input.setFrameOrigin(NSPoint::new(x, y));
     });
 
-    effect!(input, props.width, props.height => || {
-        input.setFrameSize(NSSize::new(width.get(), height.get()));
+    effect!(input, window_context.scale_factor, props.width(), props.height() => || {
+        let scale_factor = scale_factor.get();
+        let width: f64 = match width.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        let height: f64 = match height.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        input.setFrameSize(NSSize::new(width, height));
     });
 
     let parent = element.context::<ParentContext>();

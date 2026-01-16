@@ -1,14 +1,14 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, Shared, closure, component, effect, prop::PropValue};
-use nestix_native_core::ButtonProps;
+use nestix_native_core::{ButtonProps, ExtendsViewProps, Length};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
 };
 use objc2_app_kit::NSButton;
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSSize, NSString};
 
-use crate::ParentContext;
+use crate::{ParentContext, WindowContext};
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<ButtonHandler>>> = RefCell::new(HashMap::new());
@@ -16,6 +16,8 @@ thread_local! {
 
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
+    let window_context = element.context::<WindowContext>().unwrap();
+
     let mtm = MainThreadMarker::new().unwrap();
 
     let title = NSString::from_str(&props.title.get());
@@ -39,12 +41,30 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     element.provide_handle(button.as_ref() as *const NSObject);
 
-    effect!(button, props.x, props.y => || {
-        button.setFrameOrigin(NSPoint::new(x.get(), y.get()));
+    effect!(button, window_context.scale_factor, props.x(), props.y() => || {
+        let scale_factor = scale_factor.get();
+        let x: f64 = match x.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        let y: f64 = match y.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        button.setFrameOrigin(NSPoint::new(x, y));
     });
 
-    effect!(button, props.width, props.height => || {
-        button.setFrameSize(NSSize::new(width.get(), height.get()));
+    effect!(button, window_context.scale_factor, props.width(), props.height() => || {
+        let scale_factor = scale_factor.get();
+        let width: f64 = match width.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        let height: f64 = match height.get() {
+            Length::Auto => 0.0,
+            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+        };
+        button.setFrameSize(NSSize::new(width, height));
     });
 
     effect!(button, props.title => || {
