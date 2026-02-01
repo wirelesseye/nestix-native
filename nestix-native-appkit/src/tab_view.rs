@@ -20,9 +20,11 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     }
 
-    element.on_destroy(closure!(view => || {
-        view.removeFromSuperview();
-    }));
+    element.on_destroy(closure!(
+        [view] || {
+            view.removeFromSuperview();
+        }
+    ));
 
     let ns_object: Retained<NSObject> = unsafe { Retained::cast_unchecked(view.clone()) };
 
@@ -30,7 +32,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         ContextProvider<ParentContext>(
             .value = ParentContext {
                 ns_object: Some(ns_object),
-                add_child: Some(callback!(view => |child: &NSObject| {
+                add_child: Some(callback!([view] |child: &NSObject| {
                     view.addTabViewItem(child.downcast_ref::<NSTabViewItem>().unwrap());
                 }))
             },
@@ -54,19 +56,23 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         }
     }
 
-    element.on_destroy(closure!(parent, item => || {
-        if let Some(parent) = &parent {
-            if let Some(ns_object) = &parent.ns_object {
-                let tab_view = ns_object.downcast_ref::<NSTabView>().unwrap();
-                tab_view.removeTabViewItem(&item);
+    element.on_destroy(closure!(
+        [parent, item] || {
+            if let Some(parent) = &parent {
+                if let Some(ns_object) = &parent.ns_object {
+                    let tab_view = ns_object.downcast_ref::<NSTabView>().unwrap();
+                    tab_view.removeTabViewItem(&item);
+                }
             }
         }
-    }));
+    ));
 
-    effect!(item, props.title => || {
-        let ns_string = NSString::from_str(&title.get());
-        item.setLabel(&ns_string);
-    });
+    effect!(
+        [item, props.title] || {
+            let ns_string = NSString::from_str(&title.get());
+            item.setLabel(&ns_string);
+        }
+    );
 
     let ns_object: Retained<NSObject> = unsafe { Retained::cast_unchecked(item.clone()) };
 
@@ -74,7 +80,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         ContextProvider<ParentContext>(
             .value = ParentContext {
                 ns_object: Some(ns_object),
-                add_child: Some(callback!(item => |child: &NSObject| {
+                add_child: Some(callback!([item] |child: &NSObject| {
                     let view = child.downcast_ref::<NSView>().unwrap();
                     item.setView(Some(view));
                 }))

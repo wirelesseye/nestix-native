@@ -5,8 +5,8 @@ use nestix::{
     Element, callback, component, components::For, computed, create_state, layout, render_root,
 };
 use nestix_native_appkit::{
-    Input, TabView, TabViewItem, app::App, button::Button,
-    label::Label, list_view::ListView, window::Window,
+    Input, TabView, TabViewItem, app::App, button::Button, label::Label, list_view::ListView,
+    window::Window,
 };
 use nestix_native_core::ListViewDirection;
 
@@ -48,10 +48,10 @@ fn Counter() -> Element {
 
     layout! {
         ListView {
-            Label(.text = computed!(count => || format!("Count: {}", count.get())))
+            Label(.text = computed!([count] || format!("Count: {}", count.get())))
             Button(
                 .title = "Click",
-                .on_click = callback!(count => || {
+                .on_click = callback!([count] || {
                     count.mutate(|count| *count += 1);
                 })
             )
@@ -64,19 +64,21 @@ fn TodoList() -> Element {
     let items = create_state::<HashMap<String, String>>(HashMap::new());
     let input_text = create_state("".to_string());
 
-    let on_text_change = callback!(input_text => |text: &str| {
+    let on_text_change = callback!([input_text] |text: &str| {
         input_text.set(text.to_string());
     });
 
-    let add = callback!(items, input_text => || {
-        let text = input_text.get();
-        if !text.is_empty() {
-            items.mutate(|items| {
-                items.insert(nanoid::nanoid!(), text);
-            });
-            input_text.set("".to_string());
+    let add = callback!(
+        [items, input_text] || {
+            let text = input_text.get();
+            if !text.is_empty() {
+                items.mutate(|items| {
+                    items.insert(nanoid::nanoid!(), text);
+                });
+                input_text.set("".to_string());
+            }
         }
-    });
+    );
 
     layout! {
         ListView {

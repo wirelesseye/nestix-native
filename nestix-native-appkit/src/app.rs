@@ -29,9 +29,11 @@ pub fn App(props: &AppProps, element: &Element) -> Element {
 
     element.provide_handle(app.as_ref() as *const NSObject);
 
-    element.after_render(closure!(app => || {
-        app.run();
-    }));
+    element.after_render(closure!(
+        [app] || {
+            app.run();
+        }
+    ));
 
     layout! {
         ContextProvider<AppContext>(

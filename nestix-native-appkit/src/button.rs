@@ -33,44 +33,57 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     };
 
     let button_id = nanoid::nanoid!();
-    element.on_destroy(closure!(button_id, button => || {
-        button.removeFromSuperview();
-        HANDLERS.with_borrow_mut(|handlers| handlers.remove(&button_id));
-    }));
+    element.on_destroy(closure!(
+        [button_id, button] || {
+            button.removeFromSuperview();
+            HANDLERS.with_borrow_mut(|handlers| handlers.remove(&button_id));
+        }
+    ));
     HANDLERS.with_borrow_mut(|handlers| handlers.insert(button_id, handler));
 
     element.provide_handle(button.as_ref() as *const NSObject);
 
-    effect!(button, window_context.scale_factor, props.x(), props.y() => || {
-        let scale_factor = scale_factor.get();
-        let x: f64 = match x.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        let y: f64 = match y.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        button.setFrameOrigin(NSPoint::new(x, y));
-    });
+    effect!(
+        [button, window_context.scale_factor, props.x(), props.y()] || {
+            let scale_factor = scale_factor.get();
+            let x: f64 = match x.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            let y: f64 = match y.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            button.setFrameOrigin(NSPoint::new(x, y));
+        }
+    );
 
-    effect!(button, window_context.scale_factor, props.width(), props.height() => || {
-        let scale_factor = scale_factor.get();
-        let width: f64 = match width.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        let height: f64 = match height.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        button.setFrameSize(NSSize::new(width, height));
-    });
+    effect!(
+        [
+            button,
+            window_context.scale_factor,
+            props.width(),
+            props.height(),
+        ] || {
+            let scale_factor = scale_factor.get();
+            let width: f64 = match width.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            let height: f64 = match height.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            button.setFrameSize(NSSize::new(width, height));
+        }
+    );
 
-    effect!(button, props.title => || {
-        let ns_string = NSString::from_str(&title.get());
-        button.setTitle(&ns_string);
-    });
+    effect!(
+        [button, props.title] || {
+            let ns_string = NSString::from_str(&title.get());
+            button.setTitle(&ns_string);
+        }
+    );
 
     let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {

@@ -22,7 +22,7 @@ use objc2::rc::Retained;
 use objc2_foundation::NSObject;
 
 #[derive(Clone)]
-pub struct ParentContext {
+pub(crate) struct ParentContext {
     pub ns_object: Option<Retained<NSObject>>,
     pub add_child: Option<Shared<dyn Fn(&NSObject)>>,
 }

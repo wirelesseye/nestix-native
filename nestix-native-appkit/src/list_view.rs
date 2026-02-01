@@ -20,49 +20,53 @@ pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
         }
     }
 
-    element.on_destroy(closure!(view => || {
-        view.removeFromSuperview();
-    }));
+    element.on_destroy(closure!(
+        [view] || {
+            view.removeFromSuperview();
+        }
+    ));
 
-    effect!(view, props.direction => || {
-        let orientation = match direction.get() {
-            ListViewDirection::Horizontal => NSUserInterfaceLayoutOrientation::Horizontal,
-            ListViewDirection::Vertical => NSUserInterfaceLayoutOrientation::Vertical,
-        };
-        view.setOrientation(orientation);
-    });
+    effect!(
+        [view, props.direction] || {
+            let orientation = match direction.get() {
+                ListViewDirection::Horizontal => NSUserInterfaceLayoutOrientation::Horizontal,
+                ListViewDirection::Vertical => NSUserInterfaceLayoutOrientation::Vertical,
+            };
+            view.setOrientation(orientation);
+        }
+    );
 
-    effect!(view, props.alignment, props.direction => || {
-        let alignment = match alignment.get() {
-            ListViewAlignment::Unset => match direction.get() {
-                ListViewDirection::Horizontal => NSLayoutAttribute::Top,
-                ListViewDirection::Vertical => NSLayoutAttribute::Leading,
-            },
-            ListViewAlignment::Start => match direction.get() {
-                ListViewDirection::Horizontal => NSLayoutAttribute::Top,
-                ListViewDirection::Vertical => NSLayoutAttribute::Leading,
-            }
-            ListViewAlignment::End => match direction.get() {
-                ListViewDirection::Horizontal => NSLayoutAttribute::Bottom,
-                ListViewDirection::Vertical => NSLayoutAttribute::Trailing,
-            }
-            ListViewAlignment::Center => match direction.get() {
-                ListViewDirection::Horizontal => NSLayoutAttribute::CenterY,
-                ListViewDirection::Vertical => NSLayoutAttribute::CenterX,
-            },
-        };
-        view.setAlignment(alignment);
-    });
+    effect!(
+        [view, props.alignment, props.direction] || {
+            let alignment = match alignment.get() {
+                ListViewAlignment::Unset => match direction.get() {
+                    ListViewDirection::Horizontal => NSLayoutAttribute::Top,
+                    ListViewDirection::Vertical => NSLayoutAttribute::Leading,
+                },
+                ListViewAlignment::Start => match direction.get() {
+                    ListViewDirection::Horizontal => NSLayoutAttribute::Top,
+                    ListViewDirection::Vertical => NSLayoutAttribute::Leading,
+                },
+                ListViewAlignment::End => match direction.get() {
+                    ListViewDirection::Horizontal => NSLayoutAttribute::Bottom,
+                    ListViewDirection::Vertical => NSLayoutAttribute::Trailing,
+                },
+                ListViewAlignment::Center => match direction.get() {
+                    ListViewDirection::Horizontal => NSLayoutAttribute::CenterY,
+                    ListViewDirection::Vertical => NSLayoutAttribute::CenterX,
+                },
+            };
+            view.setAlignment(alignment);
+        }
+    );
 
-    let ns_object: Retained<NSObject> = unsafe {
-        Retained::cast_unchecked(view.clone())
-    };
-    
+    let ns_object: Retained<NSObject> = unsafe { Retained::cast_unchecked(view.clone()) };
+
     layout! {
         ContextProvider<ParentContext>(
             .value = ParentContext {
                 ns_object: Some(ns_object),
-                add_child: Some(callback!(view => |child: &NSObject| {
+                add_child: Some(callback!([view] |child: &NSObject| {
                     view.addArrangedSubview(child.downcast_ref::<NSView>().unwrap());
                 }))
             },

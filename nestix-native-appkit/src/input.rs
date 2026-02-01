@@ -35,45 +35,58 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     let input_id = nanoid::nanoid!();
 
-    element.on_destroy(closure!(input_id, input => || {
-        input.removeFromSuperview();
-        DELEGATES.with_borrow_mut(|delegates| delegates.remove(&input_id));
-    }));
+    element.on_destroy(closure!(
+        [input_id, input] || {
+            input.removeFromSuperview();
+            DELEGATES.with_borrow_mut(|delegates| delegates.remove(&input_id));
+        }
+    ));
 
     DELEGATES.with_borrow_mut(|delegates| delegates.insert(input_id, delegate));
 
     element.provide_handle(input.as_ref() as *const NSObject);
 
-    effect!(input, props.value => || {
-        let string_value = NSString::from_str(&value.get());
-        input.setStringValue(&string_value);
-    });
+    effect!(
+        [input, props.value] || {
+            let string_value = NSString::from_str(&value.get());
+            input.setStringValue(&string_value);
+        }
+    );
 
-    effect!(input, window_context.scale_factor, props.x(), props.y() => || {
-        let scale_factor = scale_factor.get();
-        let x: f64 = match x.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        let y: f64 = match y.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        input.setFrameOrigin(NSPoint::new(x, y));
-    });
+    effect!(
+        [input, window_context.scale_factor, props.x(), props.y()] || {
+            let scale_factor = scale_factor.get();
+            let x: f64 = match x.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            let y: f64 = match y.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            input.setFrameOrigin(NSPoint::new(x, y));
+        }
+    );
 
-    effect!(input, window_context.scale_factor, props.width(), props.height() => || {
-        let scale_factor = scale_factor.get();
-        let width: f64 = match width.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        let height: f64 = match height.get() {
-            Length::Auto => 0.0,
-            Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-        };
-        input.setFrameSize(NSSize::new(width, height));
-    });
+    effect!(
+        [
+            input,
+            window_context.scale_factor,
+            props.width(),
+            props.height()
+        ] || {
+            let scale_factor = scale_factor.get();
+            let width: f64 = match width.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            let height: f64 = match height.get() {
+                Length::Auto => 0.0,
+                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            };
+            input.setFrameSize(NSSize::new(width, height));
+        }
+    );
 
     let parent = element.context::<ParentContext>();
     if let Some(parent) = parent {

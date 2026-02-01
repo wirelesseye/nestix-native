@@ -20,19 +20,19 @@ pub fn StackView(props: &StackViewProps, element: &Element) -> Element {
         }
     }
 
-    element.on_destroy(closure!(view => || {
-        view.removeFromSuperview();
-    }));
+    element.on_destroy(closure!(
+        [view] || {
+            view.removeFromSuperview();
+        }
+    ));
 
-    let ns_object: Retained<NSObject> = unsafe {
-        Retained::cast_unchecked(view.clone())
-    };
+    let ns_object: Retained<NSObject> = unsafe { Retained::cast_unchecked(view.clone()) };
 
     layout! {
         ContextProvider<ParentContext>(
             .value = ParentContext {
                 ns_object: Some(ns_object),
-                add_child: Some(callback!(view => |child: &NSObject| {
+                add_child: Some(callback!([view] |child: &NSObject| {
                     view.addSubview(child.downcast_ref::<NSView>().unwrap());
                 }))
             },
