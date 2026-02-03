@@ -1,9 +1,10 @@
-use nestix::{Element, props};
+use nestix::{Element, Layout, props};
 
 #[props]
 #[derive(Debug, Clone)]
 pub struct TabViewProps {
-    pub children: Option<Vec<Element>>,
+    #[props(default)]
+    pub children: Layout,
 }
 
 #[props]

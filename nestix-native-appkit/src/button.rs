@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use nestix::{Element, Shared, closure, component, effect, prop::PropValue};
+use nestix::{Element, Shared, closure, component, effect, PropValue};
 use nestix_native_core::{ButtonProps, ExtendsViewProps, Length};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
@@ -42,7 +42,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     HANDLERS.with_borrow_mut(|handlers| handlers.insert(button_id, handler));
 
     element.provide_handle(button.as_ref() as *const NSObject);
-
+    
     effect!(
         [button, window_context.scale_factor, props.x(), props.y()] || {
             let scale_factor = scale_factor.get();

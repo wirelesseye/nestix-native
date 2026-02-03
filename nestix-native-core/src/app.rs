@@ -1,10 +1,11 @@
-use nestix::{Element, props};
+use nestix::{Layout, props};
 
 #[props]
 #[derive(Debug, Clone)]
 pub struct AppProps {
-    pub children: Option<Vec<Element>>,
-    
+    #[props(default)]
+    pub children: Layout,
+
     #[props(default = true)]
     pub quit_when_all_windows_closed: bool,
 }

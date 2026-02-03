@@ -86,7 +86,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 }))
             },
         ) {
-            $option(props.view.get())
+            $(props.view.get())
         }
     }
 }

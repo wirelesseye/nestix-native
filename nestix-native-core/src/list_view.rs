@@ -1,4 +1,4 @@
-use nestix::{Element, props};
+use nestix::{Layout, props};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ListViewDirection {
@@ -21,5 +21,6 @@ pub struct ListViewProps {
     pub direction: ListViewDirection,
     #[props(default = ListViewAlignment::Unset)]
     pub alignment: ListViewAlignment,
-    pub children: Option<Vec<Element>>,
+    #[props(default)]
+    pub children: Layout,
 }

@@ -71,7 +71,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     }))
                 }
             ) {
-                $option(props.view.get())
+                $(props.view.get())
             }
         }
     }

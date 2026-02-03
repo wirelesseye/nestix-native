@@ -24,7 +24,7 @@ pub fn App(props: &AppProps, element: &Element) -> Element {
                 backend
             },
         ) {
-            $option(platform_app),
+            $(platform_app),
         }
     }
 }

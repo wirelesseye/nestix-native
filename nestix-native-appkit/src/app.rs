@@ -1,4 +1,4 @@
-use nestix::{Element, closure, component, components::ContextProvider, layout, prop::PropValue};
+use nestix::{Element, closure, component, components::ContextProvider, layout, PropValue};
 use nestix_native_core::AppProps;
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,

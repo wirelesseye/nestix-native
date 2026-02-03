@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use nestix::{Element, Shared, closure, component, effect, prop::PropValue};
+use nestix::{Element, Shared, closure, component, effect, PropValue};
 use nestix_native_core::{ExtendsViewProps, InputProps, Length};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,

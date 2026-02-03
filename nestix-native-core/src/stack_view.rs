@@ -1,7 +1,8 @@
-use nestix::{Element, props};
+use nestix::{Layout, props};
 
 #[props]
 #[derive(Debug, Clone)]
 pub struct StackViewProps {
-    pub children: Option<Vec<Element>>,
+    #[props(default)]
+    pub children: Layout,
 }
