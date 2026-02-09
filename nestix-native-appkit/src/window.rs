@@ -1,6 +1,6 @@
 use nestix::{
-    Element, ReadonlySignal, callback, component, components::ContextProvider, create_state,
-    effect, layout,
+    Element, Readonly, callback, component, components::ContextProvider, create_state, effect,
+    layout,
 };
 use nestix_native_core::WindowProps;
 use objc2::{MainThreadMarker, rc::Retained};
@@ -12,7 +12,7 @@ use crate::ParentContext;
 #[derive(Clone)]
 pub struct WindowContext {
     pub window: Retained<NSWindow>,
-    pub scale_factor: ReadonlySignal<f64>,
+    pub scale_factor: Readonly<f64>,
 }
 
 #[component]
@@ -59,7 +59,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         ContextProvider<WindowContext>(
             .value = WindowContext {
                 window: window.clone(),
-                scale_factor: scale_factor.into_readonly_signal(),
+                scale_factor: scale_factor.into_readonly(),
             },
         ) {
             ContextProvider<ParentContext>(

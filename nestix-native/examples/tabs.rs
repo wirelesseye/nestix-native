@@ -87,13 +87,12 @@ fn TodoList() -> Element {
                 Button(.title = "Add", .on_click = add)
             }
             ListView {
-                For<_, HashMap<String, String>, String>(
+                For<HashMap<String, String>, String>(
                     .data = items,
                     .key = callback!(|(k, _): &(String, String)| k.clone()),
-                    .constructor = callback!(|(_, v): &(String, String)| layout! {
-                        Label(.text = v.clone())
-                    })
-                )
+                ) |(_, v): &(String, String)| {
+                    Label(.text = v.clone())
+                }
             }
         }
     }
