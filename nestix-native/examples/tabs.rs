@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use env_logger::Env;
 use nestix::{
-    Element, callback, component, components::For, computed, create_state, layout, render_root,
+    Element, Readonly, callback, component, components::For, computed, create_state, layout,
+    render_root,
 };
 use nestix_native::{App, Button, Input, Label, ListView, TabView, TabViewItem, Window};
 use nestix_native_core::ListViewDirection;
@@ -90,8 +91,8 @@ fn TodoList() -> Element {
                 For<HashMap<String, String>, String>(
                     .data = items,
                     .key = callback!(|(k, _): &(String, String)| k.clone()),
-                ) |(_, v): &(String, String)| {
-                    Label(.text = v.clone())
+                ) |item: Readonly<(String, String)>| {
+                    Label(.text = item.get().1)
                 }
             }
         }
