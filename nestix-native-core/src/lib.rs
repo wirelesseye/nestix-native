@@ -1,4 +1,4 @@
-pub mod app;
+pub mod root;
 pub mod button;
 pub mod input;
 pub mod label;
@@ -9,7 +9,7 @@ pub mod tab_view;
 pub mod view;
 pub mod window;
 
-pub use app::*;
+pub use root::*;
 pub use button::*;
 pub use input::*;
 pub use label::*;
@@ -24,7 +24,7 @@ pub use dpi;
 use nestix::Element;
 
 pub trait Backend {
-    fn create_app(&self, props: AppProps) -> Option<Element>;
+    fn create_root(&self, props: RootProps) -> Option<Element>;
 
     fn create_button(&self, props: ButtonProps) -> Option<Element>;
 

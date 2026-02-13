@@ -17,7 +17,7 @@ use windows::{
 
 use crate::{
     ParentContext,
-    app::{AppContext, shared_app_state},
+    root::{AppContext, shared_app_state},
 };
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
@@ -83,7 +83,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     hwnd: Some(hwnd)
                 }
             ) {
-                $option(props.view.get())
+                $(props.view.get())
             }
         }
     }

@@ -2,7 +2,7 @@ use nestix::{Layout, props};
 
 #[props]
 #[derive(Debug, Clone)]
-pub struct AppProps {
+pub struct RootProps {
     #[props(default)]
     pub children: Layout,
 

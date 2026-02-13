@@ -5,7 +5,7 @@ use nestix::{
     Element, Readonly, callback, component, components::For, computed, create_state, layout,
     render_root,
 };
-use nestix_native::{App, Button, Input, Label, ListView, TabView, TabViewItem, Window};
+use nestix_native::{Button, Input, Label, ListView, Root, TabView, TabViewItem, Window};
 use nestix_native_core::ListViewDirection;
 
 fn main() {
@@ -16,7 +16,7 @@ fn main() {
 #[component]
 fn ExampleApp() -> Element {
     layout! {
-        App {
+        Root {
             Window(
                 .title = "Example App",
                 .width = 300,

@@ -1,4 +1,4 @@
-pub mod app;
+pub mod root;
 pub mod button;
 pub mod input;
 pub mod label;
@@ -7,7 +7,7 @@ pub mod stack_view;
 pub mod tab_view;
 pub mod window;
 
-pub use app::*;
+pub use root::*;
 pub use button::*;
 pub use input::*;
 pub use label::*;
@@ -30,8 +30,8 @@ pub(crate) struct ParentContext {
 pub struct AppkitBackend;
 
 impl Backend for AppkitBackend {
-    fn create_app(&self, props: nestix_native_core::AppProps) -> Option<nestix::Element> {
-        Some(create_element::<App>(props))
+    fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {
+        Some(create_element::<Root>(props))
     }
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {

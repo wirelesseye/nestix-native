@@ -1,5 +1,5 @@
-use nestix::{Element, closure, component, components::ContextProvider, layout, PropValue};
-use nestix_native_core::AppProps;
+use nestix::{Element, PropValue, closure, component, components::ContextProvider, layout};
+use nestix_native_core::RootProps;
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -13,7 +13,7 @@ pub struct AppContext {
 }
 
 #[component]
-pub fn App(props: &AppProps, element: &Element) -> Element {
+pub fn Root(props: &RootProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let app = NSApplication::sharedApplication(mtm);
 

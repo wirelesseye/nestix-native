@@ -1,4 +1,4 @@
-pub mod app;
+pub mod root;
 pub mod button;
 pub mod input;
 pub mod label;
@@ -7,7 +7,7 @@ pub mod stack_view;
 pub mod tab_view;
 pub mod window;
 
-pub use app::*;
+pub use root::*;
 pub use button::*;
 pub use input::*;
 pub use label::*;

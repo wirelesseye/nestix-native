@@ -1,10 +1,10 @@
-pub mod app;
 pub mod label;
+pub mod root;
 pub mod stack_view;
 pub mod window;
 
-pub use app::*;
 pub use label::*;
+pub use root::*;
 pub use stack_view::*;
 pub use window::*;
 
@@ -20,8 +20,8 @@ pub struct ParentContext {
 pub struct Win32Backend;
 
 impl Backend for Win32Backend {
-    fn create_app(&self, props: nestix_native_core::AppProps) -> Option<nestix::Element> {
-        Some(create_element::<App>(props))
+    fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {
+        Some(create_element::<Root>(props))
     }
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {

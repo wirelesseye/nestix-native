@@ -7,7 +7,7 @@ use std::{
 use nestix::{
     Element, Shared, closure, component, components::ContextProvider, layout, prop::PropValue,
 };
-use nestix_native_core::AppProps;
+use nestix_native_core::RootProps;
 use windows::Win32::{
     Foundation::HWND,
     UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
@@ -30,7 +30,7 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    fn new(props: &AppProps) -> Self {
+    fn new(props: &RootProps) -> Self {
         Self {
             is_running: Cell::new(false),
             windows: RefCell::new(HashMap::new()),
@@ -83,13 +83,13 @@ pub struct AppContext {
 }
 
 #[component]
-pub fn App(props: &AppProps, element: &Element) -> Element {
+pub fn Root(props: &RootProps, element: &Element) -> Element {
     let app_state = APP_STATE.with(|app| {
         app.get_or_init(|| Shared::new(AppState::new(props)))
             .clone()
     });
 
-    element.after_render(closure!(app_state => || {
+    element.after_render(closure!([app_state] || {
         app_state.run();
     }));
 

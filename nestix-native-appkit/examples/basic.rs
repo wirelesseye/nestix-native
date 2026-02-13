@@ -6,7 +6,7 @@ use nestix::{
     render_root,
 };
 use nestix_native_appkit::{
-    Input, TabView, TabViewItem, app::App, button::Button, label::Label, list_view::ListView,
+    Input, TabView, TabViewItem, root::Root, button::Button, label::Label, list_view::ListView,
     window::Window,
 };
 use nestix_native_core::ListViewDirection;
@@ -19,7 +19,7 @@ fn main() {
 #[component]
 fn ExampleApp() -> Element {
     layout! {
-        App {
+        Root {
             Window(
                 .title = "Counter",
                 .width = 300,
