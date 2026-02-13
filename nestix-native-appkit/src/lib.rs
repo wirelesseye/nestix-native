@@ -1,17 +1,17 @@
-pub mod root;
 pub mod button;
 pub mod input;
 pub mod label;
-pub mod list_view;
+pub mod linear_view;
+pub mod root;
 pub mod stack_view;
 pub mod tab_view;
 pub mod window;
 
-pub use root::*;
 pub use button::*;
 pub use input::*;
 pub use label::*;
-pub use list_view::*;
+pub use linear_view::*;
+pub use root::*;
 pub use stack_view::*;
 pub use tab_view::*;
 pub use window::*;
@@ -46,11 +46,11 @@ impl Backend for AppkitBackend {
         Some(create_element::<Label>(props))
     }
 
-    fn create_list_view(
+    fn create_linear_view(
         &self,
-        props: nestix_native_core::ListViewProps,
+        props: nestix_native_core::LinearViewProps,
     ) -> Option<nestix::Element> {
-        Some(create_element::<ListView>(props))
+        Some(create_element::<LinearView>(props))
     }
 
     fn create_stack_view(

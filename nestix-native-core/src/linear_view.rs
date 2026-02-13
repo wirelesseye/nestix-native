@@ -1,13 +1,13 @@
 use nestix::{Layout, props};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ListViewDirection {
+pub enum LinearViewDirection {
     Horizontal,
     Vertical,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ListViewAlignment {
+pub enum LinearViewAlignment {
     Unset,
     Start,
     End,
@@ -16,11 +16,11 @@ pub enum ListViewAlignment {
 
 #[props]
 #[derive(Debug, Clone)]
-pub struct ListViewProps {
-    #[props(default = ListViewDirection::Vertical)]
-    pub direction: ListViewDirection,
-    #[props(default = ListViewAlignment::Unset)]
-    pub alignment: ListViewAlignment,
+pub struct LinearViewProps {
+    #[props(default = LinearViewDirection::Vertical)]
+    pub direction: LinearViewDirection,
+    #[props(default = LinearViewAlignment::Unset)]
+    pub alignment: LinearViewAlignment,
     #[props(default)]
     pub children: Layout,
 }

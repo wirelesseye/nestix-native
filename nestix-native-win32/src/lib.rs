@@ -36,9 +36,9 @@ impl Backend for Win32Backend {
         Some(create_element::<Label>(props))
     }
 
-    fn create_list_view(
+    fn create_linear_view(
         &self,
-        props: nestix_native_core::ListViewProps,
+        props: nestix_native_core::LinearViewProps,
     ) -> Option<nestix::Element> {
         None
     }

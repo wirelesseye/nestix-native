@@ -1,5 +1,5 @@
 use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
-use nestix_native_core::{ListViewAlignment, ListViewDirection, ListViewProps};
+use nestix_native_core::{LinearViewAlignment, LinearViewDirection, LinearViewProps};
 use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSLayoutAttribute, NSStackView, NSUserInterfaceLayoutOrientation, NSView};
 use objc2_foundation::NSObject;
@@ -7,7 +7,7 @@ use objc2_foundation::NSObject;
 use crate::ParentContext;
 
 #[component]
-pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
+pub fn LinearView(props: &LinearViewProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let view = NSStackView::new(mtm);
 
@@ -29,8 +29,8 @@ pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
     effect!(
         [view, props.direction] || {
             let orientation = match direction.get() {
-                ListViewDirection::Horizontal => NSUserInterfaceLayoutOrientation::Horizontal,
-                ListViewDirection::Vertical => NSUserInterfaceLayoutOrientation::Vertical,
+                LinearViewDirection::Horizontal => NSUserInterfaceLayoutOrientation::Horizontal,
+                LinearViewDirection::Vertical => NSUserInterfaceLayoutOrientation::Vertical,
             };
             view.setOrientation(orientation);
         }
@@ -39,21 +39,21 @@ pub fn ListView(props: &ListViewProps, element: &Element) -> Element {
     effect!(
         [view, props.alignment, props.direction] || {
             let alignment = match alignment.get() {
-                ListViewAlignment::Unset => match direction.get() {
-                    ListViewDirection::Horizontal => NSLayoutAttribute::Top,
-                    ListViewDirection::Vertical => NSLayoutAttribute::Leading,
+                LinearViewAlignment::Unset => match direction.get() {
+                    LinearViewDirection::Horizontal => NSLayoutAttribute::Top,
+                    LinearViewDirection::Vertical => NSLayoutAttribute::Leading,
                 },
-                ListViewAlignment::Start => match direction.get() {
-                    ListViewDirection::Horizontal => NSLayoutAttribute::Top,
-                    ListViewDirection::Vertical => NSLayoutAttribute::Leading,
+                LinearViewAlignment::Start => match direction.get() {
+                    LinearViewDirection::Horizontal => NSLayoutAttribute::Top,
+                    LinearViewDirection::Vertical => NSLayoutAttribute::Leading,
                 },
-                ListViewAlignment::End => match direction.get() {
-                    ListViewDirection::Horizontal => NSLayoutAttribute::Bottom,
-                    ListViewDirection::Vertical => NSLayoutAttribute::Trailing,
+                LinearViewAlignment::End => match direction.get() {
+                    LinearViewDirection::Horizontal => NSLayoutAttribute::Bottom,
+                    LinearViewDirection::Vertical => NSLayoutAttribute::Trailing,
                 },
-                ListViewAlignment::Center => match direction.get() {
-                    ListViewDirection::Horizontal => NSLayoutAttribute::CenterY,
-                    ListViewDirection::Vertical => NSLayoutAttribute::CenterX,
+                LinearViewAlignment::Center => match direction.get() {
+                    LinearViewDirection::Horizontal => NSLayoutAttribute::CenterY,
+                    LinearViewDirection::Vertical => NSLayoutAttribute::CenterX,
                 },
             };
             view.setAlignment(alignment);

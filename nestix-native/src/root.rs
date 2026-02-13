@@ -12,10 +12,10 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
         default_backend()
     };
 
-    let platform_app = backend.create_root(props.clone());
+    let platform_root = backend.create_root(props.clone());
 
-    if let Some(platform_app) = &platform_app {
-        element.forward_handle(platform_app);
+    if let Some(platform_root) = &platform_root {
+        element.forward_handle(platform_root);
     }
 
     layout! {
@@ -24,7 +24,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
                 backend
             },
         ) {
-            $(platform_app),
+            $(platform_root),
         }
     }
 }

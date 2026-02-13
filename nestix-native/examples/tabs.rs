@@ -5,8 +5,8 @@ use nestix::{
     Element, Readonly, callback, component, components::For, computed, create_state, layout,
     render_root,
 };
-use nestix_native::{Button, Input, Label, ListView, Root, TabView, TabViewItem, Window};
-use nestix_native_core::ListViewDirection;
+use nestix_native::{Button, Input, Label, LinearView, Root, TabView, TabViewItem, Window};
+use nestix_native_core::LinearViewDirection;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
@@ -45,7 +45,7 @@ fn Counter() -> Element {
     let count = create_state(0);
 
     layout! {
-        ListView {
+        LinearView {
             Label(.text = computed!([count] || format!("Count: {}", count.get())))
             Button(
                 .title = "Click",
@@ -82,12 +82,12 @@ fn TodoList() -> Element {
     );
 
     layout! {
-        ListView {
-            ListView(.direction = ListViewDirection::Horizontal) {
+        LinearView {
+            LinearView(.direction = LinearViewDirection::Horizontal) {
                 Input(.value = input_text, .on_text_change = on_text_change)
                 Button(.title = "Add", .on_click = add)
             }
-            ListView {
+            LinearView {
                 For<HashMap<String, String>, String>(
                     .data = items,
                     .key = callback!(|(k, _): &(String, String)| k.clone()),
