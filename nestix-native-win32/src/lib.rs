@@ -1,21 +1,20 @@
+pub mod button;
+pub mod flex_view;
 pub mod label;
 pub mod root;
-pub mod stack_view;
 pub mod window;
 
+mod contexts;
+mod font;
+
+pub use button::*;
+pub use flex_view::*;
 pub use label::*;
 pub use root::*;
-pub use stack_view::*;
 pub use window::*;
 
 use nestix::create_element;
 use nestix_native_core::Backend;
-use windows::Win32::Foundation::HWND;
-
-#[derive(Clone)]
-pub struct ParentContext {
-    pub hwnd: Option<HWND>,
-}
 
 pub struct Win32Backend;
 
@@ -25,14 +24,14 @@ impl Backend for Win32Backend {
     }
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {
-        None
+        Some(create_element::<Button>(props))
     }
 
     fn create_flex_view(
         &self,
         props: nestix_native_core::FlexViewProps,
     ) -> Option<nestix::Element> {
-        None
+        Some(create_element::<FlexView>(props))
     }
 
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {

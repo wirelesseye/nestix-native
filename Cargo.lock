@@ -299,6 +299,7 @@ version = "0.1.0"
 dependencies = [
  "nestix",
  "nestix-native-core",
+ "taffy",
  "windows",
 ]
 

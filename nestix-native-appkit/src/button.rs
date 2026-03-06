@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, effect};
-use nestix_native_core::{ButtonProps, Dimension, ExtendsViewProps};
+use nestix_native_core::{ButtonProps, Dimension, ExtendsViewProps, TreeContext};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
 };
@@ -9,10 +9,7 @@ use objc2_app_kit::NSButton;
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, TreeContext},
-};
+use crate::{WindowContext, contexts::ParentContext};
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<ButtonHandler>>> = RefCell::new(HashMap::new());

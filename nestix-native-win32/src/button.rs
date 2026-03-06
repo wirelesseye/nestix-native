@@ -1,6 +1,6 @@
 use nestix::{Element, component, effect};
 use nestix_native_core::{
-    Dimension, ExtendsViewProps, LabelProps, TreeContext,
+    ButtonProps, Dimension, ExtendsViewProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -19,17 +19,17 @@ use windows::{
 use crate::{WindowContext, contexts::ParentContext, font::ui_font};
 
 #[component]
-pub fn Label(props: &LabelProps, element: &Element) {
+pub fn Button(props: &ButtonProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
 
-    let text = HSTRING::from(props.text.get());
+    let title = HSTRING::from(props.title.get());
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
-            w!("STATIC"),
-            &text,
+            w!("BUTTON"),
+            &title,
             WS_VISIBLE | WS_CHILD,
             0,
             0,
@@ -64,14 +64,14 @@ pub fn Label(props: &LabelProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
-            props.text,
+            props.title,
             props.width(),
             props.height()
         ] || {
             let scale_factor = scale_factor.get();
 
             let hds = unsafe { GetDC(Some(hwnd)) };
-            let text = HSTRING::from(text.get());
+            let text = HSTRING::from(title.get());
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);

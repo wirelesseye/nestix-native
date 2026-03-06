@@ -5,7 +5,7 @@ use nestix::{
     create_state, effect, layout,
 };
 use nestix_native_core::{
-    WindowProps,
+    TreeContext, WindowProps,
     dpi::{self, LogicalSize},
 };
 use objc2::{
@@ -16,7 +16,7 @@ use objc2_app_kit::{NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
-use crate::contexts::{ParentContext, TreeContext};
+use crate::contexts::ParentContext;
 
 pub struct WindowContext {
     pub ns_window: Retained<NSWindow>,
@@ -72,7 +72,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<WindowContext>(
-            .value = window_context.clone(),
+            .value = window_context,
         ) {
             ContextProvider<TreeContext>(
                 .value = tree_context.clone(),

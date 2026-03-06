@@ -1,16 +1,15 @@
 use std::cell::RefCell;
 
 use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
-use nestix_native_core::{Alignment, Direction, ExtendsViewProps, FlexViewProps, Wrap};
+use nestix_native_core::{
+    Alignment, Direction, ExtendsViewProps, FlexViewProps, TreeContext, Wrap,
+};
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
 use taffy::{NodeId, Size, Style};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, TreeContext},
-};
+use crate::{WindowContext, contexts::ParentContext};
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {

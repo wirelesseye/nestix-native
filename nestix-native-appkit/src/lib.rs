@@ -1,11 +1,12 @@
 pub mod button;
-pub mod contexts;
 pub mod flex_view;
 pub mod input;
 pub mod label;
 pub mod root;
 pub mod tab_view;
 pub mod window;
+
+mod contexts;
 
 pub use button::*;
 pub use flex_view::*;

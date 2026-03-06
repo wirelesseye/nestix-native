@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 nestix = { path = "../../nestix/nestix" }
-nestix-native-core = { path = "../nestix-native-core" }
+nestix-native-core = { path = "../nestix-native-core", features = ["taffy"]}
 windows = { version = "0.62", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
@@ -14,3 +14,4 @@ windows = { version = "0.62", features = [
     "Win32_System_LibraryLoader",
     "Win32_Graphics_Gdi",
 ] }
+taffy = "0.9.2"

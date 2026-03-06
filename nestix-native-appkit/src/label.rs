@@ -1,14 +1,11 @@
 use nestix::{Element, closure, component, effect};
-use nestix_native_core::{Dimension, ExtendsViewProps, LabelProps};
+use nestix_native_core::{Dimension, ExtendsViewProps, LabelProps, TreeContext};
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, TreeContext},
-};
+use crate::{WindowContext, contexts::ParentContext};
 
 #[component]
 pub fn Label(props: &LabelProps, element: &Element) {
@@ -83,18 +80,13 @@ pub fn Label(props: &LabelProps, element: &Element) {
     );
 
     effect!(
-        [tree_context, label] || {
-            if let Some(layout) = tree_context.layout(node_id) {
-                label.setFrame(NSRect::new(
-                    NSPoint::new(layout.location.x.into(), layout.location.y.into()),
-                    NSSize::new(layout.size.width.into(), layout.size.height.into()),
-                ));
-            }
-        }
-    );
-
-    effect!(
-        [window_context.scale_factor, label, props.text, props.width(), props.height()] || {
+        [
+            window_context.scale_factor,
+            label,
+            props.text,
+            props.width(),
+            props.height()
+        ] || {
             let ns_string = NSString::from_str(&text.get());
             label.setStringValue(&ns_string);
 
@@ -124,6 +116,17 @@ pub fn Label(props: &LabelProps, element: &Element) {
                 });
 
                 tree_context.update();
+            }
+        }
+    );
+
+    effect!(
+        [tree_context, label] || {
+            if let Some(layout) = tree_context.layout(node_id) {
+                label.setFrame(NSRect::new(
+                    NSPoint::new(layout.location.x.into(), layout.location.y.into()),
+                    NSSize::new(layout.size.width.into(), layout.size.height.into()),
+                ));
             }
         }
     );

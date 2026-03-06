@@ -1,10 +1,17 @@
-use std::sync::Once;
+use std::{cell::Cell, rc::Rc, sync::Once};
 
-use nestix::{Element, Shared, component, components::ContextProvider, layout};
-use nestix_native_core::WindowProps;
+use nestix::{
+    Element, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
+    create_state, effect, layout,
+};
+use nestix_native_core::{
+    TreeContext, WindowProps,
+    dpi::{LogicalSize, PhysicalSize, Size},
+};
+use taffy::{NodeId, Style, prelude::FromLength};
 use windows::{
     Win32::{
-        Foundation::{COLORREF, HMODULE, HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{COLORREF, HMODULE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
         Graphics::Gdi::*,
         System::LibraryLoader::GetModuleHandleW,
         UI::{
@@ -15,10 +22,7 @@ use windows::{
     core::{HSTRING, PCWSTR, w},
 };
 
-use crate::{
-    ParentContext,
-    root::{AppContext, shared_app_state},
-};
+use crate::{AppState, contexts::ParentContext, root::shared_app_state};
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixWindowClass");
@@ -42,16 +46,24 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
 }
 
 #[derive(Clone)]
-pub struct WindowContext {}
+pub struct WindowContext {
+    pub scale_factor: Readonly<f64>,
+}
 
 #[component]
 pub fn Window(props: &WindowProps, element: &Element) -> Element {
-    let app_context = element.context::<AppContext>().unwrap();
+    let app_state = element.context::<AppState>().unwrap();
+
+    let scale_factor = create_state(1.0);
+
+    let window_context = Rc::new(WindowContext {
+        scale_factor: scale_factor.clone().into_readonly(),
+    });
+    let tree_context = Rc::new(TreeContext::new());
 
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
 
     let title = HSTRING::from(props.title.get());
-
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
@@ -60,8 +72,8 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             WS_OVERLAPPEDWINDOW | WS_VISIBLE,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
-            props.width.get() as i32,
-            props.height.get() as i32,
+            0,
+            0,
             None,
             None,
             Some(hinstance.into()),
@@ -69,21 +81,89 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         )
         .unwrap()
     };
-    app_context
-        .app_state
-        .add_window(hwnd, Shared::new(WindowState::new()));
+
+    let window_state = Rc::new(WindowState {
+        bg_brush: unsafe { GetSysColorBrush(COLOR_BTNFACE) },
+        tree_context: tree_context.clone(),
+        root_view: Cell::new(None),
+        on_resize: props.on_resize.clone(),
+    });
+    app_state.add_window(hwnd, window_state.clone());
+
+    if let Some(value) = get_scale_factor_for_window(hwnd) {
+        scale_factor.set(value);
+    }
+
+    effect!(
+        [scale_factor, props.width, props.height]
+            || unsafe {
+                let mut rect_client = RECT::default();
+                let mut rect_wind = RECT::default();
+                let mut point_diff = POINT::default();
+
+                GetClientRect(hwnd, &mut rect_client).unwrap();
+                GetWindowRect(hwnd, &mut rect_wind).unwrap();
+
+                point_diff.x = (rect_wind.right - rect_wind.left) - rect_client.right;
+                point_diff.y = (rect_wind.bottom - rect_wind.top) - rect_client.bottom;
+
+                let size: PhysicalSize<i32> =
+                    LogicalSize::new(width.get(), height.get()).to_physical(scale_factor.get());
+
+                MoveWindow(
+                    hwnd,
+                    rect_wind.left,
+                    rect_wind.top,
+                    size.width + point_diff.x,
+                    size.height + point_diff.y,
+                    true,
+                )
+                .unwrap();
+            }
+    );
 
     layout! {
         ContextProvider<WindowContext>(
-            .value = WindowContext {
-            },
+            .value = window_context,
         ) {
-            ContextProvider<ParentContext>(
-                .value = ParentContext {
-                    hwnd: Some(hwnd)
-                }
+            ContextProvider<TreeContext>(
+                .value = tree_context.clone(),
             ) {
-                $(props.view.get())
+                ContextProvider<ParentContext>(
+                    .value = ParentContext {
+                        parent_hwnd: hwnd,
+                        add_child: Some(callback!([] |child_hwnd: HWND, child_node: Option<NodeId>| {
+                            tree_context.set_root_node(child_node);
+                            window_state.root_view.set(Some(child_hwnd));
+
+                            let mut client_rect: RECT = RECT::default();
+                            unsafe { GetClientRect(hwnd, &mut client_rect).unwrap(); }
+
+                            let width = client_rect.right - client_rect.left;
+                            let height = client_rect.bottom - client_rect.top;
+
+                            unsafe {
+                                SetWindowPos(child_hwnd, None, 0, 0, width, height, SWP_NOZORDER)
+                                    .unwrap();
+                            }
+
+                            let size: LogicalSize<f32> = PhysicalSize::new(width, height).to_logical(scale_factor.get());
+                            if let Some(child_node) = child_node {
+                                tree_context.update_style(child_node, |prev| Style {
+                                    size: taffy::Size {
+                                        width: taffy::Dimension::from_length(size.width),
+                                        height: taffy::Dimension::from_length(size.height)
+                                    },
+                                    ..prev
+                                });
+                            }
+                        })),
+                        remove_child: None,
+                        parent_node: None,
+                    }
+                ) {
+                    $(props.children.get())
+                }
             }
         }
     }
@@ -131,14 +211,9 @@ fn get_scale_factor_for_window(hwnd: HWND) -> Option<f64> {
 
 pub(crate) struct WindowState {
     bg_brush: HBRUSH,
-}
-
-impl WindowState {
-    fn new() -> Self {
-        Self {
-            bg_brush: unsafe { GetSysColorBrush(COLOR_BTNFACE) },
-        }
-    }
+    tree_context: Rc<TreeContext>,
+    root_view: Cell<Option<HWND>>,
+    on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
 }
 
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -152,6 +227,46 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                 SetBkMode(hdc, TRANSPARENT);
                 SetTextColor(hdc, COLORREF(GetSysColor(COLOR_BTNTEXT)));
                 LRESULT(window_state.bg_brush.0 as isize)
+            }
+
+            WM_SIZE => {
+                let app_state = shared_app_state();
+                if let Some(window_state) = app_state.window_state(hwnd) {
+                    if let Some(on_resize) = window_state.on_resize.get() {
+                        let mut client_rect: RECT = RECT::default();
+                        GetClientRect(hwnd, &mut client_rect).unwrap();
+
+                        let width = client_rect.right - client_rect.left;
+                        let height = client_rect.bottom - client_rect.top;
+
+                        if let Some(root_view) = window_state.root_view.get() {
+                            SetWindowPos(root_view, None, 0, 0, width, height, SWP_NOZORDER)
+                                .unwrap();
+                        }
+
+                        if let Some(root_node) = window_state.tree_context.root_node() {
+                            let scale_factor = get_scale_factor_for_window(hwnd).unwrap();
+                            let size: LogicalSize<f32> = PhysicalSize::new(width, height).to_logical(scale_factor);
+                            window_state
+                                .tree_context
+                                .update_style(root_node, |prev| Style {
+                                    size: taffy::Size {
+                                        width: taffy::Dimension::from_length(size.width),
+                                        height: taffy::Dimension::from_length(size.height),
+                                    },
+                                    ..prev
+                                });
+                            window_state.tree_context.update();
+                        }
+
+                        on_resize(Size::Physical(PhysicalSize::new(
+                            width as u32,
+                            height as u32,
+                        )))
+                    }
+                }
+
+                LRESULT(0)
             }
 
             // WM_COMMAND => {

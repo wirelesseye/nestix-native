@@ -2,30 +2,32 @@ use std::{
     cell::{Cell, OnceCell, RefCell},
     collections::HashMap,
     ffi::c_void,
+    rc::Rc,
 };
 
-use nestix::{
-    Element, Shared, closure, component, components::ContextProvider, layout, prop::PropValue,
-};
+use nestix::{Element, PropValue, closure, component, components::ContextProvider, layout};
 use nestix_native_core::RootProps;
 use windows::Win32::{
     Foundation::HWND,
-    UI::WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
+    UI::{
+        HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
+        WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
+    },
 };
 
 use crate::window::WindowState;
 
 thread_local! {
-    static APP_STATE: OnceCell<Shared<AppState>> = OnceCell::new();
+    static APP_STATE: OnceCell<Rc<AppState>> = OnceCell::new();
 }
 
-pub(crate) fn shared_app_state() -> Shared<AppState> {
+pub(crate) fn shared_app_state() -> Rc<AppState> {
     APP_STATE.with(|app| app.get().unwrap().clone())
 }
 
 pub(crate) struct AppState {
     is_running: Cell<bool>,
-    windows: RefCell<HashMap<*mut c_void, Shared<WindowState>>>,
+    windows: RefCell<HashMap<*mut c_void, Rc<WindowState>>>,
     quit_when_all_windows_closed: PropValue<bool>,
 }
 
@@ -64,11 +66,11 @@ impl AppState {
         !self.windows.borrow().is_empty()
     }
 
-    pub(crate) fn add_window(&self, window: HWND, state: Shared<WindowState>) {
+    pub(crate) fn add_window(&self, window: HWND, state: Rc<WindowState>) {
         self.windows.borrow_mut().insert(window.0, state);
     }
 
-    pub(crate) fn window_state(&self, window: HWND) -> Option<Shared<WindowState>> {
+    pub(crate) fn window_state(&self, window: HWND) -> Option<Rc<WindowState>> {
         self.windows.borrow().get(&window.0).cloned()
     }
 
@@ -77,28 +79,25 @@ impl AppState {
     }
 }
 
-#[derive(Clone)]
-pub struct AppContext {
-    pub(crate) app_state: Shared<AppState>,
-}
-
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
-    let app_state = APP_STATE.with(|app| {
-        app.get_or_init(|| Shared::new(AppState::new(props)))
-            .clone()
-    });
+    let app_state = APP_STATE.with(|app| app.get_or_init(|| Rc::new(AppState::new(props))).clone());
 
-    element.after_render(closure!([app_state] || {
-        app_state.run();
-    }));
+    unsafe {
+        SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2).unwrap();
+    }
+
+    element.after_render(closure!(
+        [app_state] || {
+            app_state.run();
+        }
+    ));
 
     layout! {
-        ContextProvider<AppContext>(
-            .value = AppContext {
-                app_state,
-            },
-            .children = props.children.clone(),
-        )
+        ContextProvider<AppState>(
+            .value = app_state,
+        ) {
+            $(props.children.clone())
+        }
     }
 }

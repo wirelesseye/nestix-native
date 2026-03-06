@@ -4,7 +4,7 @@ use nestix::{
     Element, Readonly, State, callback, closure, component, components::ContextProvider,
     create_state, effect, layout,
 };
-use nestix_native_core::{TabViewItemProps, TabViewProps};
+use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -13,7 +13,7 @@ use objc2_app_kit::{NSTabView, NSTabViewDelegate, NSTabViewItem, NSView};
 use objc2_foundation::{NSObject, NSObjectProtocol, NSString};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
-use crate::contexts::{ParentContext, TreeContext};
+use crate::contexts::ParentContext;
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<TabViewDelegate>>> = RefCell::new(HashMap::new());
@@ -144,21 +144,28 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         }
     ));
 
-    effect!([props.id, tab_view_context.current_selected, subtree_context, item] || {
-        if current_selected.get() == Some(id.get()) {
-            if let Some(root_node) = subtree_context.root_node() {
-                let frame = item.view(mtm).unwrap().frame();
-                subtree_context.update_style(root_node, |prev| Style {
-                    size: Size {
-                        width: Dimension::from_length(frame.size.width as f32),
-                        height: Dimension::from_length(frame.size.height as f32),
-                    },
-                    ..prev
-                });
-                subtree_context.update();
+    effect!(
+        [
+            props.id,
+            tab_view_context.current_selected,
+            subtree_context,
+            item
+        ] || {
+            if current_selected.get() == Some(id.get()) {
+                if let Some(root_node) = subtree_context.root_node() {
+                    let frame = item.view(mtm).unwrap().frame();
+                    subtree_context.update_style(root_node, |prev| Style {
+                        size: Size {
+                            width: Dimension::from_length(frame.size.width as f32),
+                            height: Dimension::from_length(frame.size.height as f32),
+                        },
+                        ..prev
+                    });
+                    subtree_context.update();
+                }
             }
         }
-    });
+    );
 
     effect!(
         [item, props.title] || {

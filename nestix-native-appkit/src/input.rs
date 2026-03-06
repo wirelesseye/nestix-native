@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, effect};
-use nestix_native_core::{Dimension, ExtendsViewProps, InputProps};
+use nestix_native_core::{Dimension, ExtendsViewProps, InputProps, TreeContext};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -12,10 +12,7 @@ use objc2_foundation::{
 };
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, TreeContext},
-};
+use crate::{WindowContext, contexts::ParentContext};
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<InputDelegate>>> = RefCell::new(HashMap::new());
@@ -98,12 +95,7 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
 
     effect!(
-        [
-            tree_context,
-            input,
-            props.width(),
-            props.height()
-        ] || {
+        [tree_context, input, props.width(), props.height()] || {
             let scale_factor = window_context.scale_factor.get();
 
             if width.get().is_auto() || height.get().is_auto() {
