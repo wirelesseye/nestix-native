@@ -50,13 +50,13 @@ pub fn Label(props: &LabelProps, element: &Element) {
 
     effect!(
         [
-            window_context,
+            window_context.scale_factor,
             tree_context,
             label,
             props.width(),
             props.height()
         ] || {
-            let scale_factor = window_context.scale_factor.get();
+            let scale_factor = scale_factor.get();
 
             if width.get().is_auto() || height.get().is_auto() {
                 label.sizeToFit();
@@ -94,9 +94,37 @@ pub fn Label(props: &LabelProps, element: &Element) {
     );
 
     effect!(
-        [label, props.text] || {
+        [window_context.scale_factor, label, props.text, props.width(), props.height()] || {
             let ns_string = NSString::from_str(&text.get());
             label.setStringValue(&ns_string);
+
+            if width.get().is_auto() || height.get().is_auto() {
+                let scale_factor = scale_factor.get();
+                label.sizeToFit();
+
+                let width = match width.get() {
+                    Dimension::Auto => label.frame().size.width as f32,
+                    Dimension::Length(pixel_unit) => {
+                        pixel_unit.to_logical::<f32>(scale_factor).into()
+                    }
+                };
+                let height = match height.get() {
+                    Dimension::Auto => label.frame().size.height as f32,
+                    Dimension::Length(pixel_unit) => {
+                        pixel_unit.to_logical::<f32>(scale_factor).into()
+                    }
+                };
+
+                tree_context.update_style(node_id, |prev| Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(width),
+                        height: taffy::Dimension::from_length(height),
+                    },
+                    ..prev
+                });
+
+                tree_context.update();
+            }
         }
     );
 }

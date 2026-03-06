@@ -1,5 +1,5 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, layout, render_root};
+use nestix::{Element, callback, component, create_state, layout, render_root};
 use nestix_native::{Button, Direction, FlexView, Label, Root, Window, Wrap, dpi};
 
 fn main() {
@@ -9,6 +9,8 @@ fn main() {
 
 #[component]
 fn ExampleApp() -> Element {
+    let text = create_state("Hello!".to_string());
+
     layout! {
         Root {
             Window(
@@ -23,9 +25,14 @@ fn ExampleApp() -> Element {
                     .direction = Direction::Row,
                     .wrap = Wrap::Wrap,
                 ) {
-                    Label(.text = "Hello1")
+                    Label(.text = text.clone())
                     Label(.text = "Hello2")
-                    Button(.title = "Click me!")
+                    Button(
+                        .title = "Click me!",
+                        .on_click = callback!([] || {
+                            text.mutate(|text| text.push_str("Hello!"));
+                        })
+                    )
                     Label(.text = "Hello3")
                 }
             }
