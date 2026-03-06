@@ -82,6 +82,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
     effect!(
         [
             window_context.scale_factor,
+            tree_context,
             label,
             props.text,
             props.width(),
