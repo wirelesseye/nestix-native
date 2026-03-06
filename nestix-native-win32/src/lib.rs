@@ -28,26 +28,19 @@ impl Backend for Win32Backend {
         None
     }
 
+    fn create_flex_view(
+        &self,
+        props: nestix_native_core::FlexViewProps,
+    ) -> Option<nestix::Element> {
+        None
+    }
+
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {
         None
     }
 
     fn create_label(&self, props: nestix_native_core::LabelProps) -> Option<nestix::Element> {
         Some(create_element::<Label>(props))
-    }
-
-    fn create_linear_view(
-        &self,
-        props: nestix_native_core::LinearViewProps,
-    ) -> Option<nestix::Element> {
-        None
-    }
-
-    fn create_stack_view(
-        &self,
-        props: nestix_native_core::StackViewProps,
-    ) -> Option<nestix::Element> {
-        Some(create_element::<StackView>(props))
     }
 
     fn create_tab_view(&self, props: nestix_native_core::TabViewProps) -> Option<nestix::Element> {

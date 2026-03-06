@@ -1,17 +1,20 @@
 use nestix::props;
 
-use crate::Length;
+use crate::Dimension;
 
-#[props(extensible(ExtendsViewProps))]
+#[props(debug, extensible(ExtendsViewProps))]
 #[derive(Debug, Clone)]
 pub struct ViewProps {
-    #[props(default = Length::Auto)]
-    pub x: Length,
-    #[props(default = Length::Auto)]
-    pub y: Length,
+    #[props(default = Dimension::Auto)]
+    pub left: Dimension,
+    #[props(default = Dimension::Auto)]
+    pub top: Dimension,
 
-    #[props(default = Length::Auto)]
-    pub width: Length,
-    #[props(default = Length::Auto)]
-    pub height: Length,
+    #[props(default = Dimension::Auto)]
+    pub width: Dimension,
+    #[props(default = Dimension::Auto)]
+    pub height: Dimension,
+
+    #[props(default = 0.0)]
+    pub grow: f32,
 }

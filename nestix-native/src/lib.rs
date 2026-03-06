@@ -1,18 +1,16 @@
 pub mod button;
+pub mod flex_view;
 pub mod input;
 pub mod label;
-pub mod linear_view;
 pub mod root;
-pub mod stack_view;
 pub mod tab_view;
 pub mod window;
 
 pub use button::*;
+pub use flex_view::*;
 pub use input::*;
 pub use label::*;
-pub use linear_view::*;
 pub use root::*;
-pub use stack_view::*;
 pub use tab_view::*;
 pub use window::*;
 

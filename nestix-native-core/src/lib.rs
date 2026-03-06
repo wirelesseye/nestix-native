@@ -1,24 +1,25 @@
-pub mod root;
 pub mod button;
+pub mod color;
+pub mod dimension;
+pub mod flex_view;
 pub mod input;
 pub mod label;
-pub mod linear_view;
-pub mod dimension;
-pub mod stack_view;
+pub mod root;
 pub mod tab_view;
 pub mod view;
 pub mod window;
 
-pub use root::*;
 pub use button::*;
+pub use color::*;
+pub use dimension::*;
+pub use flex_view::*;
 pub use input::*;
 pub use label::*;
-pub use linear_view::*;
-pub use dimension::*;
-pub use stack_view::*;
+pub use root::*;
 pub use tab_view::*;
 pub use view::*;
 pub use window::*;
+
 pub use dpi;
 
 use nestix::Element;
@@ -28,13 +29,11 @@ pub trait Backend {
 
     fn create_button(&self, props: ButtonProps) -> Option<Element>;
 
+    fn create_flex_view(&self, props: FlexViewProps) -> Option<Element>;
+
     fn create_input(&self, props: InputProps) -> Option<Element>;
 
     fn create_label(&self, props: LabelProps) -> Option<Element>;
-
-    fn create_linear_view(&self, props: LinearViewProps) -> Option<Element>;
-
-    fn create_stack_view(&self, props: StackViewProps) -> Option<Element>;
 
     fn create_tab_view(&self, props: TabViewProps) -> Option<Element>;
 

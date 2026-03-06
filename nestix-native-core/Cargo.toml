@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 dpi = "0.1.2"
 nestix = { path = "../../nestix/nestix" }
+taffy = { version = "0.9.2", optional = true }

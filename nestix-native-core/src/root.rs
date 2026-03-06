@@ -1,6 +1,6 @@
 use nestix::{Layout, props};
 
-#[props]
+#[props(debug)]
 #[derive(Debug, Clone)]
 pub struct RootProps {
     #[props(default)]

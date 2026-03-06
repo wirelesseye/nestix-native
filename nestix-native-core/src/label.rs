@@ -2,7 +2,7 @@ use nestix::props;
 
 use crate::{ExtendsViewProps, ViewProps};
 
-#[props]
+#[props(debug)]
 #[derive(Debug, Clone)]
 pub struct LabelProps {
     #[props(extends(ExtendsViewProps))]

@@ -1,17 +1,22 @@
 use nestix::{Element, Layout, props};
 
-#[props]
+use crate::{ExtendsViewProps, ViewProps};
+
+#[props(debug)]
 #[derive(Debug, Clone)]
 pub struct TabViewProps {
+    #[props(extends(ExtendsViewProps))]
+    view_props: ViewProps,
+    
     #[props(default)]
     pub children: Layout,
 }
 
-#[props]
+#[props(debug)]
 #[derive(Debug, Clone)]
 pub struct TabViewItemProps {
     pub id: String,
-    pub view: Option<Element>,
     #[props(default)]
     pub title: String,
+    pub children: Option<Element>,
 }

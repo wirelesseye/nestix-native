@@ -1,15 +1,21 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use nestix::{Element, Shared, closure, component, effect, PropValue};
-use nestix_native_core::{ExtendsViewProps, InputProps, Length};
+use nestix::{Element, PropValue, Shared, closure, component, effect};
+use nestix_native_core::{Dimension, ExtendsViewProps, InputProps};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
 };
 use objc2_app_kit::{NSControlTextEditingDelegate, NSTextField, NSTextFieldDelegate};
-use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSPoint, NSSize, NSString};
+use objc2_foundation::{
+    NSNotification, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString,
+};
+use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{ParentContext, WindowContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, TreeContext},
+};
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<InputDelegate>>> = RefCell::new(HashMap::new());
@@ -18,10 +24,15 @@ thread_local! {
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
+    let tree_context = element.context::<TreeContext>().unwrap();
+    let parent_context = element.context::<ParentContext>().unwrap();
 
     let mtm = MainThreadMarker::new().unwrap();
     let string_value = NSString::from_str(&props.value.get());
     let input = NSTextField::textFieldWithString(&string_value, mtm);
+    element.provide_handle(input.as_ref() as *const NSObject);
+
+    let input_id = nanoid::nanoid!();
 
     let delegate = InputDelegate::new(
         mtm,
@@ -32,19 +43,21 @@ pub fn Input(props: &InputProps, element: &Element) {
     unsafe {
         input.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
     }
+    DELEGATES.with_borrow_mut(|delegates| delegates.insert(input_id.clone(), delegate));
 
-    let input_id = nanoid::nanoid!();
+    let node_id = tree_context.create_node(true);
+    if let Some(add_child) = &parent_context.add_child {
+        add_child(&input, Some(node_id));
+    }
 
     element.on_destroy(closure!(
-        [input_id, input] || {
-            input.removeFromSuperview();
+        [parent_context, input] || {
+            if let Some(remove_child) = &parent_context.remove_child {
+                remove_child(&input, Some(node_id));
+            }
             DELEGATES.with_borrow_mut(|delegates| delegates.remove(&input_id));
         }
     ));
-
-    DELEGATES.with_borrow_mut(|delegates| delegates.insert(input_id, delegate));
-
-    element.provide_handle(input.as_ref() as *const NSObject);
 
     effect!(
         [input, props.value] || {
@@ -53,47 +66,80 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
+    // effect!(
+    //     [
+    //         input,
+    //         window_context.scale_factor,
+    //         props.left(),
+    //         props.top()
+    //     ] || {
+    //         let scale_factor = scale_factor.get();
+    //         let x: f64 = match left.get() {
+    //             Dimension::Auto => 0.0,
+    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+    //         };
+    //         let y: f64 = match top.get() {
+    //             Dimension::Auto => 0.0,
+    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+    //         };
+    //         input.setFrameOrigin(NSPoint::new(x, y));
+    //     }
+    // );
+
     effect!(
-        [input, window_context.scale_factor, props.x(), props.y()] || {
-            let scale_factor = scale_factor.get();
-            let x: f64 = match x.get() {
-                Length::Auto => 0.0,
-                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-            };
-            let y: f64 = match y.get() {
-                Length::Auto => 0.0,
-                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-            };
-            input.setFrameOrigin(NSPoint::new(x, y));
+        [tree_context, props.grow()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                flex_grow: grow.get(),
+                ..prev
+            });
+
+            tree_context.update();
         }
     );
 
     effect!(
         [
+            tree_context,
             input,
-            window_context.scale_factor,
             props.width(),
             props.height()
         ] || {
-            let scale_factor = scale_factor.get();
-            let width: f64 = match width.get() {
-                Length::Auto => 0.0,
-                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            let scale_factor = window_context.scale_factor.get();
+
+            if width.get().is_auto() || height.get().is_auto() {
+                input.sizeToFit();
+            }
+            let width = match width.get() {
+                Dimension::Auto => input.frame().size.width as f32,
+                Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
-            let height: f64 = match height.get() {
-                Length::Auto => 0.0,
-                Length::Px(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
+            let height = match height.get() {
+                Dimension::Auto => input.frame().size.height as f32,
+                Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
-            input.setFrameSize(NSSize::new(width, height));
+
+            tree_context.update_style(node_id, |prev| Style {
+                size: Size {
+                    width: taffy::Dimension::from_length(width),
+                    height: taffy::Dimension::from_length(height),
+                },
+                ..prev
+            });
+
+            tree_context.update();
         }
     );
 
-    let parent = element.context::<ParentContext>();
-    if let Some(parent) = parent {
-        if let Some(add_child) = &parent.add_child {
-            add_child(&input);
+    effect!(
+        [tree_context, input] || {
+            if let Some(layout) = tree_context.layout(node_id) {
+                input.setFrame(NSRect::new(
+                    NSPoint::new(layout.location.x.into(), layout.location.y.into()),
+                    NSSize::new(layout.size.width.into(), layout.size.height.into()),
+                ));
+            }
         }
-    }
+    );
 }
 
 #[derive(Debug)]
@@ -101,7 +147,7 @@ struct InputState {
     on_text_change: PropValue<Option<Shared<dyn Fn(&str)>>>,
 }
 
-define_class! {
+define_class!(
     #[unsafe(super = NSObject)]
     #[thread_kind = MainThreadOnly]
     #[ivars = InputState]
@@ -126,7 +172,7 @@ define_class! {
             }
         }
     }
-}
+);
 
 impl InputDelegate {
     fn new(mtm: MainThreadMarker, state: InputState) -> Retained<Self> {

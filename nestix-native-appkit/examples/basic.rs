@@ -5,8 +5,8 @@ use nestix::{
     Element, Readonly, callback, component, components::For, computed, create_state, layout,
     render_root,
 };
-use nestix_native_appkit::{Button, Input, Label, LinearView, Root, TabView, TabViewItem, Window};
-use nestix_native_core::LinearViewDirection;
+use nestix_native_appkit::{Button, FlexView, Input, Label, Root, TabView, TabViewItem, Window};
+use nestix_native_core::Direction;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
@@ -21,21 +21,22 @@ fn ExampleApp() -> Element {
                 .title = "Counter",
                 .width = 300,
                 .height = 300,
-                .view = layout! {
-                    TabView {
-                        TabViewItem(
-                            .id = "counter",
-                            .title = "Counter",
-                            .view = layout! {Counter}
-                        )
-                        TabViewItem(
-                            .id = "todo_list",
-                            .title = "Todo List",
-                            .view = layout! {TodoList}
-                        )
+            ) {
+                TabView {
+                    TabViewItem(
+                        .id = "counter",
+                        .title = "Counter",
+                    ) {
+                        Counter
+                    }
+                    TabViewItem(
+                        .id = "todo_list",
+                        .title = "Todo List",
+                    ) {
+                        TodoList
                     }
                 }
-            )
+            }
         }
     }
 }
@@ -45,7 +46,7 @@ fn Counter() -> Element {
     let count = create_state(0);
 
     layout! {
-        LinearView {
+        FlexView {
             Label(.text = computed!([count] || format!("Count: {}", count.get())))
             Button(
                 .title = "Click",
@@ -79,12 +80,12 @@ fn TodoList() -> Element {
     );
 
     layout! {
-        LinearView {
-            LinearView(.direction = LinearViewDirection::Horizontal) {
+        FlexView {
+            FlexView(.direction = Direction::Row) {
                 Input(.value = input_text, .on_text_change = on_text_change)
                 Button(.title = "Add", .on_click = add)
             }
-            LinearView {
+            FlexView {
                 For<HashMap<String, String>, String>(
                     .data = items,
                     .key = callback!(|(k, _): &(String, String)| k.clone()),

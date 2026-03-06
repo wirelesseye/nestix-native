@@ -8,16 +8,16 @@ use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationD
 use objc2_foundation::{NSObject, NSObjectProtocol};
 
 #[derive(Clone)]
-pub struct AppContext {
-    pub app: Retained<NSApplication>,
+pub struct RootContext {
+    pub ns_application: Retained<NSApplication>,
 }
 
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
-    let app = NSApplication::sharedApplication(mtm);
+    let ns_application = NSApplication::sharedApplication(mtm);
 
-    app.setActivationPolicy(NSApplicationActivationPolicy::Regular);
+    ns_application.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
     let app_delegate = AppDelegate::new(
         mtm,
@@ -25,23 +25,24 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
             should_terminate_after_last_window_closed: props.quit_when_all_windows_closed.clone(),
         },
     );
-    app.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
+    ns_application.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
 
-    element.provide_handle(app.as_ref() as *const NSObject);
+    element.provide_handle(ns_application.as_ref() as *const NSObject);
 
     element.after_render(closure!(
-        [app] || {
-            app.run();
+        [ns_application] || {
+            ns_application.run();
         }
     ));
 
     layout! {
-        ContextProvider<AppContext>(
-            .value = AppContext {
-                app
-            },
-            .children = props.children.clone(),
-        )
+        ContextProvider<RootContext>(
+            .value = RootContext {
+                ns_application,
+            }
+        ) {
+            $(props.children.clone())
+        }
     }
 }
 
@@ -49,7 +50,7 @@ struct AppState {
     should_terminate_after_last_window_closed: PropValue<bool>,
 }
 
-define_class! {
+define_class!(
     #[unsafe(super(NSObject))]
     #[thread_kind = MainThreadOnly]
     #[name = "AppDelegate"]
@@ -64,7 +65,7 @@ define_class! {
             self.ivars().should_terminate_after_last_window_closed.get()
         }
     }
-}
+);
 
 impl AppDelegate {
     fn new(mtm: MainThreadMarker, state: AppState) -> Retained<Self> {

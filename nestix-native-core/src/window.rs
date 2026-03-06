@@ -1,9 +1,9 @@
-use nestix::{Element, props};
+use nestix::{Element, Shared, props};
 
-#[props]
+#[props(debug)]
 #[derive(Debug, Clone)]
 pub struct WindowProps {
-    pub view: Option<Element>,
+    pub children: Option<Element>,
 
     #[props(default)]
     pub title: String,
@@ -12,4 +12,6 @@ pub struct WindowProps {
     pub width: f64,
     #[props(default = 600.0)]
     pub height: f64,
+
+    pub on_resize: Option<Shared<dyn Fn(dpi::Size)>>,
 }
