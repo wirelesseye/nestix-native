@@ -97,7 +97,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 

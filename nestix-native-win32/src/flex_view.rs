@@ -1,4 +1,6 @@
-use nestix::{Element, callback, component, components::ContextProvider, effect, layout};
+use std::sync::Once;
+
+use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{
     Alignment, Direction, ExtendsViewProps, FlexViewProps, TreeContext, Wrap,
     dpi::{LogicalPosition, LogicalSize},
@@ -6,15 +8,43 @@ use nestix_native_core::{
 use taffy::{NodeId, Size, Style};
 use windows::{
     Win32::{
-        Foundation::HWND,
-        UI::WindowsAndMessaging::{
-            CreateWindowExW, SWP_NOZORDER, SetWindowPos, WINDOW_EX_STYLE, WS_CHILD, WS_VISIBLE,
+        Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM},
+        Graphics::Gdi::{COLOR_BTNFACE, HBRUSH},
+        System::LibraryLoader::GetModuleHandleW,
+        UI::{
+            Controls::NMHDR,
+            WindowsAndMessaging::{
+                CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow, IDC_ARROW,
+                LoadCursorW, RegisterClassW, SWP_NOZORDER, SetWindowPos, WINDOW_EX_STYLE,
+                WM_COMMAND, WM_NOTIFY, WNDCLASSW, WS_CHILD, WS_VISIBLE,
+            },
         },
     },
-    core::w,
+    core::{PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{WindowContext, contexts::ParentContext, shared_app_state};
+
+fn window_classname(hinstance: HMODULE) -> PCWSTR {
+    const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeFlexView");
+    const INIT_WINDOW_CLASS: Once = Once::new();
+
+    INIT_WINDOW_CLASS.call_once(|| unsafe {
+        let wc = WNDCLASSW {
+            hCursor: LoadCursorW(None, IDC_ARROW).unwrap(),
+            hInstance: hinstance.into(),
+            lpszClassName: WINDOW_CLASSNAME,
+            style: CS_HREDRAW | CS_VREDRAW,
+            lpfnWndProc: Some(window_proc),
+            hbrBackground: HBRUSH((COLOR_BTNFACE.0 + 1) as _),
+            ..Default::default()
+        };
+
+        RegisterClassW(&wc);
+    });
+
+    WINDOW_CLASSNAME
+}
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
@@ -22,10 +52,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
 
+    let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
-            w!("STATIC"),
+            window_classname(hinstance),
             None,
             WS_VISIBLE | WS_CHILD,
             0,
@@ -45,6 +76,17 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         add_child(hwnd, Some(node_id));
     }
 
+    element.on_destroy(closure!(
+        [parent_context] || {
+            unsafe {
+                DestroyWindow(hwnd).unwrap();
+            }
+            if let Some(remove_child) = &parent_context.remove_child {
+                remove_child(hwnd, Some(node_id));
+            }
+        }
+    ));
+
     effect!(
         [tree_context, props.grow()] || {
             tree_context.update_style(node_id, |prev| Style {
@@ -52,7 +94,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -77,7 +119,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 });
             }
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -93,7 +135,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -109,7 +151,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -123,7 +165,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -176,6 +218,30 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             },
         ) {
             $(props.children.clone())
+        }
+    }
+}
+
+extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    unsafe {
+        match msg {
+            WM_NOTIFY => {
+                let app_state = shared_app_state();
+                let phdr = &*(lparam.0 as *const NMHDR);
+                app_state.handle_control_event(phdr.hwndFrom, msg, wparam, lparam);
+
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            WM_COMMAND => {
+                let app_state = shared_app_state();
+                let hwnd = HWND(lparam.0 as _);
+                app_state.handle_control_event(hwnd, msg, wparam, lparam);
+
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            _ => DefWindowProcW(hwnd, msg, wparam, lparam),
         }
     }
 }

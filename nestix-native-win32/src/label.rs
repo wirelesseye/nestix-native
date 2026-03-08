@@ -1,4 +1,4 @@
-use nestix::{Element, component, effect};
+use nestix::{Element, closure, component, effect};
 use nestix_native_core::{
     Dimension, ExtendsViewProps, LabelProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
@@ -8,12 +8,14 @@ use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
-        UI::WindowsAndMessaging::{
-            CreateWindowExW, SWP_NOZORDER, SendMessageW, SetWindowPos, WINDOW_EX_STYLE, WM_SETFONT,
-            WS_CHILD, WS_VISIBLE,
+        UI::{
+            Controls::WC_STATIC,
+            WindowsAndMessaging::{
+                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos, SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE
+            },
         },
     },
-    core::{HSTRING, w},
+    core::HSTRING,
 };
 
 use crate::{WindowContext, contexts::ParentContext, font::ui_font};
@@ -28,7 +30,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
-            w!("STATIC"),
+            WC_STATIC,
             &text,
             WS_VISIBLE | WS_CHILD,
             0,
@@ -47,6 +49,15 @@ pub fn Label(props: &LabelProps, element: &Element) {
     if let Some(add_child) = &parent_context.add_child {
         add_child(hwnd, Some(node_id));
     }
+
+    element.on_destroy(closure!(
+        [parent_context] || {
+            unsafe { DestroyWindow(hwnd).unwrap(); }
+            if let Some(remove_child) = &parent_context.remove_child {
+                remove_child(hwnd, Some(node_id));
+            }
+        }
+    ));
 
     effect!(
         [window_context.scale_factor]
@@ -72,6 +83,10 @@ pub fn Label(props: &LabelProps, element: &Element) {
 
             let hds = unsafe { GetDC(Some(hwnd)) };
             let text = HSTRING::from(text.get());
+            unsafe {
+                SetWindowTextW(hwnd, &text).unwrap();
+            }
+
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);
@@ -96,7 +111,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
                 },
                 ..prev
             });
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 

@@ -161,7 +161,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                         },
                         ..prev
                     });
-                    subtree_context.update();
+                    subtree_context.refresh();
                 }
             }
         }
@@ -192,7 +192,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                             },
                             ..prev
                         });
-                        subtree_context.update();
+                        subtree_context.refresh();
                     }
                 }
             }

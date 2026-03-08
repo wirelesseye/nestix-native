@@ -72,7 +72,7 @@ mod taffy {
             self.tree.borrow_mut().set_style(node, next_style).unwrap();
         }
 
-        pub fn update(&self) {
+        pub fn refresh(&self) {
             if let Some(root_node) = self.root_node() {
                 self.update_node(root_node);
             }

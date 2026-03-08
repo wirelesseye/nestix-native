@@ -84,7 +84,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -109,7 +109,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 });
             }
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -125,7 +125,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -141,7 +141,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -155,7 +155,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 

@@ -90,7 +90,7 @@ pub fn Input(props: &InputProps, element: &Element) {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -118,7 +118,7 @@ pub fn Input(props: &InputProps, element: &Element) {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 

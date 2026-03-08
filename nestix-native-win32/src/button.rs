@@ -1,4 +1,4 @@
-use nestix::{Element, component, effect};
+use nestix::{Element, callback, closure, component, effect};
 use nestix_native_core::{
     ButtonProps, Dimension, ExtendsViewProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
@@ -8,18 +8,21 @@ use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
-        UI::WindowsAndMessaging::{
-            CreateWindowExW, SWP_NOZORDER, SendMessageW, SetWindowPos, WINDOW_EX_STYLE, WM_SETFONT,
-            WS_CHILD, WS_VISIBLE,
+        UI::{
+            Controls::WC_BUTTON,
+            WindowsAndMessaging::{
+                BN_CLICKED, CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos, WINDOW_EX_STYLE, WM_COMMAND, WM_SETFONT, WS_CHILD, WS_VISIBLE
+            },
         },
     },
-    core::{HSTRING, w},
+    core::HSTRING,
 };
 
-use crate::{WindowContext, contexts::ParentContext, font::ui_font};
+use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
 
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
+    let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
@@ -28,7 +31,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
-            w!("BUTTON"),
+            WC_BUTTON,
             &title,
             WS_VISIBLE | WS_CHILD,
             0,
@@ -47,6 +50,32 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     if let Some(add_child) = &parent_context.add_child {
         add_child(hwnd, Some(node_id));
     }
+
+    app_state.add_control_handler(
+        hwnd,
+        callback!([props.on_click] |msg: u32, wparam: WPARAM, _: LPARAM| {
+            match msg {
+                WM_COMMAND => {
+                    if let Some(on_click) = on_click.get() {
+                        if hiword(wparam.0 as _) as u32 == BN_CLICKED  {
+                            on_click();
+                        }
+                    }
+                },
+                _ => (),
+            }
+        }),
+    );
+
+    element.on_destroy(closure!(
+        [parent_context] || {
+            unsafe { DestroyWindow(hwnd).unwrap(); }
+            if let Some(remove_child) = &parent_context.remove_child {
+                remove_child(hwnd, Some(node_id));
+            }
+            app_state.remove_control_handler(hwnd);
+        }
+    ));
 
     effect!(
         [window_context.scale_factor]
@@ -96,7 +125,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 },
                 ..prev
             });
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 

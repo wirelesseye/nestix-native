@@ -139,7 +139,7 @@ define_class!(
                     },
                     ..prev
                 });
-                tree_context.update();
+                tree_context.refresh();
             }
 
             if let Some(on_resize) = self.ivars().on_resize.get() {

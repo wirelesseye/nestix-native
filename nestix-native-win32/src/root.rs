@@ -5,10 +5,10 @@ use std::{
     rc::Rc,
 };
 
-use nestix::{Element, PropValue, closure, component, components::ContextProvider, layout};
+use nestix::{Element, PropValue, Shared, closure, component, components::ContextProvider, layout};
 use nestix_native_core::RootProps;
 use windows::Win32::{
-    Foundation::HWND,
+    Foundation::{HWND, LPARAM, WPARAM},
     UI::{
         HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
         WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
@@ -28,6 +28,7 @@ pub(crate) fn shared_app_state() -> Rc<AppState> {
 pub(crate) struct AppState {
     is_running: Cell<bool>,
     windows: RefCell<HashMap<*mut c_void, Rc<WindowState>>>,
+    control_handlers: RefCell<HashMap<*mut c_void, Shared<dyn Fn(u32, WPARAM, LPARAM)>>>,
     quit_when_all_windows_closed: PropValue<bool>,
 }
 
@@ -36,6 +37,7 @@ impl AppState {
         Self {
             is_running: Cell::new(false),
             windows: RefCell::new(HashMap::new()),
+            control_handlers: RefCell::new(HashMap::new()),
             quit_when_all_windows_closed: props.quit_when_all_windows_closed.clone(),
         }
     }
@@ -76,6 +78,21 @@ impl AppState {
 
     pub(crate) fn remove_window(&self, window: HWND) {
         self.windows.borrow_mut().remove(&window.0);
+    }
+
+    pub(crate) fn add_control_handler(&self, control: HWND, handler: Shared<dyn Fn(u32, WPARAM, LPARAM)>) {
+        self.control_handlers.borrow_mut().insert(control.0, handler);
+    }
+
+    pub(crate) fn remove_control_handler(&self, control: HWND) {
+        self.control_handlers.borrow_mut().remove(&control.0);
+    }
+
+    pub(crate) fn handle_control_event(&self, control: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) {
+        let handler = self.control_handlers.borrow().get(&control.0).cloned();
+        if let Some(handler) = handler {
+            handler(msg, wparam, lparam);
+        }
     }
 }
 

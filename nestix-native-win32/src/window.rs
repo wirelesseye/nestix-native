@@ -15,6 +15,7 @@ use windows::{
         Graphics::Gdi::*,
         System::LibraryLoader::GetModuleHandleW,
         UI::{
+            Controls::NMHDR,
             HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI},
             WindowsAndMessaging::*,
         },
@@ -25,7 +26,7 @@ use windows::{
 use crate::{AppState, contexts::ParentContext, root::shared_app_state};
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
-    const WINDOW_CLASSNAME: PCWSTR = w!("NestixWindowClass");
+    const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeWindow");
     const INIT_WINDOW_CLASS: Once = Once::new();
 
     INIT_WINDOW_CLASS.call_once(|| unsafe {
@@ -226,39 +227,40 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                 let hdc = HDC(wparam.0 as _);
                 SetBkMode(hdc, TRANSPARENT);
                 SetTextColor(hdc, COLORREF(GetSysColor(COLOR_BTNTEXT)));
+
                 LRESULT(window_state.bg_brush.0 as isize)
             }
 
             WM_SIZE => {
                 let app_state = shared_app_state();
                 if let Some(window_state) = app_state.window_state(hwnd) {
+                    let mut client_rect: RECT = RECT::default();
+                    GetClientRect(hwnd, &mut client_rect).unwrap();
+
+                    let width = client_rect.right - client_rect.left;
+                    let height = client_rect.bottom - client_rect.top;
+
+                    if let Some(root_view) = window_state.root_view.get() {
+                        SetWindowPos(root_view, None, 0, 0, width, height, SWP_NOZORDER).unwrap();
+                    }
+
+                    if let Some(root_node) = window_state.tree_context.root_node() {
+                        let scale_factor = get_scale_factor_for_window(hwnd).unwrap();
+                        let size: LogicalSize<f32> =
+                            PhysicalSize::new(width, height).to_logical(scale_factor);
+                        window_state
+                            .tree_context
+                            .update_style(root_node, |prev| Style {
+                                size: taffy::Size {
+                                    width: taffy::Dimension::from_length(size.width),
+                                    height: taffy::Dimension::from_length(size.height),
+                                },
+                                ..prev
+                            });
+                        window_state.tree_context.refresh();
+                    }
+
                     if let Some(on_resize) = window_state.on_resize.get() {
-                        let mut client_rect: RECT = RECT::default();
-                        GetClientRect(hwnd, &mut client_rect).unwrap();
-
-                        let width = client_rect.right - client_rect.left;
-                        let height = client_rect.bottom - client_rect.top;
-
-                        if let Some(root_view) = window_state.root_view.get() {
-                            SetWindowPos(root_view, None, 0, 0, width, height, SWP_NOZORDER)
-                                .unwrap();
-                        }
-
-                        if let Some(root_node) = window_state.tree_context.root_node() {
-                            let scale_factor = get_scale_factor_for_window(hwnd).unwrap();
-                            let size: LogicalSize<f32> = PhysicalSize::new(width, height).to_logical(scale_factor);
-                            window_state
-                                .tree_context
-                                .update_style(root_node, |prev| Style {
-                                    size: taffy::Size {
-                                        width: taffy::Dimension::from_length(size.width),
-                                        height: taffy::Dimension::from_length(size.height),
-                                    },
-                                    ..prev
-                                });
-                            window_state.tree_context.update();
-                        }
-
                         on_resize(Size::Physical(PhysicalSize::new(
                             width as u32,
                             height as u32,
@@ -266,16 +268,25 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                     }
                 }
 
-                LRESULT(0)
+                DefWindowProcW(hwnd, msg, wparam, lparam)
             }
 
-            // WM_COMMAND => {
-            //     let control_id = loword(wparam.0 as u32);
-            //     if control_id == loword(BUTTON_HMENU.unwrap().0 as u32) {
-            //         SetWindowTextW(LABEL_HWND.unwrap(), w!("Button clicked!"));
-            //     }
-            //     LRESULT(0)
-            // }
+            WM_NOTIFY => {
+                let app_state = shared_app_state();
+                let phdr = &*(lparam.0 as *const NMHDR);
+                app_state.handle_control_event(phdr.hwndFrom, msg, wparam, lparam);
+
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            WM_COMMAND => {
+                let app_state = shared_app_state();
+                let hwnd = HWND(lparam.0 as _);
+                app_state.handle_control_event(hwnd, msg, wparam, lparam);
+
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
             WM_DESTROY => {
                 let app_state = shared_app_state();
                 app_state.remove_window(hwnd);

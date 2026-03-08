@@ -6,8 +6,7 @@ use nestix::{
     render_root,
 };
 use nestix_native::{
-    Alignment, Button, Direction, FlexView, Input, Label, Root, TabView, TabViewItem, Window,
-    view_props_builder::ViewPropsBuilderExtGrow,
+    Alignment, Button, Direction, FlexView, Input, Label, Root, TabView, TabViewItem, Window, Wrap, view_props_builder::ViewPropsBuilderExtGrow
 };
 
 fn main() {
@@ -58,6 +57,18 @@ fn Counter() -> Element {
             )
             if count.get() % 2 == 0 {
                 Label(.text = "Is Even!")
+            }
+
+            FlexView(.direction = Direction::Row, .wrap = Wrap::Wrap) {
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
+                Label(.text = "AAAAAA")
             }
         }
     }

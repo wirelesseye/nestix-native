@@ -2,15 +2,18 @@ pub mod button;
 pub mod flex_view;
 pub mod label;
 pub mod root;
+pub mod tab_view;
 pub mod window;
 
 mod contexts;
 mod font;
+mod utils;
 
 pub use button::*;
 pub use flex_view::*;
 pub use label::*;
 pub use root::*;
+pub use tab_view::*;
 pub use window::*;
 
 use nestix::create_element;
@@ -43,14 +46,14 @@ impl Backend for Win32Backend {
     }
 
     fn create_tab_view(&self, props: nestix_native_core::TabViewProps) -> Option<nestix::Element> {
-        None
+        Some(create_element::<TabView>(props))
     }
 
     fn create_tab_view_item(
         &self,
         props: nestix_native_core::TabViewItemProps,
     ) -> Option<nestix::Element> {
-        None
+        Some(create_element::<TabViewItem>(props))
     }
 
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<nestix::Element> {

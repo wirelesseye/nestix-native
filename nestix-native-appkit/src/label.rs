@@ -75,7 +75,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
                 ..prev
             });
 
-            tree_context.update();
+            tree_context.refresh();
         }
     );
 
@@ -115,7 +115,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
                     ..prev
                 });
 
-                tree_context.update();
+                tree_context.refresh();
             }
         }
     );
