@@ -102,7 +102,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }),
     );
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();

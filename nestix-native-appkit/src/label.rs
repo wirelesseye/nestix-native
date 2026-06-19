@@ -23,7 +23,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
         add_child(&label, Some(node_id));
     }
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context, label] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&label, Some(node_id));

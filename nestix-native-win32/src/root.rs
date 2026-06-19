@@ -104,7 +104,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2).unwrap();
     }
 
-    element.after_render(closure!(
+    element.after_mount(closure!(
         [app_state] || {
             app_state.run();
         }

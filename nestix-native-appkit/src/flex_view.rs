@@ -172,7 +172,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [view] || {
             view.removeFromSuperview();
         }

@@ -28,8 +28,8 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     ns_application.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
 
     element.provide_handle(ns_application.as_ref() as *const NSObject);
-
-    element.after_render(closure!(
+    
+    element.after_mount(closure!(
         [ns_application] || {
             ns_application.run();
         }

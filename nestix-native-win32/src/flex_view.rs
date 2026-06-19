@@ -76,7 +76,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         add_child(hwnd, Some(node_id));
     }
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();

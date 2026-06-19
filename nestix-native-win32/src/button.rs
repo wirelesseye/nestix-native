@@ -67,7 +67,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         }),
     );
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context] || {
             unsafe { DestroyWindow(hwnd).unwrap(); }
             if let Some(remove_child) = &parent_context.remove_child {

@@ -43,7 +43,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         add_child(&button, Some(node_id));
     }
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context, button] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&button, Some(node_id));

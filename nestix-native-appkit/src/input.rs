@@ -47,7 +47,7 @@ pub fn Input(props: &InputProps, element: &Element) {
         add_child(&input, Some(node_id));
     }
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context, input] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&input, Some(node_id));

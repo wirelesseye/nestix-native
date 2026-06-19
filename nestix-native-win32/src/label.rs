@@ -50,7 +50,7 @@ pub fn Label(props: &LabelProps, element: &Element) {
         add_child(hwnd, Some(node_id));
     }
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context] || {
             unsafe { DestroyWindow(hwnd).unwrap(); }
             if let Some(remove_child) = &parent_context.remove_child {

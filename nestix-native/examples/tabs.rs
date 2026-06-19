@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use env_logger::Env;
 use nestix::{
     Element, Readonly, callback, component, components::For, computed, create_state, layout,
-    render_root,
+    mount_root,
 };
 use nestix_native::{
     Alignment, Button, Direction, FlexView, Input, Label, Root, TabView, TabViewItem, Window, Wrap, view_props_builder::ViewPropsBuilderExtGrow
@@ -11,7 +11,7 @@ use nestix_native::{
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    render_root(&layout! {ExampleApp});
+    mount_root(&layout! {ExampleApp});
 }
 
 #[component]

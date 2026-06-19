@@ -54,7 +54,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         add_child(&view, Some(node_id));
     }
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [view] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&view, Some(node_id));
@@ -136,7 +136,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
 
     let subtree_context = Rc::new(TreeContext::new());
 
-    element.on_destroy(closure!(
+    element.on_unmount(closure!(
         [parent_context, item] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&item, None);
