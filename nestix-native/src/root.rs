@@ -14,10 +14,6 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     let platform_root = backend.create_root(props.clone());
 
-    if let Some(platform_root) = &platform_root {
-        element.forward_handle(platform_root);
-    }
-
     layout! {
         ContextProvider<BackendContext>(
             .value = BackendContext {
