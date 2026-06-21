@@ -50,9 +50,17 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     element.provide_handle(view.as_ref() as *const NSObject);
 
     let node_id = tree_context.create_node(true);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(&view, Some(node_id));
-    }
+    element.on_place(closure!(
+        [view, parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(&view, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(&view, Some(node_id));
+            }
+        }
+    ));
 
     element.on_unmount(closure!(
         [view] || {
@@ -72,10 +80,22 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             ContextProvider<ParentContext>(
                 .value = ParentContext {
                     add_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
-                        view.addTabViewItem(child.downcast_ref::<NSTabViewItem>().unwrap());
+                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                        if view.tabViewItems().containsObject(item) {
+                            view.removeTabViewItem(item);
+                        }
+                        view.addTabViewItem(item);
+                    })),
+                    insert_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>, index: usize| {
+                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                        if view.tabViewItems().containsObject(item) {
+                            view.removeTabViewItem(item);
+                        }
+                        view.insertTabViewItem_atIndex(item, index as _);
                     })),
                     remove_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
-                        view.removeTabViewItem(child.downcast_ref::<NSTabViewItem>().unwrap());
+                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                        view.removeTabViewItem(item);
                     })),
                     parent_node: Some(node_id),
                 },
@@ -130,9 +150,17 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     let item = unsafe { NSTabViewItem::initWithIdentifier(mtm.alloc(), Some(&id)) };
     element.provide_handle(item.as_ref() as *const NSObject);
 
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(&item, None);
-    }
+    element.on_place(closure!(
+        [item, parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(&item, None, index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(&item, None);
+            }
+        }
+    ));
 
     let subtree_context = Rc::new(TreeContext::new());
 
@@ -217,8 +245,10 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                                 },
                                 ..prev
                             });
+                            subtree_context.refresh();
                         }
                     })),
+                    insert_child: None,
                     remove_child: None,
                     parent_node: None,
                 },

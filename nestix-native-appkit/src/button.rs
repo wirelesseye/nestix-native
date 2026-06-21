@@ -39,9 +39,17 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     HANDLERS.with_borrow_mut(|handlers| handlers.insert(button_id.clone(), handler));
 
     let node_id = tree_context.create_node(true);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(&button, Some(node_id));
-    }
+    element.on_place(closure!(
+        [button, parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(&button, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(&button, Some(node_id));
+            }
+        }
+    ));
 
     element.on_unmount(closure!(
         [parent_context, button] || {

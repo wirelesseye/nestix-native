@@ -47,15 +47,21 @@ mod taffy {
             self.tree.borrow_mut().add_child(parent, child).unwrap();
         }
 
+        pub fn insert_child(&self, parent: NodeId, child: NodeId, index: usize) {
+            self.tree.borrow_mut().insert_child_at_index(parent, index, child).unwrap();
+        }
+
         pub fn remove_child(&self, parent: NodeId, child: NodeId) {
             self.tree.borrow_mut().remove_child(parent, child).unwrap();
         }
 
+        /// Signal setter
         pub fn set_layout(&self, node: NodeId, layout: taffy::Layout) {
             let state = self.node_layouts.borrow_mut().get(&node).unwrap().clone();
             state.set(layout);
         }
 
+        /// Signal getter
         pub fn layout(&self, node: NodeId) -> Option<taffy::Layout> {
             self.node_layouts
                 .borrow()

@@ -19,9 +19,17 @@ pub fn Label(props: &LabelProps, element: &Element) {
     element.provide_handle(label.as_ref() as *const NSObject);
 
     let node_id = tree_context.create_node(true);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(&label, Some(node_id));
-    }
+    element.on_place(closure!(
+        [label, parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(&label, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(&label, Some(node_id));
+            }
+        }
+    ));
 
     element.on_unmount(closure!(
         [parent_context, label] || {

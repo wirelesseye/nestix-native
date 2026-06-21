@@ -27,9 +27,17 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     element.provide_handle(view.as_ref() as *const NSObject);
 
     let node_id = tree_context.create_node(false);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(&view, Some(node_id));
-    }
+    element.on_place(closure!(
+        [view, parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(&view, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(&view, Some(node_id));
+            }
+        }
+    ));
 
     effect!(
         [view, props.background_color] || {
@@ -182,13 +190,37 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         ContextProvider<ParentContext>(
             .value = ParentContext {
                 add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {
-                    view.addSubview(object.downcast_ref::<NSView>().unwrap());
+                    let subview = object.downcast_ref::<NSView>().unwrap();
+                    if view.subviews().containsObject(subview) {
+                        subview.removeFromSuperview();
+                        if let Some(child_node) = child_node {
+                            tree_context.remove_child(node_id, child_node);
+                        }
+                    }
+                    view.addSubview(subview);
                     if let Some(child_node) = child_node {
                         tree_context.add_child(node_id, child_node);
+                        tree_context.refresh();
+                    }
+                })),
+                insert_child: Some(callback!([tree_context, view]
+                    |object: &NSObject, child_node: Option<NodeId>, index: usize| {
+                    let subview = object.downcast_ref::<NSView>().unwrap();
+                    if view.subviews().containsObject(subview) {
+                        subview.removeFromSuperview();
+                        if let Some(child_node) = child_node {
+                            tree_context.remove_child(node_id, child_node);
+                        }
+                    }
+                    view.addSubview(subview);
+                    if let Some(child_node) = child_node {
+                        tree_context.insert_child(node_id, child_node, index);
+                        tree_context.refresh();
                     }
                 })),
                 remove_child: Some(callback!([tree_context] |object: &NSObject, child_node: Option<NodeId>| {
-                    object.downcast_ref::<NSView>().unwrap().removeFromSuperview();
+                    let subview = object.downcast_ref::<NSView>().unwrap();
+                    subview.removeFromSuperview();
                     if let Some(child_node) = child_node {
                         tree_context.remove_child(node_id, child_node);
                     }

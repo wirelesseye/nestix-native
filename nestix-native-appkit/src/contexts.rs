@@ -4,6 +4,7 @@ use taffy::NodeId;
 
 pub(crate) struct ParentContext {
     pub add_child: Option<Shared<dyn Fn(&NSObject, Option<NodeId>)>>,
+    pub insert_child: Option<Shared<dyn Fn(&NSObject, Option<NodeId>, usize)>>,
     pub remove_child: Option<Shared<dyn Fn(&NSObject, Option<NodeId>)>>,
     pub parent_node: Option<NodeId>,
 }
