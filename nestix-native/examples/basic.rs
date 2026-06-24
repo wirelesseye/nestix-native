@@ -1,6 +1,6 @@
 use env_logger::Env;
 use nestix::{Element, callback, component, create_state, layout, mount_root};
-use nestix_native::{Button, Direction, FlexView, Label, Root, Window, Wrap, dpi};
+use nestix_native::{Button, Direction, FlexView, Label, Root, Window, Wrap};
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
@@ -17,7 +17,7 @@ fn ExampleApp() -> Element {
                 .title = "Counter",
                 .width = 300,
                 .height = 300,
-                .on_resize = callback!(|size: dpi::Size| {
+                .on_resize = callback!(|size| {
                     println!("{:?}", size);
                 }),
             ) {

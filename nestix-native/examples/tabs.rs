@@ -1,7 +1,6 @@
 use env_logger::Env;
 use nestix::{
-    Element, Readonly, Shared, callback, component, components::For, computed, create_state,
-    layout, mount_root, props,
+    Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
     Alignment, Button, Direction, FlexView, Input, Label, Root, TabView, TabViewItem, Window,
@@ -130,10 +129,7 @@ fn TodoList() -> Element {
                 Button(.title = "Add", .on_click = add)
             }
             FlexView(.grow = 1.0) {
-                For<Vec<(String, String)>, String>(
-                    .data = items,
-                    .key = callback!(|(k, _): &(String, String)| k.clone()),
-                ) |item: Readonly<(String, String)>| {
+                for item in items where key = |item| item.0.clone() {
                     TodoListItem(
                         .key = computed!([item] || item.get().0),
                         .content = computed!(move || item.get().1),

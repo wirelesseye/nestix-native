@@ -1,10 +1,7 @@
 use std::collections::HashMap;
 
 use env_logger::Env;
-use nestix::{
-    Element, Readonly, callback, component, components::For, computed, create_state, layout,
-    mount_root,
-};
+use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
 use nestix_native_appkit::{Button, FlexView, Input, Label, Root, TabView, TabViewItem, Window};
 use nestix_native_core::Direction;
 
@@ -86,10 +83,7 @@ fn TodoList() -> Element {
                 Button(.title = "Add", .on_click = add)
             }
             FlexView {
-                For<HashMap<String, String>, String>(
-                    .data = items,
-                    .key = callback!(|(k, _): &(String, String)| k.clone()),
-                ) |item: Readonly<(String, String)>| {
+                for item in items where key = |item| item.0.clone() {
                     Label(.text = item.get().1)
                 }
             }
