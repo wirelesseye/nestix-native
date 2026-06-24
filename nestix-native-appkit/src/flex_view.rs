@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{
-    Alignment, Direction, ExtendsViewProps, FlexViewProps, TreeContext, Wrap,
+    Alignment, Direction, ViewPropsExt, FlexViewProps, TreeContext, Wrap,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};

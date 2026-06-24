@@ -1,6 +1,6 @@
 use nestix::{Layout, props};
 
-use crate::{Color, ExtendsViewProps, ViewProps};
+use crate::{Color, ViewPropsExt, ViewProps};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
@@ -27,7 +27,7 @@ pub enum Wrap {
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct FlexViewProps {
-    #[props(extends(ExtendsViewProps))]
+    #[props(extends(ViewPropsExt))]
     view_props: ViewProps,
 
     #[props(default)]

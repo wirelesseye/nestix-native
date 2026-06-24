@@ -1,6 +1,6 @@
 use nestix::{Element, closure, component, effect};
 use nestix_native_core::{
-    Dimension, ExtendsViewProps, LabelProps, TreeContext,
+    Dimension, ViewPropsExt, LabelProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};

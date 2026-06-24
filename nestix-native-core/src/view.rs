@@ -2,7 +2,7 @@ use nestix::props;
 
 use crate::Dimension;
 
-#[props(debug, extensible(ExtendsViewProps))]
+#[props(debug, extensible(ViewPropsExt))]
 #[derive(Debug, Clone)]
 pub struct ViewProps {
     #[props(default = Dimension::Auto)]

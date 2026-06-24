@@ -5,7 +5,7 @@ use nestix::{
     effect, layout,
 };
 use nestix_native_core::{
-    ExtendsViewProps, TabViewItemProps, TabViewProps, TreeContext,
+    ViewPropsExt, TabViewItemProps, TabViewProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalSize},
 };
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};

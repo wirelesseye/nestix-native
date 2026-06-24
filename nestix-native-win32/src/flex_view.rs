@@ -2,7 +2,7 @@ use std::sync::Once;
 
 use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{
-    Alignment, Direction, ExtendsViewProps, FlexViewProps, TreeContext, Wrap,
+    Alignment, Direction, ViewPropsExt, FlexViewProps, TreeContext, Wrap,
     dpi::{LogicalPosition, LogicalSize},
 };
 use taffy::{NodeId, Size, Style};

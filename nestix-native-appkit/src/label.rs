@@ -1,5 +1,5 @@
 use nestix::{Element, closure, component, effect};
-use nestix_native_core::{Dimension, ExtendsViewProps, LabelProps, TreeContext};
+use nestix_native_core::{Dimension, ViewPropsExt, LabelProps, TreeContext};
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
