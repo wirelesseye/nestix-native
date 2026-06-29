@@ -15,6 +15,15 @@ pub struct ViewProps {
     #[props(default = Dimension::Auto)]
     pub height: Dimension,
 
+    #[props(default = Dimension::Auto)]
+    pub margin_left: Dimension,
+    #[props(default = Dimension::Auto)]
+    pub margin_right: Dimension,
+    #[props(default = Dimension::Auto)]
+    pub margin_top: Dimension,
+    #[props(default = Dimension::Auto)]
+    pub margin_bottom: Dimension,
+
     #[props(default = 0.0)]
     pub grow: f32,
 }
