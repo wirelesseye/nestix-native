@@ -1,6 +1,6 @@
 use nestix::{Element, closure, component, effect};
 use nestix_native_core::{
-    Dimension, ViewPropsExt, TextProps, TreeContext,
+    Dimension, TextProps, TreeContext, ViewPropsExt,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -11,7 +11,8 @@ use windows::{
         UI::{
             Controls::WC_STATIC,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos, SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE
+                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos,
+                SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -44,15 +45,26 @@ pub fn Text(props: &TextProps, element: &Element) {
         )
         .unwrap()
     };
+    element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(false);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(hwnd, Some(node_id));
-    }
+    element.on_place(closure!(
+        [parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(hwnd, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(hwnd, Some(node_id));
+            }
+        }
+    ));
 
     element.on_unmount(closure!(
         [parent_context] || {
-            unsafe { DestroyWindow(hwnd).unwrap(); }
+            unsafe {
+                DestroyWindow(hwnd).unwrap();
+            }
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(hwnd, Some(node_id));
             }

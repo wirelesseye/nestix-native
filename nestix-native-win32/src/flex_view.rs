@@ -1,8 +1,8 @@
-use std::sync::Once;
+use std::{cell::RefCell, rc::Rc, sync::Once};
 
 use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{
-    Alignment, Direction, ViewPropsExt, FlexViewProps, TreeContext, Wrap,
+    Alignment, Direction, FlexViewProps, TreeContext, ViewPropsExt, Wrap,
     dpi::{LogicalPosition, LogicalSize},
 };
 use taffy::{NodeId, Size, Style};
@@ -51,6 +51,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let child_nodes = Rc::new(RefCell::new(Vec::new()));
 
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
     let hwnd = unsafe {
@@ -70,11 +71,20 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         )
         .unwrap()
     };
+    element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(false);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(hwnd, Some(node_id));
-    }
+    element.on_place(closure!(
+        [parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(hwnd, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(hwnd, Some(node_id));
+            }
+        }
+    ));
 
     element.on_unmount(closure!(
         [parent_context] || {
@@ -204,13 +214,32 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         ContextProvider<ParentContext>(
             .value = ParentContext {
                 parent_hwnd: hwnd,
-                add_child: Some(callback!([tree_context] |_: HWND, child_node: Option<NodeId>| {
+                add_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
                     if let Some(child_node) = child_node {
+                        if child_nodes.borrow().contains(&child_node) {
+                            tree_context.remove_child(node_id, child_node);
+                            child_nodes.borrow_mut().retain(|node| *node != child_node);
+                        }
                         tree_context.add_child(node_id, child_node);
+                        child_nodes.borrow_mut().push(child_node);
+                        tree_context.refresh();
                     }
                 })),
-                remove_child: Some(callback!([tree_context] |_: HWND, child_node: Option<NodeId>| {
+                insert_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>, index: usize| {
                     if let Some(child_node) = child_node {
+                        if child_nodes.borrow().contains(&child_node) {
+                            tree_context.remove_child(node_id, child_node);
+                            child_nodes.borrow_mut().retain(|node| *node != child_node);
+                        }
+                        let index = index.min(child_nodes.borrow().len());
+                        tree_context.insert_child(node_id, child_node, index);
+                        child_nodes.borrow_mut().insert(index, child_node);
+                        tree_context.refresh();
+                    }
+                })),
+                remove_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
+                    if let Some(child_node) = child_node {
+                        child_nodes.borrow_mut().retain(|node| *node != child_node);
                         tree_context.remove_child(node_id, child_node);
                     }
                 })),

@@ -5,7 +5,7 @@ use nestix::{
     effect, layout,
 };
 use nestix_native_core::{
-    ViewPropsExt, TabViewItemProps, TabViewProps, TreeContext,
+    TabViewItemProps, TabViewProps, TreeContext, ViewPropsExt,
     dpi::{LogicalPosition, LogicalSize, PhysicalSize},
 };
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
@@ -15,8 +15,8 @@ use windows::{
         UI::{
             Controls::{
                 ICC_TAB_CLASSES, INITCOMMONCONTROLSEX, InitCommonControlsEx, NMHDR, TCIF_TEXT,
-                TCITEMW, TCM_ADJUSTRECT, TCM_GETCURSEL, TCM_GETITEMCOUNT, TCM_INSERTITEM,
-                TCN_SELCHANGE, WC_TABCONTROL,
+                TCITEMW, TCM_ADJUSTRECT, TCM_DELETEITEM, TCM_GETCURSEL, TCM_GETITEMCOUNT,
+                TCM_INSERTITEM, TCM_SETITEM, TCN_SELCHANGE, WC_TABCONTROL,
             },
             WindowsAndMessaging::{
                 CreateWindowExW, DestroyWindow, GetClientRect, SW_HIDE, SW_SHOW, SWP_NOZORDER,
@@ -74,11 +74,20 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         )
         .unwrap()
     };
+    element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(true);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(hwnd, Some(node_id));
-    }
+    element.on_place(closure!(
+        [parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(hwnd, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(hwnd, Some(node_id));
+            }
+        }
+    ));
 
     let tab_view_context = Rc::new(TabViewContext {
         current_selected: current_selected.clone(),
@@ -201,6 +210,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                 .value = ParentContext {
                     parent_hwnd: hwnd,
                     add_child: None,
+                    insert_child: None,
                     remove_child: None,
                     parent_node: Some(node_id),
                 },
@@ -218,31 +228,92 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     let parent_context = element.context::<ParentContext>().unwrap();
     let tab_view_context = element.context::<TabViewContext>().unwrap();
 
-    let mut tie = TCITEMW::default();
-
-    let mut title: Vec<u16> = props.title.get().encode_utf16().collect();
-    title.push(0);
-    tie.mask = TCIF_TEXT;
-    tie.pszText = PWSTR(title.as_mut_ptr() as *mut _);
-
-    let index = unsafe { SendMessageW(parent_context.parent_hwnd, TCM_GETITEMCOUNT, None, None) };
-
-    tab_view_context.tab_ids.borrow_mut().push(props.id.get());
-    if tab_view_context.current_selected.borrow().is_none() {
-        tab_view_context.current_selected.set(Some(props.id.get()));
-    }
-
-    unsafe {
-        SendMessageW(
-            parent_context.parent_hwnd,
-            TCM_INSERTITEM,
-            Some(WPARAM(index.0 as _)),
-            Some(LPARAM(&tie as *const _ as _)),
-        );
-    }
-
     let subtree_context = Rc::new(TreeContext::new());
     let subtree_root = create_state(None);
+
+    element.on_place(closure!(
+        [parent_context, tab_view_context, props.id, props.title] | placement | {
+            let id = id.get();
+            let existing_index = tab_view_context
+                .tab_ids
+                .borrow()
+                .iter()
+                .position(|tab_id| *tab_id == id);
+
+            if let Some(existing_index) = existing_index {
+                tab_view_context.tab_ids.borrow_mut().remove(existing_index);
+                unsafe {
+                    SendMessageW(
+                        parent_context.parent_hwnd,
+                        TCM_DELETEITEM,
+                        Some(WPARAM(existing_index)),
+                        None,
+                    );
+                }
+            }
+
+            let index = placement
+                .index
+                .unwrap_or_else(|| unsafe {
+                    SendMessageW(parent_context.parent_hwnd, TCM_GETITEMCOUNT, None, None).0
+                        as usize
+                })
+                .min(tab_view_context.tab_ids.borrow().len());
+
+            insert_tab_item(parent_context.parent_hwnd, index, &title.get());
+
+            tab_view_context
+                .tab_ids
+                .borrow_mut()
+                .insert(index, id.clone());
+            if tab_view_context.current_selected.borrow().is_none() {
+                tab_view_context.current_selected.set(Some(id));
+            }
+        }
+    ));
+
+    element.on_unmount(closure!(
+        [parent_context, tab_view_context, props.id] || {
+            let id = id.get();
+            let existing_index = tab_view_context
+                .tab_ids
+                .borrow()
+                .iter()
+                .position(|tab_id| *tab_id == id);
+
+            if let Some(existing_index) = existing_index {
+                tab_view_context.tab_ids.borrow_mut().remove(existing_index);
+                unsafe {
+                    SendMessageW(
+                        parent_context.parent_hwnd,
+                        TCM_DELETEITEM,
+                        Some(WPARAM(existing_index)),
+                        None,
+                    );
+                }
+            }
+        }
+    ));
+
+    effect!(
+        [
+            parent_context.parent_hwnd,
+            tab_view_context,
+            props.id,
+            props.title
+        ] || {
+            let id = id.get();
+            let index = tab_view_context
+                .tab_ids
+                .borrow()
+                .iter()
+                .position(|tab_id| *tab_id == id);
+
+            if let Some(index) = index {
+                set_tab_item_title(parent_hwnd, index, &title.get());
+            }
+        }
+    );
 
     effect!(
         [tab_view_context.current_selected, props.id, subtree_root]
@@ -295,6 +366,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
 
                         resize_tab_view_content(&subtree_context, scale_factor.get(), parent_context.parent_hwnd, child_hwnd);
                     })),
+                    insert_child: None,
                     remove_child: None,
                     parent_node: None,
                 },
@@ -303,6 +375,40 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
             }
         }
     }
+}
+
+fn insert_tab_item(tab_control: HWND, index: usize, title: &str) {
+    let (mut item, _title) = tab_item_with_title(title);
+    unsafe {
+        SendMessageW(
+            tab_control,
+            TCM_INSERTITEM,
+            Some(WPARAM(index)),
+            Some(LPARAM(&mut item as *mut _ as _)),
+        );
+    }
+}
+
+fn set_tab_item_title(tab_control: HWND, index: usize, title: &str) {
+    let (mut item, _title) = tab_item_with_title(title);
+    unsafe {
+        SendMessageW(
+            tab_control,
+            TCM_SETITEM,
+            Some(WPARAM(index)),
+            Some(LPARAM(&mut item as *mut _ as _)),
+        );
+    }
+}
+
+fn tab_item_with_title(title: &str) -> (TCITEMW, Vec<u16>) {
+    let mut title: Vec<u16> = title.encode_utf16().collect();
+    title.push(0);
+
+    let mut item = TCITEMW::default();
+    item.mask = TCIF_TEXT;
+    item.pszText = PWSTR(title.as_mut_ptr());
+    (item, title)
 }
 
 fn resize_tab_view_content(

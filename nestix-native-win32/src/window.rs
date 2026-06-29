@@ -157,8 +157,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                                     },
                                     ..prev
                                 });
+                                tree_context.refresh();
                             }
                         })),
+                        insert_child: None,
                         remove_child: None,
                         parent_node: None,
                     }

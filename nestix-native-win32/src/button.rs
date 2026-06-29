@@ -1,6 +1,6 @@
 use nestix::{Element, callback, closure, component, effect};
 use nestix_native_core::{
-    ButtonProps, Dimension, ViewPropsExt, TreeContext,
+    ButtonProps, Dimension, TreeContext, ViewPropsExt,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -11,7 +11,8 @@ use windows::{
         UI::{
             Controls::WC_BUTTON,
             WindowsAndMessaging::{
-                BN_CLICKED, CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos, WINDOW_EX_STYLE, WM_COMMAND, WM_SETFONT, WS_CHILD, WS_VISIBLE
+                BN_CLICKED, CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW,
+                SetWindowPos, WINDOW_EX_STYLE, WM_COMMAND, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -45,11 +46,20 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         )
         .unwrap()
     };
+    element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(false);
-    if let Some(add_child) = &parent_context.add_child {
-        add_child(hwnd, Some(node_id));
-    }
+    element.on_place(closure!(
+        [parent_context] | placement | {
+            if let Some(index) = placement.index
+                && let Some(insert_child) = &parent_context.insert_child
+            {
+                insert_child(hwnd, Some(node_id), index);
+            } else if let Some(add_child) = &parent_context.add_child {
+                add_child(hwnd, Some(node_id));
+            }
+        }
+    ));
 
     app_state.add_control_handler(
         hwnd,
@@ -69,7 +79,9 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     element.on_unmount(closure!(
         [parent_context] || {
-            unsafe { DestroyWindow(hwnd).unwrap(); }
+            unsafe {
+                DestroyWindow(hwnd).unwrap();
+            }
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(hwnd, Some(node_id));
             }
