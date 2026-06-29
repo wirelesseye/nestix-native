@@ -3,7 +3,7 @@ use nestix::{
     Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    Alignment, Button, Direction, FlexView, Input, Label, Root, TabView, TabViewItem, Window,
+    Alignment, Button, Direction, FlexView, Input, Text, Root, TabView, TabViewItem, Window,
     view_props_builder::ViewPropsBuilderExtGrow,
 };
 
@@ -46,7 +46,7 @@ fn Counter() -> Element {
 
     layout! {
         FlexView {
-            Label(.text = computed!([count] || format!("Count: {}", count.get())))
+            Text(computed!([count] || format!("Count: {}", count.get())))
             Button(
                 .title = "Click",
                 .on_click = callback!([count] || {
@@ -54,7 +54,7 @@ fn Counter() -> Element {
                 })
             )
             if count.get() % 2 == 0 {
-                Label(.text = "Is Even!")
+                Text("Is Even!")
             }
         }
     }
@@ -200,7 +200,7 @@ fn TodoListItem(props: &TodoListItemProps) -> Element {
                     .grow = 1.0,
                 )
             } else {
-                Label(.text = props.content.clone())
+                Text(props.content.clone())
             }
         }
     }

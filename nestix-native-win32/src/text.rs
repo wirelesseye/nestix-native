@@ -1,6 +1,6 @@
 use nestix::{Element, closure, component, effect};
 use nestix_native_core::{
-    Dimension, ViewPropsExt, LabelProps, TreeContext,
+    Dimension, ViewPropsExt, TextProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -21,7 +21,7 @@ use windows::{
 use crate::{WindowContext, contexts::ParentContext, font::ui_font};
 
 #[component]
-pub fn Label(props: &LabelProps, element: &Element) {
+pub fn Text(props: &TextProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();

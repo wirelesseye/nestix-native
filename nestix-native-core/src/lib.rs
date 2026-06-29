@@ -4,7 +4,7 @@ pub mod contexts;
 pub mod dimension;
 pub mod flex_view;
 pub mod input;
-pub mod label;
+pub mod text;
 pub mod root;
 pub mod tab_view;
 pub mod view;
@@ -16,7 +16,7 @@ pub use contexts::*;
 pub use dimension::*;
 pub use flex_view::*;
 pub use input::*;
-pub use label::*;
+pub use text::*;
 pub use root::*;
 pub use tab_view::*;
 pub use view::*;
@@ -35,7 +35,7 @@ pub trait Backend {
 
     fn create_input(&self, props: InputProps) -> Option<Element>;
 
-    fn create_label(&self, props: LabelProps) -> Option<Element>;
+    fn create_text(&self, props: TextProps) -> Option<Element>;
 
     fn create_tab_view(&self, props: TabViewProps) -> Option<Element>;
 

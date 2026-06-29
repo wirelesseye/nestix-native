@@ -1,5 +1,5 @@
 use nestix::{Element, closure, component, effect};
-use nestix_native_core::{Dimension, ViewPropsExt, LabelProps, TreeContext};
+use nestix_native_core::{Dimension, ViewPropsExt, TextProps, TreeContext};
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
@@ -8,7 +8,7 @@ use taffy::{Size, Style, prelude::FromLength};
 use crate::{WindowContext, contexts::ParentContext};
 
 #[component]
-pub fn Label(props: &LabelProps, element: &Element) {
+pub fn Text(props: &TextProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();

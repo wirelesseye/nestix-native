@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use env_logger::Env;
 use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
-use nestix_native_appkit::{Button, FlexView, Input, Label, Root, TabView, TabViewItem, Window};
+use nestix_native_appkit::{Button, FlexView, Input, Text, Root, TabView, TabViewItem, Window};
 use nestix_native_core::Direction;
 
 fn main() {
@@ -44,7 +44,7 @@ fn Counter() -> Element {
 
     layout! {
         FlexView {
-            Label(.text = computed!([count] || format!("Count: {}", count.get())))
+            Text(computed!([count] || format!("Count: {}", count.get())))
             Button(
                 .title = "Click",
                 .on_click = callback!([count] || {
@@ -84,7 +84,7 @@ fn TodoList() -> Element {
             }
             FlexView {
                 for item in items where key = |item| item.0.clone() {
-                    Label(.text = item.get().1)
+                    Text(item.get().1)
                 }
             }
         }

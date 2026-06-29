@@ -1,7 +1,7 @@
 pub mod button;
 pub mod flex_view;
 pub mod input;
-pub mod label;
+pub mod text;
 pub mod root;
 pub mod tab_view;
 pub mod window;
@@ -9,7 +9,7 @@ pub mod window;
 pub use button::*;
 pub use flex_view::*;
 pub use input::*;
-pub use label::*;
+pub use text::*;
 pub use root::*;
 pub use tab_view::*;
 pub use window::*;
