@@ -123,9 +123,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<AppState>(
-            .value = app_state,
-        ) {
+        ContextProvider<AppState>(app_state) {
             $(props.children.clone())
         }
     }

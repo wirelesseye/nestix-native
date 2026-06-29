@@ -124,14 +124,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<WindowContext>(
-            .value = window_context,
-        ) {
-            ContextProvider<TreeContext>(
-                .value = tree_context.clone(),
-            ) {
+        ContextProvider<WindowContext>(window_context) {
+            ContextProvider<TreeContext>(tree_context.clone()) {
                 ContextProvider<ParentContext>(
-                    .value = ParentContext {
+                    ParentContext {
                         parent_hwnd: hwnd,
                         add_child: Some(callback!([] |child_hwnd: HWND, child_node: Option<NodeId>| {
                             tree_context.set_root_node(child_node);

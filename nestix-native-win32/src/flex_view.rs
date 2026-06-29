@@ -212,7 +212,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<ParentContext>(
-            .value = ParentContext {
+            ParentContext {
                 parent_hwnd: hwnd,
                 add_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
                     if let Some(child_node) = child_node {

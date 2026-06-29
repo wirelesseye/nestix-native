@@ -37,7 +37,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<RootContext>(
-            .value = RootContext {
+            RootContext {
                 ns_application,
             }
         ) {

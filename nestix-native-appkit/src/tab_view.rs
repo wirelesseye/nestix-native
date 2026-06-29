@@ -73,12 +73,12 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<TabViewContext>(
-            .value = TabViewContext {
+            TabViewContext {
                 current_selected: current_selected.into_readonly()
             }
         ) {
             ContextProvider<ParentContext>(
-                .value = ParentContext {
+                ParentContext {
                     add_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
                         let item = child.downcast_ref::<NSTabViewItem>().unwrap();
                         if view.tabViewItems().containsObject(item) {
@@ -228,9 +228,9 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<TreeContext>(.value = subtree_context.clone()) {
+        ContextProvider<TreeContext>(subtree_context.clone()) {
             ContextProvider<ParentContext>(
-                .value = ParentContext {
+                ParentContext {
                     add_child: Some(callback!([item] |object: &NSObject, child_node: Option<NodeId>| {
                         let view = object.downcast_ref::<NSView>().unwrap();
                         item.setView(Some(view));

@@ -188,7 +188,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<ParentContext>(
-            .value = ParentContext {
+            ParentContext {
                 add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {
                     let subview = object.downcast_ref::<NSView>().unwrap();
                     if view.subviews().containsObject(subview) {

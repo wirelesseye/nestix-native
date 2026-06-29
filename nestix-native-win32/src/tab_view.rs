@@ -204,10 +204,10 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<TabViewContext>(
-            .value = tab_view_context
+            tab_view_context
         ) {
             ContextProvider<ParentContext>(
-                .value = ParentContext {
+                ParentContext {
                     parent_hwnd: hwnd,
                     add_child: None,
                     insert_child: None,
@@ -356,9 +356,9 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<TreeContext>(.value = subtree_context.clone()) {
+        ContextProvider<TreeContext>(subtree_context.clone()) {
             ContextProvider<ParentContext>(
-                .value = ParentContext {
+                ParentContext {
                     parent_hwnd: parent_context.parent_hwnd,
                     add_child: Some(callback!([window_context.scale_factor] |child_hwnd: HWND, child_node: Option<NodeId>| {
                         subtree_context.set_root_node(child_node);

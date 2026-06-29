@@ -16,7 +16,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<BackendContext>(
-            .value = BackendContext {
+            BackendContext {
                 backend
             },
         ) {

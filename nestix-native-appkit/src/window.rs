@@ -71,14 +71,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     ns_window.center();
 
     layout! {
-        ContextProvider<WindowContext>(
-            .value = window_context,
-        ) {
-            ContextProvider<TreeContext>(
-                .value = tree_context.clone(),
-            ) {
+        ContextProvider<WindowContext>(window_context) {
+            ContextProvider<TreeContext>(tree_context.clone()) {
                 ContextProvider<ParentContext>(
-                    .value = ParentContext {
+                    ParentContext {
                         add_child: Some(callback!([ns_window] |object: &NSObject, child_node: Option<NodeId>| {
                             let view = object.downcast_ref::<NSView>().unwrap();
                             ns_window.setContentView(Some(view));
