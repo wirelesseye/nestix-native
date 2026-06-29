@@ -1,8 +1,9 @@
 pub mod button;
 pub mod flex_view;
-pub mod text;
+pub mod input;
 pub mod root;
 pub mod tab_view;
+pub mod text;
 pub mod window;
 
 mod contexts;
@@ -11,9 +12,10 @@ mod utils;
 
 pub use button::*;
 pub use flex_view::*;
-pub use text::*;
+pub use input::*;
 pub use root::*;
 pub use tab_view::*;
+pub use text::*;
 pub use window::*;
 
 use nestix::create_element;
@@ -38,7 +40,7 @@ impl Backend for Win32Backend {
     }
 
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {
-        None
+        Some(create_element::<Input>(props))
     }
 
     fn create_text(&self, props: nestix_native_core::TextProps) -> Option<nestix::Element> {

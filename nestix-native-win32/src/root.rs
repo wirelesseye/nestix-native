@@ -80,15 +80,27 @@ impl AppState {
         self.windows.borrow_mut().remove(&window.0);
     }
 
-    pub(crate) fn add_control_handler(&self, control: HWND, handler: Shared<dyn Fn(u32, WPARAM, LPARAM)>) {
-        self.control_handlers.borrow_mut().insert(control.0, handler);
+    pub(crate) fn add_control_handler(
+        &self,
+        control: HWND,
+        handler: Shared<dyn Fn(u32, WPARAM, LPARAM)>,
+    ) {
+        self.control_handlers
+            .borrow_mut()
+            .insert(control.0, handler);
     }
 
     pub(crate) fn remove_control_handler(&self, control: HWND) {
         self.control_handlers.borrow_mut().remove(&control.0);
     }
 
-    pub(crate) fn handle_control_event(&self, control: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) {
+    pub(crate) fn handle_control_event(
+        &self,
+        control: HWND,
+        msg: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+    ) {
         let handler = self.control_handlers.borrow().get(&control.0).cloned();
         if let Some(handler) = handler {
             handler(msg, wparam, lparam);
