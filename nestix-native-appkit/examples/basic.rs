@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use env_logger::Env;
 use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
-use nestix_native_appkit::{Button, FlexView, Input, Text, Root, TabView, TabViewItem, Window};
+use nestix_native_appkit::{Button, FlexView, Input, Root, TabView, TabViewItem, Text, Window};
 use nestix_native_core::Direction;
 
 fn main() {

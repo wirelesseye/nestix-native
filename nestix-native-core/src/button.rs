@@ -1,11 +1,11 @@
 use nestix::{Shared, props};
 
-use crate::{ViewPropsExt, ViewProps};
+use crate::{ViewProps, ViewPropsExt, ViewPropsWrapper};
 
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct ButtonProps {
-    #[props(extends(ViewPropsExt))]
+    #[props(extends(ViewPropsExt, ViewPropsWrapper))]
     view_props: ViewProps,
 
     pub title: String,

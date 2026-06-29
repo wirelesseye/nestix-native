@@ -1,29 +1,29 @@
 use std::{cell::Cell, rc::Rc};
 
-use nestix::{callback, closure, component, scoped_effect, Element};
+use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
-    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
     Dimension, InputProps, TreeContext, ViewPropsExt,
+    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
-use taffy::{prelude::FromLength, Size, Style};
+use taffy::{Size, Style, prelude::FromLength};
 use windows::{
-    core::HSTRING,
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
         UI::{
             Controls::WC_EDIT,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, GetWindowTextLengthW, GetWindowTextW, SendMessageW,
-                SetWindowPos, SetWindowTextW, EN_CHANGE, ES_AUTOHSCROLL, SWP_NOZORDER,
+                CreateWindowExW, DestroyWindow, EN_CHANGE, ES_AUTOHSCROLL, GetWindowTextLengthW,
+                GetWindowTextW, SWP_NOZORDER, SendMessageW, SetWindowPos, SetWindowTextW,
                 WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_SETFONT, WS_BORDER, WS_CHILD,
                 WS_TABSTOP, WS_VISIBLE,
             },
         },
     },
+    core::HSTRING,
 };
 
-use crate::{contexts::ParentContext, font::ui_font, utils::hiword, AppState, WindowContext};
+use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {

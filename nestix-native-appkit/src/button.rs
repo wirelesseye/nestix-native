@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, effect};
-use nestix_native_core::{ButtonProps, Dimension, ViewPropsExt, TreeContext};
+use nestix_native_core::{ButtonProps, Dimension, TreeContext, ViewPropsExt};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
 };

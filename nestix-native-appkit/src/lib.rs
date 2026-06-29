@@ -1,9 +1,9 @@
 pub mod button;
 pub mod flex_view;
 pub mod input;
-pub mod text;
 pub mod root;
 pub mod tab_view;
+pub mod text;
 pub mod window;
 
 mod contexts;
@@ -11,9 +11,9 @@ mod contexts;
 pub use button::*;
 pub use flex_view::*;
 pub use input::*;
-pub use text::*;
 pub use root::*;
 pub use tab_view::*;
+pub use text::*;
 pub use window::*;
 
 use nestix::create_element;

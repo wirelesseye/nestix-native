@@ -3,7 +3,7 @@ use nestix::{
     Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    Alignment, Button, Direction, FlexView, Input, Text, Root, TabView, TabViewItem, Window,
+    Alignment, Button, Direction, FlexView, Input, Root, TabView, TabViewItem, Text, Window,
     view_props_builder::ViewPropsBuilderExtGrow,
 };
 

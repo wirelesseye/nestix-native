@@ -1,25 +1,25 @@
-use nestix::{closure, component, scoped_effect, Element};
+use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
     Dimension, TextProps, TreeContext, ViewPropsExt,
+    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
-use taffy::{prelude::FromLength, Size, Style};
+use taffy::{Size, Style, prelude::FromLength};
 use windows::{
-    core::HSTRING,
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
         UI::{
             Controls::WC_STATIC,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, SendMessageW, SetWindowPos, SetWindowTextW,
-                SWP_NOZORDER, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos,
+                SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
+    core::HSTRING,
 };
 
-use crate::{contexts::ParentContext, font::ui_font, WindowContext};
+use crate::{WindowContext, contexts::ParentContext, font::ui_font};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {

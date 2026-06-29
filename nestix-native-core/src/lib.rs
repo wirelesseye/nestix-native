@@ -4,9 +4,9 @@ pub mod contexts;
 pub mod dimension;
 pub mod flex_view;
 pub mod input;
-pub mod text;
 pub mod root;
 pub mod tab_view;
+pub mod text;
 pub mod view;
 pub mod window;
 
@@ -16,9 +16,9 @@ pub use contexts::*;
 pub use dimension::*;
 pub use flex_view::*;
 pub use input::*;
-pub use text::*;
 pub use root::*;
 pub use tab_view::*;
+pub use text::*;
 pub use view::*;
 pub use window::*;
 

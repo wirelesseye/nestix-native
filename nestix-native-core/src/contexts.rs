@@ -1,6 +1,9 @@
 #[cfg(feature = "taffy")]
 mod taffy {
-    use std::{cell::{Cell, RefCell}, collections::HashMap};
+    use std::{
+        cell::{Cell, RefCell},
+        collections::HashMap,
+    };
 
     use nestix::{State, create_state};
     use taffy::{NodeId, Size, Style, TaffyTree};
@@ -48,7 +51,10 @@ mod taffy {
         }
 
         pub fn insert_child(&self, parent: NodeId, child: NodeId, index: usize) {
-            self.tree.borrow_mut().insert_child_at_index(parent, index, child).unwrap();
+            self.tree
+                .borrow_mut()
+                .insert_child_at_index(parent, index, child)
+                .unwrap();
         }
 
         pub fn remove_child(&self, parent: NodeId, child: NodeId) {

@@ -28,11 +28,21 @@ pub struct RGBColor {
 
 impl RGBColor {
     pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self { red: r, green: g, blue: b, alpha: 255 }
+        Self {
+            red: r,
+            green: g,
+            blue: b,
+            alpha: 255,
+        }
     }
 
     pub const fn from_rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
-        Self { red: r, green: g, blue: b, alpha: a }
+        Self {
+            red: r,
+            green: g,
+            blue: b,
+            alpha: a,
+        }
     }
 }
 

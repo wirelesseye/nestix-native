@@ -1,6 +1,6 @@
 use nestix::{Element, component};
 
-pub use nestix_native_core::{TabViewProps, TabViewItemProps};
+pub use nestix_native_core::{TabViewItemProps, TabViewProps};
 
 use crate::BackendContext;
 
