@@ -1,29 +1,29 @@
 use std::{cell::Cell, rc::Rc};
 
-use nestix::{Element, callback, closure, component, effect};
+use nestix::{callback, closure, component, scoped_effect, Element};
 use nestix_native_core::{
-    Dimension, InputProps, TreeContext, ViewPropsExt,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    Dimension, InputProps, TreeContext, ViewPropsExt,
 };
-use taffy::{Size, Style, prelude::FromLength};
+use taffy::{prelude::FromLength, Size, Style};
 use windows::{
+    core::HSTRING,
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
         UI::{
             Controls::WC_EDIT,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, EN_CHANGE, ES_AUTOHSCROLL, GetWindowTextLengthW,
-                GetWindowTextW, SWP_NOZORDER, SendMessageW, SetWindowPos, SetWindowTextW,
+                CreateWindowExW, DestroyWindow, GetWindowTextLengthW, GetWindowTextW, SendMessageW,
+                SetWindowPos, SetWindowTextW, EN_CHANGE, ES_AUTOHSCROLL, SWP_NOZORDER,
                 WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_SETFONT, WS_BORDER, WS_CHILD,
                 WS_TABSTOP, WS_VISIBLE,
             },
         },
     },
-    core::HSTRING,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
+use crate::{contexts::ParentContext, font::ui_font, utils::hiword, AppState, WindowContext};
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
@@ -32,7 +32,6 @@ pub fn Input(props: &InputProps, element: &Element) {
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let is_setting_value = Rc::new(Cell::new(false));
-    let is_mounted = Rc::new(Cell::new(true));
 
     let value = HSTRING::from(props.value.get());
     let hwnd = unsafe {
@@ -69,10 +68,9 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     app_state.add_control_handler(
         hwnd,
-        callback!([props.on_text_change, is_setting_value, is_mounted] |msg: u32, wparam: WPARAM, _: LPARAM| {
+        callback!([props.on_text_change, is_setting_value] |msg: u32, wparam: WPARAM, _: LPARAM| {
             if msg == WM_COMMAND
                 && hiword(wparam.0 as _) as u32 == EN_CHANGE
-                && is_mounted.get()
                 && !is_setting_value.get()
                 && let Some(on_text_change) = on_text_change.get()
             {
@@ -83,8 +81,7 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
 
     element.on_unmount(closure!(
-        [parent_context, is_mounted] || {
-            is_mounted.set(false);
+        [parent_context] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
@@ -95,13 +92,10 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     ));
 
-    effect!(
-        [window_context.scale_factor, is_mounted]
+    scoped_effect!(
+        element,
+        [window_context.scale_factor]
             || unsafe {
-                if !is_mounted.get() {
-                    return;
-                }
-
                 SendMessageW(
                     hwnd,
                     WM_SETFONT,
@@ -111,12 +105,9 @@ pub fn Input(props: &InputProps, element: &Element) {
             }
     );
 
-    effect!(
-        [props.value, is_setting_value, is_mounted] || {
-            if !is_mounted.get() {
-                return;
-            }
-
+    scoped_effect!(
+        element,
+        [props.value, is_setting_value] || {
             let next_value = value.get();
             if window_text(hwnd) != next_value {
                 is_setting_value.set(true);
@@ -128,12 +119,9 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
-    effect!(
-        [tree_context, props.grow(), is_mounted] || {
-            if !is_mounted.get() {
-                return;
-            }
-
+    scoped_effect!(
+        element,
+        [tree_context, props.grow()] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -143,19 +131,15 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
             tree_context,
             props.value,
             props.width(),
-            props.height(),
-            is_mounted
+            props.height()
         ] || {
-            if !is_mounted.get() {
-                return;
-            }
-
             let scale_factor = scale_factor.get();
 
             let hds = unsafe { GetDC(Some(hwnd)) };
@@ -188,12 +172,9 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
-    effect!(
-        [window_context.scale_factor, tree_context, is_mounted] || {
-            if !is_mounted.get() {
-                return;
-            }
-
+    scoped_effect!(
+        element,
+        [window_context.scale_factor, tree_context] || {
             if let Some(layout) = tree_context.layout(node_id) {
                 let scale_factor = scale_factor.get();
                 let point = LogicalPosition::new(layout.location.x, layout.location.y)

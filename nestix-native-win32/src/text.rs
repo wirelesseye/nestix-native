@@ -1,35 +1,31 @@
-use std::{cell::Cell, rc::Rc};
-
-use nestix::{Element, closure, component, effect};
+use nestix::{closure, component, scoped_effect, Element};
 use nestix_native_core::{
-    Dimension, TextProps, TreeContext, ViewPropsExt,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    Dimension, TextProps, TreeContext, ViewPropsExt,
 };
-use taffy::{Size, Style, prelude::FromLength};
+use taffy::{prelude::FromLength, Size, Style};
 use windows::{
+    core::HSTRING,
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
         UI::{
             Controls::WC_STATIC,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos,
-                SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+                CreateWindowExW, DestroyWindow, SendMessageW, SetWindowPos, SetWindowTextW,
+                SWP_NOZORDER, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
-    core::HSTRING,
 };
 
-use crate::{WindowContext, contexts::ParentContext, font::ui_font};
+use crate::{contexts::ParentContext, font::ui_font, WindowContext};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
-    // TODO: update the `nestix` library design to clean up effects when a component is unmounted
-    let is_mounted = Rc::new(Cell::new(true));
 
     let text = HSTRING::from(props.text.get());
     let hwnd = unsafe {
@@ -65,8 +61,7 @@ pub fn Text(props: &TextProps, element: &Element) {
     ));
 
     element.on_unmount(closure!(
-        [parent_context, is_mounted] || {
-            is_mounted.set(false);
+        [parent_context] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
@@ -76,13 +71,10 @@ pub fn Text(props: &TextProps, element: &Element) {
         }
     ));
 
-    effect!(
-        [window_context.scale_factor, is_mounted]
+    scoped_effect!(
+        element,
+        [window_context.scale_factor]
             || unsafe {
-                if !is_mounted.get() {
-                    return;
-                }
-
                 SendMessageW(
                     hwnd,
                     WM_SETFONT,
@@ -92,19 +84,15 @@ pub fn Text(props: &TextProps, element: &Element) {
             }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
             tree_context,
             props.text,
             props.width(),
-            props.height(),
-            is_mounted
+            props.height()
         ] || {
-            if !is_mounted.get() {
-                return;
-            }
-
             let scale_factor = scale_factor.get();
 
             let hds = unsafe { GetDC(Some(hwnd)) };
@@ -141,12 +129,9 @@ pub fn Text(props: &TextProps, element: &Element) {
         }
     );
 
-    effect!(
-        [window_context.scale_factor, tree_context, is_mounted] || {
-            if !is_mounted.get() {
-                return;
-            }
-
+    scoped_effect!(
+        element,
+        [window_context.scale_factor, tree_context] || {
             if let Some(layout) = tree_context.layout(node_id) {
                 let scale_factor = scale_factor.get();
                 let point = LogicalPosition::new(layout.location.x, layout.location.y)
