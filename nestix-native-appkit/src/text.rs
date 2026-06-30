@@ -1,5 +1,5 @@
 use nestix::{Element, closure, component, scoped_effect};
-use nestix_native_core::{Dimension, TextProps, TreeContext, ViewPropsExt};
+use nestix_native_core::{Dimension, TextProps, TreeContext};
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
@@ -46,8 +46,8 @@ pub fn Text(props: &TextProps, element: &Element) {
             parent_context.parent_node,
             tree_context,
             label,
-            props.width(),
-            props.height()
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -82,7 +82,7 @@ pub fn Text(props: &TextProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
-            props.view_props().margin()
+            props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -97,7 +97,7 @@ pub fn Text(props: &TextProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_self()] || {
+        [tree_context, props.view.align_self] || {
             tree_context.update_style(node_id, |prev| Style {
                 align_self: align_self.get().to_taffy(),
                 ..prev
@@ -114,8 +114,8 @@ pub fn Text(props: &TextProps, element: &Element) {
             tree_context,
             label,
             props.text,
-            props.width(),
-            props.height()
+            props.view.width,
+            props.view.height,
         ] || {
             let ns_string = NSString::from_str(&text.get());
             label.setStringValue(&ns_string);

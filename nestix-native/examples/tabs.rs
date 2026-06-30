@@ -4,7 +4,6 @@ use nestix::{
 };
 use nestix_native::{
     AlignItems, Button, Direction, FlexView, Input, Root, TabView, TabViewItem, Text, Window,
-    view_props_builder::{ViewPropsBuilderExtGrow, ViewPropsBuilderExtWidth},
 };
 
 fn main() {
@@ -122,13 +121,13 @@ fn TodoList() -> Element {
                 .align_items = AlignItems::Center,
             ) {
                 Input(
+                    .view(.grow = 1.0)
                     .value = input_text,
-                    .grow = 1.0,
                     .on_text_change = on_text_change,
                 )
                 Button(.title = "Add", .on_click = add)
             }
-            FlexView(.grow = 1.0) {
+            FlexView(.view(.grow = 1.0)) {
                 for item in items where key = |item| item.0.clone() {
                     TodoListItem(
                         .data = item,
@@ -168,17 +167,17 @@ fn TodoListItem(props: &TodoListItemProps) -> Element {
     layout! {
         FlexView(.direction = Direction::Row, .align_items = AlignItems::Center) {
             Button(
-                .width = 24,
+                .view(.width = 24),
                 .title = "✕",
                 .on_click = callback!([key, props.remove] || (remove.get())(&key.get()))
             )
             Button(
-                .width = 24,
+                .view(.width = 24),
                 .title = "↑",
                 .on_click = callback!([key, props.move_up] || (move_up.get())(&key.get()))
             )
             Button(
-                .width = 24,
+                .view(.width = 24),
                 .title = "↓",
                 .on_click = callback!([key, props.move_down] || (move_down.get())(&key.get()))
             )
@@ -193,7 +192,7 @@ fn TodoListItem(props: &TodoListItemProps) -> Element {
                     .on_text_change = callback!([key, props.set_content] |value: &str| {
                         (set_content.get())(&key.get(), value.to_string());
                     }),
-                    .grow = 1.0,
+                    .view(.grow = 1.0),
                 )
             } else {
                 Text(value.clone())

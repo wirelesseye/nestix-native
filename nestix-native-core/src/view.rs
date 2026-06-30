@@ -4,7 +4,7 @@ use crate::{AlignItems, Dimension, Rect};
 
 #[props(
     debug,
-    extensible(ViewPropsExt, ViewPropsWrapper),
+    default,
     group(margin => [margin_left, margin_right, margin_top, margin_bottom]),
     group(margin_horizontal => [margin_left, margin_right]),
     group(margin_vertical => [margin_top, margin_bottom]),

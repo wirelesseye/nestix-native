@@ -4,7 +4,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout,
     scoped_effect,
 };
-use nestix_native_core::{Direction, FlexViewProps, TreeContext, ViewPropsExt, Wrap};
+use nestix_native_core::{Direction, FlexViewProps, TreeContext, Wrap};
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
@@ -89,7 +89,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.grow()] || {
+        [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -105,8 +105,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             window_context.scale_factor,
             tree_context,
             parent_context.parent_node,
-            props.width(),
-            props.height(),
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -129,7 +129,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         [
             window_context.scale_factor,
             tree_context,
-            props.view_props().margin()
+            props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -144,7 +144,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_self()] || {
+        [tree_context, props.view.align_self] || {
             tree_context.update_style(node_id, |prev| Style {
                 align_self: align_self.get().to_taffy(),
                 ..prev

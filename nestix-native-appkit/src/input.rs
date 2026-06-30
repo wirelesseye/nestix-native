@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
-use nestix_native_core::{Dimension, InputProps, TreeContext, ViewPropsExt};
+use nestix_native_core::{Dimension, InputProps, TreeContext};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -74,7 +74,7 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.grow()] || {
+        [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -91,8 +91,8 @@ pub fn Input(props: &InputProps, element: &Element) {
             tree_context,
             parent_context.parent_node,
             input,
-            props.width(),
-            props.height()
+            props.view.width,
+            props.view.height
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -127,7 +127,7 @@ pub fn Input(props: &InputProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
-            props.view_props().margin()
+            props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -142,7 +142,7 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_self()] || {
+        [tree_context, props.view.align_self] || {
             tree_context.update_style(node_id, |prev| Style {
                 align_self: align_self.get().to_taffy(),
                 ..prev

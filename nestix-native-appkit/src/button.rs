@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
-use nestix_native_core::{ButtonProps, Dimension, TreeContext, ViewPropsExt};
+use nestix_native_core::{ButtonProps, Dimension, TreeContext};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
 };
@@ -72,8 +72,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             tree_context,
             parent_context.parent_node,
             button,
-            props.width(),
-            props.height(),
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -120,7 +120,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
-            props.view_props().margin()
+            props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -135,7 +135,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_self()] || {
+        [tree_context, props.view.align_self] || {
             tree_context.update_style(node_id, |prev| Style {
                 align_self: align_self.get().to_taffy(),
                 ..prev

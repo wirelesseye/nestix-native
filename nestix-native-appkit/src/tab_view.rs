@@ -4,7 +4,7 @@ use nestix::{
     Element, Readonly, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
-use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext, ViewPropsExt};
+use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -74,7 +74,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.grow()] || {
+        [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -90,8 +90,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             window_context.scale_factor,
             tree_context,
             parent_context.parent_node,
-            props.width(),
-            props.height(),
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -114,7 +114,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         [
             window_context.scale_factor,
             tree_context,
-            props.view_props().margin()
+            props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
 
@@ -129,7 +129,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_self()] || {
+        [tree_context, props.view.align_self] || {
             tree_context.update_style(node_id, |prev| Style {
                 align_self: align_self.get().to_taffy(),
                 ..prev

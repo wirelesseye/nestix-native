@@ -1,13 +1,13 @@
 use nestix::{Element, Layout, props};
 
-use crate::{ViewProps, ViewPropsExt, ViewPropsWrapper};
+use crate::ViewProps;
 
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct TabViewProps {
-    #[props(extends(ViewPropsExt, ViewPropsWrapper))]
-    view_props: ViewProps,
-
+    #[props(nested, default)]
+    pub view: ViewProps,
+    
     #[props(default)]
     pub children: Layout,
 }
