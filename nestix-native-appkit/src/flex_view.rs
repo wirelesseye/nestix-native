@@ -1,13 +1,16 @@
 use std::cell::RefCell;
 
-use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
-use nestix_native_core::{Alignment, Direction, FlexViewProps, TreeContext, ViewPropsExt, Wrap};
+use nestix::{
+    Element, callback, closure, component, components::ContextProvider, layout,
+    scoped_effect,
+};
+use nestix_native_core::{Direction, FlexViewProps, TreeContext, ViewPropsExt, Wrap};
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
@@ -37,7 +40,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
         [view, props.background_color] || {
             if let Some(background_color) = background_color.get() {
                 if view.ivars().ns_box.borrow().is_none() {
@@ -83,7 +87,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, props.grow()] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
@@ -94,22 +99,22 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
-            window_context,
+            window_context.scale_factor,
             tree_context,
             parent_context.parent_node,
             props.width(),
             props.height(),
         ] || {
-            let scale_factor = window_context.scale_factor.get();
+            let scale_factor = scale_factor.get();
 
             if parent_node.is_some() {
-                // Update size when the node is not root
                 tree_context.update_style(node_id, |prev| Style {
                     size: Size {
-                        width: width.get().into_taffy_dimension(scale_factor),
-                        height: height.get().into_taffy_dimension(scale_factor),
+                        width: width.get().to_taffy(scale_factor),
+                        height: height.get().to_taffy(scale_factor),
                     },
                     ..prev
                 });
@@ -119,7 +124,38 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view_props().margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.align_self()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
         [tree_context, props.direction] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_direction: match direction.get() {
@@ -135,15 +171,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
-        [tree_context, props.alignment] || {
+    scoped_effect!(
+        element,
+        [tree_context, props.align_items] || {
             tree_context.update_style(node_id, |prev| Style {
-                align_items: match alignment.get() {
-                    Alignment::Unset => None,
-                    Alignment::FlexStart => Some(taffy::AlignItems::FlexStart),
-                    Alignment::FlexEnd => Some(taffy::AlignItems::FlexEnd),
-                    Alignment::Center => Some(taffy::AlignItems::Center),
-                },
+                align_items: align_items.get().to_taffy(),
                 ..prev
             });
 
@@ -151,7 +183,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, props.wrap] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_wrap: match wrap.get() {
@@ -165,15 +198,16 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, parent_context.parent_node, view] || {
-            if parent_node.is_some() {
-                if let Some(layout) = tree_context.layout(node_id) {
-                    view.setFrame(NSRect::new(
-                        NSPoint::new(layout.location.x.into(), layout.location.y.into()),
-                        NSSize::new(layout.size.width.into(), layout.size.height.into()),
-                    ));
-                }
+            if parent_node.is_some()
+                && let Some(layout) = tree_context.layout(node_id)
+            {
+                view.setFrame(NSRect::new(
+                    NSPoint::new(layout.location.x.into(), layout.location.y.into()),
+                    NSSize::new(layout.size.width.into(), layout.size.height.into()),
+                ));
             }
         }
     );

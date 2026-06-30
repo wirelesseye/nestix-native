@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use nestix::{
     Element, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
-    create_state, effect, layout,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     TreeContext, WindowProps,
@@ -55,14 +55,16 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     element.provide_handle(ns_window.as_ref() as *const NSObject);
 
-    effect!(
+    scoped_effect!(
+        element,
         [ns_window, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             ns_window.setTitle(&ns_string);
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [ns_window, props.width, props.height] || {
             ns_window.setContentSize(NSSize::new(width.get(), height.get()));
         }
@@ -75,7 +77,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             ContextProvider<TreeContext>(tree_context.clone()) {
                 ContextProvider<ParentContext>(
                     ParentContext {
-                        add_child: Some(callback!([ns_window] |object: &NSObject, child_node: Option<NodeId>| {
+                        add_child: Some(callback!([ns_window, tree_context] |object: &NSObject, child_node: Option<NodeId>| {
                             let view = object.downcast_ref::<NSView>().unwrap();
                             ns_window.setContentView(Some(view));
                             tree_context.set_root_node(child_node);
@@ -93,7 +95,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                             }
                         })),
                         insert_child: None,
-                        remove_child: None,
+                        remove_child: Some(callback!([ns_window] |_: &NSObject, _: Option<NodeId>| {
+                            ns_window.setContentView(None);
+                            tree_context.set_root_node(None);
+                        })),
                         parent_node: None,
                     }
                 ) {

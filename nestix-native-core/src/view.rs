@@ -1,8 +1,14 @@
-use nestix::props;
+use nestix::{Computed, computed, props};
 
-use crate::Dimension;
+use crate::{AlignItems, Dimension, Rect};
 
-#[props(debug, extensible(ViewPropsExt, ViewPropsWrapper))]
+#[props(
+    debug,
+    extensible(ViewPropsExt, ViewPropsWrapper),
+    group(margin => [margin_left, margin_right, margin_top, margin_bottom]),
+    group(margin_horizontal => [margin_left, margin_right]),
+    group(margin_vertical => [margin_top, margin_bottom]),
+)]
 #[derive(Debug, Clone)]
 pub struct ViewProps {
     #[props(default = Dimension::Auto)]
@@ -26,4 +32,18 @@ pub struct ViewProps {
 
     #[props(default = 0.0)]
     pub grow: f32,
+    #[props(default = AlignItems::Unset)]
+    pub align_self: AlignItems,
+}
+
+impl ViewProps {
+    pub fn margin(&self) -> Computed<Rect<Dimension>> {
+        computed!([this: self] || {
+            let top = this.margin_top.get();
+            let bottom = this.margin_bottom.get();
+            let left = this.margin_left.get();
+            let right = this.margin_right.get();
+            Rect { top, bottom, left, right }
+        })
+    }
 }

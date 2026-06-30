@@ -7,7 +7,8 @@ use crate::{ViewProps, ViewPropsExt, ViewPropsWrapper};
 pub struct ButtonProps {
     #[props(extends(ViewPropsExt, ViewPropsWrapper))]
     view_props: ViewProps,
-
+    
+    #[props(default)]
     pub title: String,
 
     pub on_click: Option<Shared<dyn Fn()>>,

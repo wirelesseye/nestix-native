@@ -1,15 +1,15 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use nestix::{Element, PropValue, Shared, closure, component, effect};
+use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{ButtonProps, Dimension, TreeContext, ViewPropsExt};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
 };
 use objc2_app_kit::NSButton;
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
-use taffy::{LengthPercentageAuto, Rect, Size, Style, prelude::FromLength};
+use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<ButtonHandler>>> = RefCell::new(HashMap::new());
@@ -57,7 +57,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     ));
 
     element.on_unmount(closure!(
-        [parent_context, button] || {
+        [button, parent_context] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&button, Some(node_id));
             }
@@ -65,34 +65,17 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         }
     ));
 
-    // effect!(
-    //     [button, window_context.scale_factor, props.left(), props.top()] || {
-    //         let scale_factor = scale_factor.get();
-    //         let x: f64 = match left.get() {
-    //             Dimension::Auto => 0.0,
-    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-    //         };
-    //         let y: f64 = match top.get() {
-    //             Dimension::Auto => 0.0,
-    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-    //         };
-    //         button.setFrameOrigin(NSPoint::new(x, y));
-    //     }
-    // );
-
-    effect!(
+    scoped_effect!(
+        element,
         [
-            window_context,
+            window_context.scale_factor,
             tree_context,
+            parent_context.parent_node,
             button,
             props.width(),
             props.height(),
-            props.margin_left(),
-            props.margin_right(),
-            props.margin_top(),
-            props.margin_bottom(),
         ] || {
-            let scale_factor = window_context.scale_factor.get();
+            let scale_factor = scale_factor.get();
 
             if width.get().is_auto() || height.get().is_auto() {
                 button.sizeToFit();
@@ -118,17 +101,31 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
+            if parent_node.is_some() {
+                tree_context.update_style(node_id, |prev| Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(width),
+                        height: taffy::Dimension::from_length(height),
+                    },
+                    ..prev
+                });
+            }
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view_props().margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
             tree_context.update_style(node_id, |prev| Style {
-                size: Size {
-                    width: taffy::Dimension::from_length(width),
-                    height: taffy::Dimension::from_length(height),
-                },
-                margin: Rect {
-                    left: margin_to_taffy(margin_left.get(), scale_factor),
-                    right: margin_to_taffy(margin_right.get(), scale_factor),
-                    top: margin_to_taffy(margin_top.get(), scale_factor),
-                    bottom: margin_to_taffy(margin_bottom.get(), scale_factor),
-                },
+                margin: margin_to_taffy(margin.get(), scale_factor),
                 ..prev
             });
 
@@ -136,9 +133,24 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         }
     );
 
-    effect!(
-        [tree_context, button] || {
-            if let Some(layout) = tree_context.layout(node_id) {
+    scoped_effect!(
+        element,
+        [tree_context, props.align_self()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, parent_context.parent_node, button] || {
+            if parent_node.is_some()
+                && let Some(layout) = tree_context.layout(node_id)
+            {
                 button.setFrame(NSRect::new(
                     NSPoint::new(
                         (layout.location.x - NATIVE_BUTTON_MARGIN_LEFT_OFFSET).into(),
@@ -159,21 +171,13 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [button, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             button.setTitle(&ns_string);
         }
     );
-}
-
-fn margin_to_taffy(margin: Dimension, scale_factor: f64) -> LengthPercentageAuto {
-    match margin {
-        Dimension::Auto => LengthPercentageAuto::length(0.0),
-        Dimension::Length(pixel_unit) => {
-            LengthPercentageAuto::from_length(pixel_unit.to_logical::<f32>(scale_factor))
-        }
-    }
 }
 
 #[derive(Debug)]

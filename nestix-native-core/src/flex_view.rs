@@ -2,7 +2,7 @@ use nestix::{Layout, props};
 
 use crate::{Color, ViewProps, ViewPropsExt, ViewPropsWrapper};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Row,
     RowReverse,
@@ -10,15 +10,35 @@ pub enum Direction {
     ColumnReverse,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Alignment {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlignItems {
     Unset,
+    Start,
+    End,
     FlexStart,
     FlexEnd,
     Center,
+    Baseline,
+    Stretch,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg(feature = "taffy")]
+impl AlignItems {
+    pub fn to_taffy(&self) -> Option<taffy::AlignItems> {
+        match self {
+            AlignItems::Unset => None,
+            AlignItems::FlexStart => Some(taffy::AlignItems::FlexStart),
+            AlignItems::FlexEnd => Some(taffy::AlignItems::FlexEnd),
+            AlignItems::Center => Some(taffy::AlignItems::Center),
+            AlignItems::Start => Some(taffy::AlignItems::Start),
+            AlignItems::End => Some(taffy::AlignItems::End),
+            AlignItems::Baseline => Some(taffy::AlignItems::Baseline),
+            AlignItems::Stretch => Some(taffy::AlignItems::Stretch),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Wrap {
     NoWrap,
     Wrap,
@@ -35,8 +55,8 @@ pub struct FlexViewProps {
 
     #[props(default = Direction::Column)]
     pub direction: Direction,
-    #[props(default = Alignment::Unset)]
-    pub alignment: Alignment,
+    #[props(default = AlignItems::Unset)]
+    pub align_items: AlignItems,
     #[props(default = Wrap::NoWrap)]
     pub wrap: Wrap,
 

@@ -1,11 +1,11 @@
-use nestix::{Element, closure, component, effect};
+use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{Dimension, TextProps, TreeContext, ViewPropsExt};
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
@@ -39,23 +39,11 @@ pub fn Text(props: &TextProps, element: &Element) {
         }
     ));
 
-    // effect!(
-    //     [window_context.scale_factor, props.x(), props.y()] || {
-    //         let scale_factor = scale_factor.get();
-    //         let x: f64 = match x.get() {
-    //             Dimension::Auto => 0.0,
-    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-    //         };
-    //         let y: f64 = match y.get() {
-    //             Dimension::Auto => 0.0,
-    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-    //         };
-    //     }
-    // );
-
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
+            parent_context.parent_node,
             tree_context,
             label,
             props.width(),
@@ -75,11 +63,31 @@ pub fn Text(props: &TextProps, element: &Element) {
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
+            if parent_node.is_some() {
+                tree_context.update_style(node_id, |prev| Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(width),
+                        height: taffy::Dimension::from_length(height),
+                    },
+                    ..prev
+                });
+            }
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view_props().margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
             tree_context.update_style(node_id, |prev| Style {
-                size: Size {
-                    width: taffy::Dimension::from_length(width),
-                    height: taffy::Dimension::from_length(height),
-                },
+                margin: margin_to_taffy(margin.get(), scale_factor),
                 ..prev
             });
 
@@ -87,7 +95,20 @@ pub fn Text(props: &TextProps, element: &Element) {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
+        [tree_context, props.align_self()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -129,9 +150,12 @@ pub fn Text(props: &TextProps, element: &Element) {
         }
     );
 
-    effect!(
-        [tree_context, label] || {
-            if let Some(layout) = tree_context.layout(node_id) {
+    scoped_effect!(
+        element,
+        [tree_context, parent_context.parent_node, label] || {
+            if parent_node.is_some()
+                && let Some(layout) = tree_context.layout(node_id)
+            {
                 label.setFrame(NSRect::new(
                     NSPoint::new(layout.location.x.into(), layout.location.y.into()),
                     NSSize::new(layout.size.width.into(), layout.size.height.into()),

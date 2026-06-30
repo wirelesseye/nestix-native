@@ -122,8 +122,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 // Update size when the node is not root
                 tree_context.update_style(node_id, |prev| Style {
                     size: Size {
-                        width: width.get().into_taffy_dimension(scale_factor),
-                        height: height.get().into_taffy_dimension(scale_factor),
+                        width: width.get().to_taffy(scale_factor),
+                        height: height.get().to_taffy(scale_factor),
                     },
                     ..prev
                 });

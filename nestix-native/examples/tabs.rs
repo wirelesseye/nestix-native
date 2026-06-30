@@ -3,8 +3,8 @@ use nestix::{
     Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    Alignment, Button, Direction, FlexView, Input, Root, TabView, TabViewItem, Text, Window,
-    view_props_builder::{ViewPropsBuilderExtGrow},
+    AlignItems, Button, Direction, FlexView, Input, Root, TabView, TabViewItem, Text, Window,
+    view_props_builder::{ViewPropsBuilderExtGrow, ViewPropsBuilderExtWidth},
 };
 
 fn main() {
@@ -51,7 +51,7 @@ fn Counter() -> Element {
                 .title = "Click",
                 .on_click = callback!([count] || {
                     count.mutate(|count| *count += 1);
-                })
+                }),
             )
             if count.get() % 2 == 0 {
                 Text("Is Even!")
@@ -119,12 +119,12 @@ fn TodoList() -> Element {
         FlexView {
             FlexView(
                 .direction = Direction::Row,
-                .alignment = Alignment::Center
+                .align_items = AlignItems::Center,
             ) {
                 Input(
                     .value = input_text,
                     .grow = 1.0,
-                    .on_text_change = on_text_change
+                    .on_text_change = on_text_change,
                 )
                 Button(.title = "Add", .on_click = add)
             }
@@ -166,16 +166,19 @@ fn TodoListItem(props: &TodoListItemProps) -> Element {
     let value = computed!([props.data] || data.get().1);
 
     layout! {
-        FlexView(.direction = Direction::Row) {
+        FlexView(.direction = Direction::Row, .align_items = AlignItems::Center) {
             Button(
+                .width = 24,
                 .title = "✕",
                 .on_click = callback!([key, props.remove] || (remove.get())(&key.get()))
             )
             Button(
+                .width = 24,
                 .title = "↑",
                 .on_click = callback!([key, props.move_up] || (move_up.get())(&key.get()))
             )
             Button(
+                .width = 24,
                 .title = "↓",
                 .on_click = callback!([key, props.move_down] || (move_down.get())(&key.get()))
             )

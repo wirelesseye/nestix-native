@@ -7,6 +7,7 @@ pub mod text;
 pub mod window;
 
 mod contexts;
+mod utils;
 
 pub use button::*;
 pub use flex_view::*;

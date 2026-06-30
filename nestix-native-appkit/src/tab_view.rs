@@ -2,18 +2,18 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{
     Element, Readonly, State, callback, closure, component, components::ContextProvider,
-    create_state, effect, layout,
+    create_state, layout, scoped_effect,
 };
-use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext};
+use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext, ViewPropsExt};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
 };
 use objc2_app_kit::{NSTabView, NSTabViewDelegate, NSTabViewItem, NSView};
-use objc2_foundation::{NSObject, NSObjectProtocol, NSString};
+use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
-use crate::contexts::ParentContext;
+use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<TabViewDelegate>>> = RefCell::new(HashMap::new());
@@ -25,6 +25,7 @@ struct TabViewContext {
 
 #[component]
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
+    let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
 
@@ -63,13 +64,94 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     ));
 
     element.on_unmount(closure!(
-        [view] || {
+        [view, parent_context] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&view, Some(node_id));
             }
             DELEGATES.with_borrow_mut(|delegates| delegates.remove(&tab_view_id));
         }
     ));
+
+    scoped_effect!(
+        element,
+        [tree_context, props.grow()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                flex_grow: grow.get(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            parent_context.parent_node,
+            props.width(),
+            props.height(),
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            if parent_node.is_some() {
+                tree_context.update_style(node_id, |prev| Style {
+                    size: Size {
+                        width: width.get().to_taffy(scale_factor),
+                        height: height.get().to_taffy(scale_factor),
+                    },
+                    ..prev
+                });
+            }
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view_props().margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.align_self()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, parent_context.parent_node, view] || {
+            if parent_node.is_some()
+                && let Some(layout) = tree_context.layout(node_id)
+            {
+                view.setFrame(NSRect::new(
+                    NSPoint::new(layout.location.x.into(), layout.location.y.into()),
+                    NSSize::new(layout.size.width.into(), layout.size.height.into()),
+                ));
+            }
+        }
+    );
 
     layout! {
         ContextProvider<TabViewContext>(
@@ -172,7 +254,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             props.id,
             tab_view_context.current_selected,
@@ -195,14 +278,16 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [item, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             item.setLabel(&ns_string);
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             tree_context,
             subtree_context,

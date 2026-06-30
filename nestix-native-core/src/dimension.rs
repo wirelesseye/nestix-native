@@ -26,7 +26,7 @@ impl From<i32> for Dimension {
 
 #[cfg(feature = "taffy")]
 impl Dimension {
-    pub fn into_taffy_dimension(self, scale_factor: f64) -> taffy::Dimension {
+    pub fn to_taffy(&self, scale_factor: f64) -> taffy::Dimension {
         use taffy::prelude::FromLength;
 
         match self {
@@ -35,8 +35,16 @@ impl Dimension {
                 PixelUnit::Physical(physical_unit) => {
                     taffy::Dimension::from_length(physical_unit.to_logical::<f32>(scale_factor))
                 }
-                PixelUnit::Logical(logical_unit) => taffy::Dimension::from_length(logical_unit),
+                PixelUnit::Logical(logical_unit) => taffy::Dimension::from_length(*logical_unit),
             },
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Rect<T> {
+    pub top: T,
+    pub bottom: T,
+    pub left: T,
+    pub right: T,
 }

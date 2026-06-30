@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use nestix::{Element, PropValue, Shared, closure, component, effect};
+use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{Dimension, InputProps, TreeContext, ViewPropsExt};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
@@ -12,7 +12,7 @@ use objc2_foundation::{
 };
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<InputDelegate>>> = RefCell::new(HashMap::new());
@@ -64,34 +64,16 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
         [input, props.value] || {
             let string_value = NSString::from_str(&value.get());
             input.setStringValue(&string_value);
         }
     );
 
-    // effect!(
-    //     [
-    //         input,
-    //         window_context.scale_factor,
-    //         props.left(),
-    //         props.top()
-    //     ] || {
-    //         let scale_factor = scale_factor.get();
-    //         let x: f64 = match left.get() {
-    //             Dimension::Auto => 0.0,
-    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-    //         };
-    //         let y: f64 = match top.get() {
-    //             Dimension::Auto => 0.0,
-    //             Dimension::Length(pixel_unit) => pixel_unit.to_logical(scale_factor).0,
-    //         };
-    //         input.setFrameOrigin(NSPoint::new(x, y));
-    //     }
-    // );
-
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, props.grow()] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
@@ -102,9 +84,17 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
-    effect!(
-        [tree_context, input, props.width(), props.height()] || {
-            let scale_factor = window_context.scale_factor.get();
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            parent_context.parent_node,
+            input,
+            props.width(),
+            props.height()
+        ] || {
+            let scale_factor = scale_factor.get();
 
             if width.get().is_auto() || height.get().is_auto() {
                 input.sizeToFit();
@@ -118,11 +108,31 @@ pub fn Input(props: &InputProps, element: &Element) {
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
+            if parent_node.is_some() {
+                tree_context.update_style(node_id, |prev| Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(width),
+                        height: taffy::Dimension::from_length(height),
+                    },
+                    ..prev
+                });
+            }
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view_props().margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
             tree_context.update_style(node_id, |prev| Style {
-                size: Size {
-                    width: taffy::Dimension::from_length(width),
-                    height: taffy::Dimension::from_length(height),
-                },
+                margin: margin_to_taffy(margin.get(), scale_factor),
                 ..prev
             });
 
@@ -130,9 +140,24 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
-    effect!(
-        [tree_context, input] || {
-            if let Some(layout) = tree_context.layout(node_id) {
+    scoped_effect!(
+        element,
+        [tree_context, props.align_self()] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, parent_context.parent_node, input] || {
+            if parent_node.is_some()
+                && let Some(layout) = tree_context.layout(node_id)
+            {
                 input.setFrame(NSRect::new(
                     NSPoint::new(layout.location.x.into(), layout.location.y.into()),
                     NSSize::new(layout.size.width.into(), layout.size.height.into()),
