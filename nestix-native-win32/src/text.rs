@@ -1,6 +1,6 @@
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    Dimension, TextProps, TreeContext, ViewPropsExt,
+    Dimension, TextProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -90,8 +90,8 @@ pub fn Text(props: &TextProps, element: &Element) {
             window_context.scale_factor,
             tree_context,
             props.text,
-            props.width(),
-            props.height()
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 

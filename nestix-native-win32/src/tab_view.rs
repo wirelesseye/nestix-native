@@ -5,7 +5,7 @@ use nestix::{
     effect, layout,
 };
 use nestix_native_core::{
-    TabViewItemProps, TabViewProps, TreeContext, ViewPropsExt,
+    TabViewItemProps, TabViewProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalSize},
 };
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
@@ -136,7 +136,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     effect!(
-        [tree_context, props.grow()] || {
+        [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -151,8 +151,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             window_context,
             tree_context,
             parent_context.parent_node,
-            props.width(),
-            props.height(),
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = window_context.scale_factor.get();
 

@@ -2,7 +2,7 @@ use std::{cell::Cell, rc::Rc};
 
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
-    Dimension, InputProps, TreeContext, ViewPropsExt,
+    Dimension, InputProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -121,7 +121,7 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.grow()] || {
+        [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -137,8 +137,8 @@ pub fn Input(props: &InputProps, element: &Element) {
             window_context.scale_factor,
             tree_context,
             props.value,
-            props.width(),
-            props.height()
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 

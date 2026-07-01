@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, sync::Once};
 
 use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
 use nestix_native_core::{
-    Alignment, Direction, FlexViewProps, TreeContext, ViewPropsExt, Wrap,
+    Direction, FlexViewProps, TreeContext, Wrap,
     dpi::{LogicalPosition, LogicalSize},
 };
 use taffy::{NodeId, Size, Style};
@@ -98,7 +98,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     ));
 
     effect!(
-        [tree_context, props.grow()] || {
+        [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
                 ..prev
@@ -113,8 +113,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             window_context,
             tree_context,
             parent_context.parent_node,
-            props.width(),
-            props.height(),
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = window_context.scale_factor.get();
 
@@ -150,14 +150,9 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     effect!(
-        [tree_context, props.alignment] || {
+        [tree_context, props.align_items] || {
             tree_context.update_style(node_id, |prev| Style {
-                align_items: match alignment.get() {
-                    Alignment::Unset => None,
-                    Alignment::FlexStart => Some(taffy::AlignItems::FlexStart),
-                    Alignment::FlexEnd => Some(taffy::AlignItems::FlexEnd),
-                    Alignment::Center => Some(taffy::AlignItems::Center),
-                },
+                align_items: align_items.get().to_taffy(),
                 ..prev
             });
 

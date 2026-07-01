@@ -1,6 +1,6 @@
 use nestix::{Element, callback, closure, component, effect};
 use nestix_native_core::{
-    ButtonProps, Dimension, TreeContext, ViewPropsExt,
+    ButtonProps, Dimension, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
@@ -106,8 +106,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             window_context.scale_factor,
             tree_context,
             props.title,
-            props.width(),
-            props.height()
+            props.view.width,
+            props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
 
