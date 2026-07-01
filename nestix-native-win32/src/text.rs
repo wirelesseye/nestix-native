@@ -19,7 +19,7 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{WindowContext, contexts::ParentContext, font::ui_font};
+use crate::{WindowContext, contexts::ParentContext, font::ui_font, utils::margin_to_taffy};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
@@ -96,16 +96,16 @@ pub fn Text(props: &TextProps, element: &Element) {
             let scale_factor = scale_factor.get();
 
             let hds = unsafe { GetDC(Some(hwnd)) };
-            let text = HSTRING::from(text.get());
+            let string = HSTRING::from(text.get());
             unsafe {
-                SetWindowTextW(hwnd, &text).unwrap();
+                SetWindowTextW(hwnd, &string).unwrap();
             }
 
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);
                 SelectObject(hds, font.into());
-                GetTextExtentPoint32W(hds, &text, &mut size).unwrap();
+                GetTextExtentPoint32W(hds, &string, &mut size).unwrap();
                 DeleteObject(font.into()).unwrap();
             }
 
@@ -125,6 +125,36 @@ pub fn Text(props: &TextProps, element: &Element) {
                 },
                 ..prev
             });
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view.margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.view.align_self] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
             tree_context.refresh();
         }
     );

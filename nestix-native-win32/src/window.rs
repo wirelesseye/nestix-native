@@ -2,7 +2,7 @@ use std::{cell::Cell, rc::Rc, sync::Once};
 
 use nestix::{
     Element, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
-    create_state, effect, layout,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     TreeContext, WindowProps,
@@ -95,7 +95,16 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         scale_factor.set(value);
     }
 
-    effect!(
+    scoped_effect!(
+        element,
+        [props.title]
+            || unsafe {
+                SetWindowTextW(hwnd, &HSTRING::from(title.get())).unwrap();
+            }
+    );
+
+    scoped_effect!(
+        element,
         [scale_factor, props.width, props.height]
             || unsafe {
                 let mut rect_client = RECT::default();

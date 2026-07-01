@@ -1,7 +1,7 @@
-use nestix::{Element, callback, closure, component, effect};
+use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
     ButtonProps, Dimension, TreeContext,
-    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    dpi::{LogicalPosition, LogicalSize, LogicalUnit, PhysicalUnit},
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
@@ -12,14 +12,23 @@ use windows::{
             Controls::WC_BUTTON,
             WindowsAndMessaging::{
                 BN_CLICKED, CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW,
-                SetWindowPos, WINDOW_EX_STYLE, WM_COMMAND, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+                SetWindowPos, SetWindowTextW, WINDOW_EX_STYLE, WM_COMMAND, WM_SETFONT, WS_CHILD,
+                WS_VISIBLE,
             },
         },
     },
     core::HSTRING,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
+use crate::{
+    AppState, WindowContext,
+    contexts::ParentContext,
+    font::ui_font,
+    utils::{hiword, margin_to_taffy},
+};
+
+const DEFAULT_PADDING_X: f32 = 10.0;
+const DEFAULT_PADDING_Y: f32 = 3.0;
 
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
@@ -89,7 +98,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
         [window_context.scale_factor]
             || unsafe {
                 SendMessageW(
@@ -101,7 +111,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -112,21 +123,33 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             let scale_factor = scale_factor.get();
 
             let hds = unsafe { GetDC(Some(hwnd)) };
-            let text = HSTRING::from(title.get());
+            let title = title.get();
+            let string = HSTRING::from(&title);
+            unsafe {
+                SetWindowTextW(hwnd, &string).unwrap();
+            }
+
+            let mesure_string = HSTRING::from(if title.is_empty() { "t" } else { &title });
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);
                 SelectObject(hds, font.into());
-                GetTextExtentPoint32W(hds, &text, &mut size).unwrap();
+                GetTextExtentPoint32W(hds, &mesure_string, &mut size).unwrap();
                 DeleteObject(font.into()).unwrap();
             }
 
             let width = match width.get() {
-                Dimension::Auto => PhysicalUnit::new(size.cx).to_logical(scale_factor),
+                Dimension::Auto => LogicalUnit::new(
+                    PhysicalUnit::new(size.cx).to_logical::<f32>(scale_factor).0
+                        + DEFAULT_PADDING_X * 2.0,
+                ),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor),
             };
             let height = match height.get() {
-                Dimension::Auto => PhysicalUnit::new(size.cy).to_logical(scale_factor),
+                Dimension::Auto => LogicalUnit::new(
+                    PhysicalUnit::new(size.cy).to_logical::<f32>(scale_factor).0
+                        + DEFAULT_PADDING_Y * 2.0,
+                ),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor).into(),
             };
 
@@ -141,7 +164,38 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view.margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.view.align_self] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
         [window_context.scale_factor, tree_context] || {
             if let Some(layout) = tree_context.layout(node_id) {
                 let scale_factor = scale_factor.get();

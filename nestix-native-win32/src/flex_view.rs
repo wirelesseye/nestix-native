@@ -1,6 +1,8 @@
-use std::{cell::RefCell, rc::Rc, sync::Once};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Once};
 
-use nestix::{Element, callback, closure, component, components::ContextProvider, effect, layout};
+use nestix::{
+    Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
+};
 use nestix_native_core::{
     Direction, FlexViewProps, TreeContext, Wrap,
     dpi::{LogicalPosition, LogicalSize},
@@ -8,22 +10,30 @@ use nestix_native_core::{
 use taffy::{NodeId, Size, Style};
 use windows::{
     Win32::{
-        Foundation::{HMODULE, HWND, LPARAM, LRESULT, WPARAM},
-        Graphics::Gdi::{COLOR_BTNFACE, HBRUSH},
+        Foundation::{COLORREF, HMODULE, HWND, LPARAM, LRESULT, RECT, WPARAM},
+        Graphics::Gdi::{
+            COLOR_BTNFACE, CreateSolidBrush, DeleteObject, FillRect, HBRUSH, InvalidateRect,
+        },
         System::LibraryLoader::GetModuleHandleW,
         UI::{
             Controls::NMHDR,
             WindowsAndMessaging::{
-                CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow, IDC_ARROW,
-                LoadCursorW, RegisterClassW, SWP_NOZORDER, SetWindowPos, WINDOW_EX_STYLE,
-                WM_COMMAND, WM_NOTIFY, WNDCLASSW, WS_CHILD, WS_VISIBLE,
+                CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow,
+                GetClientRect, IDC_ARROW, LoadCursorW, RegisterClassW, SWP_NOZORDER, SetWindowPos,
+                WINDOW_EX_STYLE, WM_COMMAND, WM_ERASEBKGND, WM_NOTIFY, WNDCLASSW, WS_CHILD,
+                WS_VISIBLE,
             },
         },
     },
     core::{PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext, shared_app_state};
+use crate::{WindowContext, contexts::ParentContext, shared_app_state, utils::margin_to_taffy};
+
+thread_local! {
+    static BACKGROUND_BRUSHES: RefCell<HashMap<*mut std::ffi::c_void, HBRUSH>> =
+        RefCell::new(HashMap::new());
+}
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeFlexView");
@@ -88,6 +98,13 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     element.on_unmount(closure!(
         [parent_context] || {
+            if let Some(brush) =
+                BACKGROUND_BRUSHES.with_borrow_mut(|brushes| brushes.remove(&hwnd.0))
+            {
+                unsafe {
+                    DeleteObject(brush.into()).unwrap();
+                }
+            }
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
@@ -97,7 +114,38 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
+        [props.background_color] || {
+            if let Some(brush) =
+                BACKGROUND_BRUSHES.with_borrow_mut(|brushes| brushes.remove(&hwnd.0))
+            {
+                unsafe {
+                    DeleteObject(brush.into()).unwrap();
+                }
+            }
+
+            if let Some(background_color) = background_color.get() {
+                let rgb = background_color.into_rgb();
+                if rgb.alpha > 0 {
+                    let color = COLORREF(
+                        rgb.red as u32 | ((rgb.green as u32) << 8) | ((rgb.blue as u32) << 16),
+                    );
+                    let brush = unsafe { CreateSolidBrush(color) };
+                    BACKGROUND_BRUSHES.with_borrow_mut(|brushes| {
+                        brushes.insert(hwnd.0, brush);
+                    });
+                }
+            }
+
+            unsafe {
+                let _ = InvalidateRect(Some(hwnd), None, true);
+            }
+        }
+    );
+
+    scoped_effect!(
+        element,
         [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
@@ -108,7 +156,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context,
             tree_context,
@@ -133,7 +182,38 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view.margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.view.align_self] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
         [tree_context, props.direction] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_direction: match direction.get() {
@@ -149,7 +229,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, props.align_items] || {
             tree_context.update_style(node_id, |prev| Style {
                 align_items: align_items.get().to_taffy(),
@@ -160,7 +241,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, props.wrap] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_wrap: match wrap.get() {
@@ -174,7 +256,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -249,6 +332,21 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
+            WM_ERASEBKGND => {
+                if let Some(brush) =
+                    BACKGROUND_BRUSHES.with_borrow(|brushes| brushes.get(&hwnd.0).copied())
+                {
+                    let hdc = windows::Win32::Graphics::Gdi::HDC(wparam.0 as _);
+                    let mut rect = RECT::default();
+                    GetClientRect(hwnd, &mut rect).unwrap();
+                    FillRect(hdc, &rect, brush);
+
+                    LRESULT(1)
+                } else {
+                    DefWindowProcW(hwnd, msg, wparam, lparam)
+                }
+            }
+
             WM_NOTIFY => {
                 let app_state = shared_app_state();
                 let phdr = &*(lparam.0 as *const NMHDR);

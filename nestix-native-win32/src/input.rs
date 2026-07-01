@@ -1,5 +1,3 @@
-use std::{cell::Cell, rc::Rc};
-
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
     Dimension, InputProps, TreeContext,
@@ -23,7 +21,12 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
+use crate::{
+    AppState, WindowContext,
+    contexts::ParentContext,
+    font::ui_font,
+    utils::{hiword, margin_to_taffy},
+};
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
@@ -31,7 +34,6 @@ pub fn Input(props: &InputProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
-    let is_setting_value = Rc::new(Cell::new(false));
 
     let value = HSTRING::from(props.value.get());
     let hwnd = unsafe {
@@ -68,10 +70,9 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     app_state.add_control_handler(
         hwnd,
-        callback!([props.on_text_change, is_setting_value] |msg: u32, wparam: WPARAM, _: LPARAM| {
+        callback!([props.on_text_change] |msg: u32, wparam: WPARAM, _: LPARAM| {
             if msg == WM_COMMAND
                 && hiword(wparam.0 as _) as u32 == EN_CHANGE
-                && !is_setting_value.get()
                 && let Some(on_text_change) = on_text_change.get()
             {
                 let text = window_text(hwnd);
@@ -107,20 +108,6 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [props.value, is_setting_value] || {
-            let next_value = value.get();
-            if window_text(hwnd) != next_value {
-                is_setting_value.set(true);
-                unsafe {
-                    SetWindowTextW(hwnd, &HSTRING::from(next_value)).unwrap();
-                }
-                is_setting_value.set(false);
-            }
-        }
-    );
-
-    scoped_effect!(
-        element,
         [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
@@ -142,13 +129,21 @@ pub fn Input(props: &InputProps, element: &Element) {
         ] || {
             let scale_factor = scale_factor.get();
 
+            let value = value.get();
+            let string = HSTRING::from(&value);
+            if window_text(hwnd) != value {
+                unsafe {
+                    SetWindowTextW(hwnd, &string).unwrap();
+                }
+            }
+
             let hds = unsafe { GetDC(Some(hwnd)) };
-            let text = HSTRING::from(value.get());
+            let mesure_string = HSTRING::from(if value.is_empty() { "t" } else { &value });
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);
                 SelectObject(hds, font.into());
-                GetTextExtentPoint32W(hds, &text, &mut size).unwrap();
+                GetTextExtentPoint32W(hds, &mesure_string, &mut size).unwrap();
                 DeleteObject(font.into()).unwrap();
             }
 
@@ -168,6 +163,36 @@ pub fn Input(props: &InputProps, element: &Element) {
                 },
                 ..prev
             });
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view.margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.view.align_self] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
             tree_context.refresh();
         }
     );

@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc, sync::Once};
 
 use nestix::{
     Element, State, callback, closure, component, components::ContextProvider, create_state,
-    effect, layout,
+    layout, scoped_effect,
 };
 use nestix_native_core::{
     TabViewItemProps, TabViewProps, TreeContext,
@@ -28,7 +28,9 @@ use windows::{
     core::PWSTR,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font};
+use crate::{
+    AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::margin_to_taffy,
+};
 
 fn init_common_controls() {
     static ONCE: Once = Once::new();
@@ -123,7 +125,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
         [window_context.scale_factor]
             || unsafe {
                 SendMessageW(
@@ -135,7 +138,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
@@ -146,7 +150,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             window_context,
             tree_context,
@@ -171,7 +176,38 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            props.view.margin()
+        ] || {
+            let scale_factor = scale_factor.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                margin: margin_to_taffy(margin.get(), scale_factor),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, props.view.align_self] || {
+            tree_context.update_style(node_id, |prev| Style {
+                align_self: align_self.get().to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -295,7 +331,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         }
     ));
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             parent_context.parent_hwnd,
             tab_view_context,
@@ -315,7 +352,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [tab_view_context.current_selected, props.id, subtree_root]
             || unsafe {
                 if current_selected.get() == Some(id.get()) {
@@ -330,7 +368,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
             }
     );
 
-    effect!(
+    scoped_effect!(
+        element,
         [
             tree_context,
             subtree_context,
