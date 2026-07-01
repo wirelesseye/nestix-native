@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 
 use nestix::{
-    Element, callback, closure, component, components::ContextProvider, layout,
-    scoped_effect,
+    Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{Direction, FlexViewProps, TreeContext, Wrap};
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};

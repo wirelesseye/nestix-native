@@ -7,7 +7,7 @@ use crate::ViewProps;
 pub struct TabViewProps {
     #[props(nested, default)]
     pub view: ViewProps,
-    
+
     #[props(default)]
     pub children: Layout,
 }

@@ -66,14 +66,6 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [input, props.value] || {
-            let string_value = NSString::from_str(&value.get());
-            input.setStringValue(&string_value);
-        }
-    );
-
-    scoped_effect!(
-        element,
         [tree_context, props.view.grow] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_grow: grow.get(),
@@ -92,19 +84,21 @@ pub fn Input(props: &InputProps, element: &Element) {
             parent_context.parent_node,
             input,
             props.view.width,
-            props.view.height
+            props.view.height,
+            props.value,
         ] || {
             let scale_factor = scale_factor.get();
+            let string_value = NSString::from_str(&value.get());
+            input.setStringValue(&string_value);
 
-            if width.get().is_auto() || height.get().is_auto() {
-                input.sizeToFit();
-            }
+            let intrinsic_size = (width.get().is_auto() || height.get().is_auto())
+                .then(|| input.intrinsicContentSize());
             let width = match width.get() {
-                Dimension::Auto => input.frame().size.width as f32,
+                Dimension::Auto => intrinsic_size.unwrap().width as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
             let height = match height.get() {
-                Dimension::Auto => input.frame().size.height as f32,
+                Dimension::Auto => intrinsic_size.unwrap().height as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
@@ -158,10 +152,11 @@ pub fn Input(props: &InputProps, element: &Element) {
             if parent_node.is_some()
                 && let Some(layout) = tree_context.layout(node_id)
             {
-                input.setFrame(NSRect::new(
+                let alignment_rect = NSRect::new(
                     NSPoint::new(layout.location.x.into(), layout.location.y.into()),
                     NSSize::new(layout.size.width.into(), layout.size.height.into()),
-                ));
+                );
+                input.setFrame(input.frameForAlignmentRect(alignment_rect));
             }
         }
     );

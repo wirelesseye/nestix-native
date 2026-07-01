@@ -15,11 +15,6 @@ thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<ButtonHandler>>> = RefCell::new(HashMap::new());
 }
 
-const NATIVE_BUTTON_MARGIN_LEFT_OFFSET: f32 = 6.0;
-const NATIVE_BUTTON_MARGIN_RIGHT_OFFSET: f32 = 6.0;
-const NATIVE_BUTTON_MARGIN_TOP_OFFSET: f32 = 4.0;
-const NATIVE_BUTTON_MARGIN_BOTTOM_OFFSET: f32 = 6.0;
-
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
@@ -74,30 +69,20 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             button,
             props.view.width,
             props.view.height,
+            props.title,
         ] || {
             let scale_factor = scale_factor.get();
+            let ns_string = NSString::from_str(&title.get());
+            button.setTitle(&ns_string);
 
-            if width.get().is_auto() || height.get().is_auto() {
-                button.sizeToFit();
-            }
+            let intrinsic_size = (width.get().is_auto() || height.get().is_auto())
+                .then(|| button.intrinsicContentSize());
             let width = match width.get() {
-                Dimension::Auto => {
-                    let native_width = button.frame().size.width as f32;
-                    (native_width
-                        - NATIVE_BUTTON_MARGIN_LEFT_OFFSET
-                        - NATIVE_BUTTON_MARGIN_RIGHT_OFFSET)
-                        .max(0.0)
-                }
+                Dimension::Auto => intrinsic_size.unwrap().width as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
             let height = match height.get() {
-                Dimension::Auto => {
-                    let native_height = button.frame().size.height as f32;
-                    (native_height
-                        - NATIVE_BUTTON_MARGIN_TOP_OFFSET
-                        - NATIVE_BUTTON_MARGIN_BOTTOM_OFFSET)
-                        .max(0.0)
-                }
+                Dimension::Auto => intrinsic_size.unwrap().height as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
@@ -151,31 +136,12 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             if parent_node.is_some()
                 && let Some(layout) = tree_context.layout(node_id)
             {
-                button.setFrame(NSRect::new(
-                    NSPoint::new(
-                        (layout.location.x - NATIVE_BUTTON_MARGIN_LEFT_OFFSET).into(),
-                        (layout.location.y - NATIVE_BUTTON_MARGIN_TOP_OFFSET).into(),
-                    ),
-                    NSSize::new(
-                        (layout.size.width
-                            + NATIVE_BUTTON_MARGIN_LEFT_OFFSET
-                            + NATIVE_BUTTON_MARGIN_RIGHT_OFFSET)
-                            .into(),
-                        (layout.size.height
-                            + NATIVE_BUTTON_MARGIN_TOP_OFFSET
-                            + NATIVE_BUTTON_MARGIN_BOTTOM_OFFSET)
-                            .into(),
-                    ),
-                ));
+                let alignment_rect = NSRect::new(
+                    NSPoint::new(layout.location.x.into(), layout.location.y.into()),
+                    NSSize::new(layout.size.width.into(), layout.size.height.into()),
+                );
+                button.setFrame(button.frameForAlignmentRect(alignment_rect));
             }
-        }
-    );
-
-    scoped_effect!(
-        element,
-        [button, props.title] || {
-            let ns_string = NSString::from_str(&title.get());
-            button.setTitle(&ns_string);
         }
     );
 }

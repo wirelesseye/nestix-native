@@ -1,6 +1,6 @@
 use nestix::{Shared, props};
 
-use crate::{ViewProps};
+use crate::ViewProps;
 
 #[props(debug)]
 #[derive(Debug, Clone)]
