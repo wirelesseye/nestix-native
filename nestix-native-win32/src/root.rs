@@ -6,7 +6,7 @@ use std::{
 };
 
 use nestix::{Element, PropValue, Shared, closure, component, components::ContextProvider, layout};
-use nestix_native_core::RootProps;
+use nestix_native_core::{RootProps, StyleScope};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
     UI::{
@@ -124,7 +124,9 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<AppState>(app_state) {
-            $(props.children.clone())
+            StyleScope(.class = props.class.clone(), .default_classes = ["__Root", "__win32_Root"]) {
+                $(props.children.clone())
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, FlexViewProps, StyleContext, TreeContext,
+    Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
     matched_style, style_align_items, style_align_self, style_dimension, style_flex_direction,
     style_flex_wrap, style_grow, style_margin,
@@ -320,42 +320,44 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<ParentContext>(
-            ParentContext {
-                parent_hwnd: hwnd,
-                add_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
-                    if let Some(child_node) = child_node {
-                        if child_nodes.borrow().contains(&child_node) {
-                            tree_context.remove_child(node_id, child_node);
-                            child_nodes.borrow_mut().retain(|node| *node != child_node);
+        StyleScope(.class = props.class.clone(), .default_classes = ["__FlexView", "__win32_FlexView"]) {
+            ContextProvider<ParentContext>(
+                ParentContext {
+                    parent_hwnd: hwnd,
+                    add_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
+                        if let Some(child_node) = child_node {
+                            if child_nodes.borrow().contains(&child_node) {
+                                tree_context.remove_child(node_id, child_node);
+                                child_nodes.borrow_mut().retain(|node| *node != child_node);
+                            }
+                            tree_context.add_child(node_id, child_node);
+                            child_nodes.borrow_mut().push(child_node);
+                            tree_context.refresh();
                         }
-                        tree_context.add_child(node_id, child_node);
-                        child_nodes.borrow_mut().push(child_node);
-                        tree_context.refresh();
-                    }
-                })),
-                insert_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>, index: usize| {
-                    if let Some(child_node) = child_node {
-                        if child_nodes.borrow().contains(&child_node) {
-                            tree_context.remove_child(node_id, child_node);
-                            child_nodes.borrow_mut().retain(|node| *node != child_node);
+                    })),
+                    insert_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>, index: usize| {
+                        if let Some(child_node) = child_node {
+                            if child_nodes.borrow().contains(&child_node) {
+                                tree_context.remove_child(node_id, child_node);
+                                child_nodes.borrow_mut().retain(|node| *node != child_node);
+                            }
+                            let index = index.min(child_nodes.borrow().len());
+                            tree_context.insert_child(node_id, child_node, index);
+                            child_nodes.borrow_mut().insert(index, child_node);
+                            tree_context.refresh();
                         }
-                        let index = index.min(child_nodes.borrow().len());
-                        tree_context.insert_child(node_id, child_node, index);
-                        child_nodes.borrow_mut().insert(index, child_node);
-                        tree_context.refresh();
-                    }
-                })),
-                remove_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
-                    if let Some(child_node) = child_node {
-                        child_nodes.borrow_mut().retain(|node| *node != child_node);
-                        tree_context.remove_child(node_id, child_node);
-                    }
-                })),
-                parent_node: Some(node_id),
-            },
-        ) {
-            $(props.children.clone())
+                    })),
+                    remove_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
+                        if let Some(child_node) = child_node {
+                            child_nodes.borrow_mut().retain(|node| *node != child_node);
+                            tree_context.remove_child(node_id, child_node);
+                        }
+                    })),
+                    parent_node: Some(node_id),
+                },
+            ) {
+                $(props.children.clone())
+            }
         }
     }
 }

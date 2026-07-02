@@ -5,7 +5,8 @@ use nestix::{
     layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension as NativeDimension, StyleContext, TabViewItemProps, TabViewProps, TreeContext,
+    Dimension as NativeDimension, StyleContext, StyleScope, TabViewItemProps, TabViewProps,
+    TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalSize},
     matched_style, style_align_self, style_dimension, style_grow, style_margin,
 };
@@ -267,19 +268,21 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<TabViewContext>(
-            tab_view_context
-        ) {
-            ContextProvider<ParentContext>(
-                ParentContext {
-                    parent_hwnd: hwnd,
-                    add_child: None,
-                    insert_child: None,
-                    remove_child: None,
-                    parent_node: Some(node_id),
-                },
+        StyleScope(.class = props.class.clone(), .default_classes = ["__TabView", "__win32_TabView"]) {
+            ContextProvider<TabViewContext>(
+                tab_view_context
             ) {
-                $(props.children.clone())
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        parent_hwnd: hwnd,
+                        add_child: None,
+                        insert_child: None,
+                        remove_child: None,
+                        parent_node: Some(node_id),
+                    },
+                ) {
+                    $(props.children.clone())
+                }
             }
         }
     }
@@ -423,22 +426,24 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<TreeContext>(subtree_context.clone()) {
-            ContextProvider<ParentContext>(
-                ParentContext {
-                    parent_hwnd: parent_context.parent_hwnd,
-                    add_child: Some(callback!([window_context.scale_factor] |child_hwnd: HWND, child_node: Option<NodeId>| {
-                        subtree_context.set_root_node(child_node);
-                        subtree_root.set(Some(child_hwnd));
+        StyleScope(.class = props.class.clone(), .default_classes = ["__TabViewItem", "__win32_TabViewItem"]) {
+            ContextProvider<TreeContext>(subtree_context.clone()) {
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        parent_hwnd: parent_context.parent_hwnd,
+                        add_child: Some(callback!([window_context.scale_factor] |child_hwnd: HWND, child_node: Option<NodeId>| {
+                            subtree_context.set_root_node(child_node);
+                            subtree_root.set(Some(child_hwnd));
 
-                        resize_tab_view_content(&subtree_context, scale_factor.get(), parent_context.parent_hwnd, child_hwnd);
-                    })),
-                    insert_child: None,
-                    remove_child: None,
-                    parent_node: None,
-                },
-            ) {
-                $(props.children.get())
+                            resize_tab_view_content(&subtree_context, scale_factor.get(), parent_context.parent_hwnd, child_hwnd);
+                        })),
+                        insert_child: None,
+                        remove_child: None,
+                        parent_node: None,
+                    },
+                ) {
+                    $(props.children.get())
+                }
             }
         }
     }
