@@ -2,10 +2,9 @@ use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
 use quote::quote;
 use syn::{
-    Error, Expr, Ident, Result, Token, braced, bracketed, parenthesized,
+    Error, Expr, Ident, Result, Token, braced, parenthesized,
     parse::{Parse, ParseStream},
     parse_macro_input,
-    token::Bracket,
 };
 
 use crate::util::core_path;
@@ -18,26 +17,17 @@ pub fn style(input: TokenStream) -> TokenStream {
 }
 
 struct StyleSheetInput {
-    captures: Option<TokenStream2>,
     rules: Vec<StyleRuleInput>,
 }
 
 impl Parse for StyleSheetInput {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let captures = if input.peek(Bracket) {
-            let content;
-            bracketed!(content in input);
-            Some(content.parse()?)
-        } else {
-            None
-        };
-
         let mut rules = Vec::new();
         while !input.is_empty() {
             rules.push(input.parse()?);
         }
 
-        Ok(Self { captures, rules })
+        Ok(Self { rules })
     }
 }
 
@@ -120,12 +110,6 @@ impl Parse for StylePropInput {
 enum StyleValueInput {
     Literal(String),
     Inserted(Expr),
-}
-
-impl StyleValueInput {
-    fn is_inserted(&self) -> bool {
-        matches!(self, StyleValueInput::Inserted(_))
-    }
 }
 
 impl Parse for StyleValueInput {
@@ -245,41 +229,17 @@ fn should_insert_space(previous: Option<TokenKind>, current: TokenKind) -> bool 
 
 fn expand_style(input: StyleSheetInput) -> Result<TokenStream2> {
     let core_path = core_path();
-    let has_inserted_value = input
-        .rules
-        .iter()
-        .flat_map(|rule| &rule.props)
-        .any(|prop| prop.value.is_inserted());
-    let captures = input.captures;
     let rules = input
         .rules
         .into_iter()
         .map(expand_rule)
         .collect::<Result<Vec<_>>>()?;
 
-    let style_sheet = quote! {
+    Ok(quote! {
         #core_path::StyleSheet::new(::std::vec![
             #(#rules),*
         ])
-    };
-
-    if has_inserted_value {
-        if let Some(captures) = captures {
-            Ok(quote! {
-                #core_path::nestix::computed(#core_path::nestix::closure!([#captures] || {
-                    #style_sheet
-                }))
-            })
-        } else {
-            Ok(quote! {
-                #core_path::nestix::computed(move || {
-                    #style_sheet
-                })
-            })
-        }
-    } else {
-        Ok(style_sheet)
-    }
+    })
 }
 
 fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {

@@ -30,26 +30,21 @@ use proc_macro::TokenStream;
 /// prefix and are stored as strings.
 ///
 /// Existing Rust values can be inserted with `$()`. Inserted built-in values
-/// must already have the expected Rust type. If any inserted value is present,
-/// the macro expands to `nestix::Computed<StyleSheet>`.
+/// must already have the expected Rust type. Wrap it in `computed!` explicitly when the stylesheet should
+/// update reactively.
 ///
 /// ```rust
 /// # use nestix_native_core::*;
 /// let bg_color = nestix::create_state(Color::WHITE);
 ///
-/// let styles = style! {
-///     [bg_color]
+/// let styles = nestix::computed!([bg_color] || style! {
 ///     .counter {
 ///         bg-color: $(bg_color.get());
 ///         width: $(Dimension::from(240.0));
 ///         --label: $(format!("count-{}", 1));
 ///     }
-/// };
+/// });
 /// ```
-///
-/// The optional leading capture list follows the same cloning semantics as
-/// `nestix::closure!`. If `$()` is used without a capture list, the generated
-/// computed stylesheet uses a `move` closure.
 #[proc_macro]
 pub fn style(input: TokenStream) -> TokenStream {
     style::style(input)

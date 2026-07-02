@@ -47,12 +47,15 @@ fn ExampleApp() -> Element {
 fn Counter() -> Element {
     let count = create_state(0);
     let bg_color = create_state(Color::TRANSPARENT);
-    let styles = style! {
+    let styles = computed!(
         [bg_color]
-        .counter {
-            bg_color: $(bg_color.get());
-        }
-    };
+            || style! {
+                .counter {
+                    bg_color: $(bg_color.get());
+                    margin_left: 50px;
+                }
+            }
+    );
 
     layout! {
         StyleProvider(styles) {
