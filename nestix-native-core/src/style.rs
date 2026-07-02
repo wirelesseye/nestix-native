@@ -350,9 +350,13 @@ impl StyleSheet {
     }
 
     pub fn merged(&self, other: &Self) -> Self {
-        let mut rules = self.rules.clone();
-        rules.extend(other.rules.clone());
-        Self { rules }
+        let mut style_sheet = self.clone();
+        style_sheet.extend(other);
+        style_sheet
+    }
+
+    pub fn extend(&mut self, other: &Self) {
+        self.rules.extend(other.rules.clone());
     }
 
     pub fn append(&mut self, other: &mut Self) {

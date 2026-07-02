@@ -17,17 +17,35 @@ pub fn style(input: TokenStream) -> TokenStream {
 }
 
 struct StyleSheetInput {
-    rules: Vec<StyleRuleInput>,
+    items: Vec<StyleItemInput>,
 }
 
 impl Parse for StyleSheetInput {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut rules = Vec::new();
+        let mut items = Vec::new();
         while !input.is_empty() {
-            rules.push(input.parse()?);
+            items.push(input.parse()?);
         }
 
-        Ok(Self { rules })
+        Ok(Self { items })
+    }
+}
+
+enum StyleItemInput {
+    Rule(StyleRuleInput),
+    Inserted(Expr),
+}
+
+impl Parse for StyleItemInput {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        if input.peek(Token![$]) {
+            input.parse::<Token![$]>()?;
+            let content;
+            parenthesized!(content in input);
+            return Ok(Self::Inserted(content.parse()?));
+        }
+
+        Ok(Self::Rule(input.parse()?))
     }
 }
 
@@ -229,17 +247,37 @@ fn should_insert_space(previous: Option<TokenKind>, current: TokenKind) -> bool 
 
 fn expand_style(input: StyleSheetInput) -> Result<TokenStream2> {
     let core_path = core_path();
-    let rules = input
-        .rules
+    let items = input
+        .items
         .into_iter()
-        .map(expand_rule)
+        .map(expand_item)
         .collect::<Result<Vec<_>>>()?;
 
     Ok(quote! {
-        #core_path::StyleSheet::new(::std::vec![
-            #(#rules),*
-        ])
+        {
+            let mut __nestix_style_sheet = #core_path::StyleSheet::new(::std::vec![]);
+            #(#items)*
+            __nestix_style_sheet
+        }
     })
+}
+
+fn expand_item(item: StyleItemInput) -> Result<TokenStream2> {
+    let core_path = core_path();
+
+    match item {
+        StyleItemInput::Rule(rule) => {
+            let rule = expand_rule(rule)?;
+            Ok(quote! {
+                __nestix_style_sheet.extend(&#core_path::StyleSheet::new(::std::vec![
+                    #rule
+                ]));
+            })
+        }
+        StyleItemInput::Inserted(style_sheet) => Ok(quote! {
+            __nestix_style_sheet.extend(&(#style_sheet));
+        }),
+    }
 }
 
 fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {

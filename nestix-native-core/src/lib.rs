@@ -25,7 +25,6 @@ pub use view::*;
 pub use window::*;
 
 pub use dpi;
-pub use nestix;
 pub use nestix_native_macros::*;
 
 use nestix::Element;

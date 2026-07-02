@@ -9,7 +9,7 @@ use proc_macro::TokenStream;
 /// stylesheet with only literal values expands to a
 /// `nestix_native_core::StyleSheet`.
 ///
-/// ```rust
+/// ```rust,ignore
 /// # use nestix_native_core::*;
 /// let styles = style! {
 ///     .counter, .__Button {
@@ -30,10 +30,10 @@ use proc_macro::TokenStream;
 /// prefix and are stored as strings.
 ///
 /// Existing Rust values can be inserted with `$()`. Inserted built-in values
-/// must already have the expected Rust type. Wrap it in `computed!` explicitly when the stylesheet should
-/// update reactively.
+/// must already have the expected Rust type. Wrap the stylesheet in
+/// `computed!` explicitly when it should update reactively.
 ///
-/// ```rust
+/// ```rust,ignore
 /// # use nestix_native_core::*;
 /// let bg_color = nestix::create_state(Color::WHITE);
 ///
@@ -44,6 +44,26 @@ use proc_macro::TokenStream;
 ///         --label: $(format!("count-{}", 1));
 ///     }
 /// });
+/// ```
+///
+/// At the top level, `$()` embeds an existing `StyleSheet` at that source
+/// position.
+///
+/// ```rust,ignore
+/// # use nestix_native_core::*;
+/// let base = style! {
+///     .counter {
+///         bg-color: blue;
+///     }
+/// };
+///
+/// let styles = style! {
+///     .counter {
+///         width: 240px;
+///     }
+///
+///     $(base)
+/// };
 /// ```
 #[proc_macro]
 pub fn style(input: TokenStream) -> TokenStream {

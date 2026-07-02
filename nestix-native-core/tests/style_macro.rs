@@ -78,6 +78,35 @@ fn style_sheets_merge_with_later_sheet_as_override() {
 }
 
 #[test]
+fn style_macro_embeds_style_sheets_in_source_order() {
+    let embedded = style! {
+        .counter {
+            bg_color: blue;
+            width: 240px;
+        }
+    };
+
+    let sheet = style! {
+        .counter {
+            bg_color: red;
+        }
+
+        $(embedded)
+
+        .counter {
+            width: 320px;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext {
+        class_list: ClassList::from("counter"),
+    });
+
+    assert_eq!(props.bg_color, Some(Color::BLUE));
+    assert_eq!(props.width, Some(Dimension::from(320.0)));
+}
+
+#[test]
 fn style_macro_with_inserted_value_builds_style_sheet() {
     let bg_color = nestix::create_state(Color::WHITE);
     let sheet = style! {
