@@ -1,5 +1,5 @@
 use nestix::{Element, PropValue, closure, component, components::ContextProvider, layout};
-use nestix_native_core::RootProps;
+use nestix_native_core::{RootProps, StyleScope};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -41,7 +41,9 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
                 ns_application,
             }
         ) {
-            $(props.children.clone())
+            StyleScope(.class = props.class.clone(), .default_classes = ["__Root", "__appkit_Root"]) {
+                $(props.children.clone())
+            }
         }
     }
 }

@@ -71,15 +71,21 @@ impl Parse for StyleRuleInput {
 }
 
 struct SelectorInput {
-    class_lists: Vec<Vec<String>>,
+    selectors: Vec<SelectorAst>,
+}
+
+enum SelectorAst {
+    Class(Vec<String>),
+    Child(Box<SelectorAst>, Box<SelectorAst>),
+    Descendant(Box<SelectorAst>, Box<SelectorAst>),
 }
 
 impl Parse for SelectorInput {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut class_lists = Vec::new();
+        let mut selectors = Vec::new();
 
         loop {
-            class_lists.push(parse_class_list(input)?);
+            selectors.push(parse_selector_chain(input)?);
 
             if input.peek(Token![,]) {
                 input.parse::<Token![,]>()?;
@@ -88,8 +94,31 @@ impl Parse for SelectorInput {
             }
         }
 
-        Ok(Self { class_lists })
+        Ok(Self { selectors })
     }
+}
+
+fn parse_selector_chain(input: ParseStream<'_>) -> Result<SelectorAst> {
+    let mut selector = SelectorAst::Class(parse_class_list(input)?);
+
+    while input.peek(Token![>]) {
+        input.parse::<Token![>]>()?;
+        let combinator_is_descendant = if input.peek(Token![>]) {
+            input.parse::<Token![>]>()?;
+            true
+        } else {
+            false
+        };
+
+        let next = SelectorAst::Class(parse_class_list(input)?);
+        selector = if combinator_is_descendant {
+            SelectorAst::Descendant(Box::new(selector), Box::new(next))
+        } else {
+            SelectorAst::Child(Box::new(selector), Box::new(next))
+        };
+    }
+
+    Ok(selector)
 }
 
 fn parse_class_list(input: ParseStream<'_>) -> Result<Vec<String>> {
@@ -582,14 +611,9 @@ fn parse_hex_pair(hex: &str, index: usize) -> Result<u8> {
 fn expand_selector(selector: SelectorInput) -> TokenStream2 {
     let core_path = core_path();
     let selectors = selector
-        .class_lists
+        .selectors
         .into_iter()
-        .map(|classes| {
-            let class_list = classes.join(" ");
-            quote! {
-                #core_path::StyleSelector::Class(#class_list.into())
-            }
-        })
+        .map(expand_selector_ast)
         .collect::<Vec<_>>();
 
     if selectors.len() == 1 {
@@ -599,6 +623,38 @@ fn expand_selector(selector: SelectorInput) -> TokenStream2 {
             #core_path::StyleSelector::List(::std::vec![
                 #(#selectors),*
             ])
+        }
+    }
+}
+
+fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
+    let core_path = core_path();
+    match selector {
+        SelectorAst::Class(classes) => {
+            let class_list = classes.join(" ");
+            quote! {
+                #core_path::StyleSelector::Class(#class_list.into())
+            }
+        }
+        SelectorAst::Child(parent, child) => {
+            let parent = expand_selector_ast(*parent);
+            let child = expand_selector_ast(*child);
+            quote! {
+                #core_path::StyleSelector::Child {
+                    parent: ::std::boxed::Box::new(#parent),
+                    child: ::std::boxed::Box::new(#child),
+                }
+            }
+        }
+        SelectorAst::Descendant(ancestor, descendant) => {
+            let ancestor = expand_selector_ast(*ancestor);
+            let descendant = expand_selector_ast(*descendant);
+            quote! {
+                #core_path::StyleSelector::Descendant {
+                    ancestor: ::std::boxed::Box::new(#ancestor),
+                    descendant: ::std::boxed::Box::new(#descendant),
+                }
+            }
         }
     }
 }

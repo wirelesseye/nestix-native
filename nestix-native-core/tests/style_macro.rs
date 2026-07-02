@@ -8,9 +8,7 @@ fn style_macro_builds_class_rule() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("counter selected"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter selected")));
 
     assert_eq!(props.bg_color, Some(Color::WHITE));
 }
@@ -27,15 +25,67 @@ fn style_macro_supports_multiple_rules_and_selectors() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("button primary"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("button primary")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("counter selected"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter selected")));
     assert_eq!(props.custom("--text-color"), Some("red"));
+}
+
+#[test]
+fn style_macro_supports_child_selectors() {
+    let sheet = style! {
+        .panel > .button {
+            bg_color: red;
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button")).with_ancestors([ClassList::from("panel")]),
+    );
+    assert_eq!(props.bg_color, Some(Color::RED));
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button"))
+            .with_ancestors([ClassList::from("section"), ClassList::from("panel")]),
+    );
+    assert_eq!(props.bg_color, None);
+}
+
+#[test]
+fn style_macro_supports_descendant_selectors() {
+    let sheet = style! {
+        .panel >> .button {
+            bg_color: blue;
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button"))
+            .with_ancestors([ClassList::from("section"), ClassList::from("panel")]),
+    );
+
+    assert_eq!(props.bg_color, Some(Color::BLUE));
+}
+
+#[test]
+fn combinator_specificity_competes_with_plain_selectors() {
+    let sheet = style! {
+        .button.primary {
+            bg_color: red;
+        }
+
+        .panel > .button {
+            bg_color: blue;
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button primary"))
+            .with_ancestors([ClassList::from("panel")]),
+    );
+
+    assert_eq!(props.bg_color, Some(Color::BLUE));
 }
 
 #[test]
@@ -50,9 +100,7 @@ fn style_resolution_prefers_specificity_before_source_order() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("counter selected"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter selected")));
 
     assert_eq!(props.bg_color, Some(Color::RED));
 }
@@ -70,9 +118,9 @@ fn style_sheets_merge_with_later_sheet_as_override() {
         }
     };
 
-    let props = base.merged(&local).matched_props(&MatchContext {
-        class_list: ClassList::from("counter"),
-    });
+    let props = base
+        .merged(&local)
+        .matched_props(&MatchContext::new(ClassList::from("counter")));
 
     assert_eq!(props.bg_color, Some(Color::BLUE));
 }
@@ -98,9 +146,7 @@ fn style_macro_embeds_style_sheets_in_source_order() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("counter"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter")));
 
     assert_eq!(props.bg_color, Some(Color::BLUE));
     assert_eq!(props.width, Some(Dimension::from(320.0)));
@@ -116,17 +162,13 @@ fn style_macro_with_inserted_value_builds_style_sheet() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("counter"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
     assert_eq!(props.custom("--label"), Some("count-1"));
 
     bg_color.set(Color::BLACK);
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("counter"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
 }
 
@@ -142,16 +184,16 @@ fn style_macro_can_be_wrapped_in_computed_for_dynamic_style_sheets() {
             }
     );
 
-    let props = sheet.get().matched_props(&MatchContext {
-        class_list: ClassList::from("counter"),
-    });
+    let props = sheet
+        .get()
+        .matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
 
     bg_color.set(Color::BLACK);
 
-    let props = sheet.get().matched_props(&MatchContext {
-        class_list: ClassList::from("counter"),
-    });
+    let props = sheet
+        .get()
+        .matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::BLACK));
 }
 
@@ -172,9 +214,7 @@ fn style_macro_supports_view_props() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("panel"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
 
     assert_eq!(props.left, Some(Dimension::from(1.0)));
     assert_eq!(props.top, Some(Dimension::from(2.0)));
@@ -198,9 +238,7 @@ fn style_macro_supports_flex_view_props() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("panel"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
 
     assert_eq!(props.flex_direction, Some(FlexDirection::RowReverse));
     assert_eq!(props.align_items, Some(AlignItems::Stretch));
@@ -220,9 +258,7 @@ fn style_margin_shorthand_expands_and_cascades_per_edge() {
         }
     };
 
-    let props = sheet.matched_props(&MatchContext {
-        class_list: ClassList::from("panel selected"),
-    });
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel selected")));
 
     assert_eq!(props.margin_top, Some(Dimension::from(8.0)));
     assert_eq!(props.margin_bottom, Some(Dimension::from(8.0)));

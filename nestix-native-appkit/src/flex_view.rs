@@ -4,9 +4,9 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, FlexViewProps, StyleContext, TreeContext, matched_style, style_align_items,
-    style_align_self, style_dimension, style_flex_direction, style_flex_wrap, style_grow,
-    style_margin,
+    Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
+    style_align_items, style_align_self, style_dimension, style_flex_direction, style_flex_wrap,
+    style_grow, style_margin,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
@@ -252,48 +252,50 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<ParentContext>(
-            ParentContext {
-                add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {
-                    let subview = object.downcast_ref::<NSView>().unwrap();
-                    if view.subviews().containsObject(subview) {
+        StyleScope(.class = props.class.clone(), .default_classes = ["__FlexView", "__appkit_FlexView"]) {
+            ContextProvider<ParentContext>(
+                ParentContext {
+                    add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {
+                        let subview = object.downcast_ref::<NSView>().unwrap();
+                        if view.subviews().containsObject(subview) {
+                            subview.removeFromSuperview();
+                            if let Some(child_node) = child_node {
+                                tree_context.remove_child(node_id, child_node);
+                            }
+                        }
+                        view.addSubview(subview);
+                        if let Some(child_node) = child_node {
+                            tree_context.add_child(node_id, child_node);
+                            tree_context.refresh();
+                        }
+                    })),
+                    insert_child: Some(callback!([tree_context, view]
+                        |object: &NSObject, child_node: Option<NodeId>, index: usize| {
+                        let subview = object.downcast_ref::<NSView>().unwrap();
+                        if view.subviews().containsObject(subview) {
+                            subview.removeFromSuperview();
+                            if let Some(child_node) = child_node {
+                                tree_context.remove_child(node_id, child_node);
+                            }
+                        }
+                        view.addSubview(subview);
+                        if let Some(child_node) = child_node {
+                            tree_context.insert_child(node_id, child_node, index);
+                            tree_context.refresh();
+                        }
+                    })),
+                    remove_child: Some(callback!([tree_context] |object: &NSObject, child_node: Option<NodeId>| {
+                        let subview = object.downcast_ref::<NSView>().unwrap();
                         subview.removeFromSuperview();
                         if let Some(child_node) = child_node {
                             tree_context.remove_child(node_id, child_node);
                         }
-                    }
-                    view.addSubview(subview);
-                    if let Some(child_node) = child_node {
-                        tree_context.add_child(node_id, child_node);
-                        tree_context.refresh();
-                    }
-                })),
-                insert_child: Some(callback!([tree_context, view]
-                    |object: &NSObject, child_node: Option<NodeId>, index: usize| {
-                    let subview = object.downcast_ref::<NSView>().unwrap();
-                    if view.subviews().containsObject(subview) {
-                        subview.removeFromSuperview();
-                        if let Some(child_node) = child_node {
-                            tree_context.remove_child(node_id, child_node);
-                        }
-                    }
-                    view.addSubview(subview);
-                    if let Some(child_node) = child_node {
-                        tree_context.insert_child(node_id, child_node, index);
-                        tree_context.refresh();
-                    }
-                })),
-                remove_child: Some(callback!([tree_context] |object: &NSObject, child_node: Option<NodeId>| {
-                    let subview = object.downcast_ref::<NSView>().unwrap();
-                    subview.removeFromSuperview();
-                    if let Some(child_node) = child_node {
-                        tree_context.remove_child(node_id, child_node);
-                    }
-                })),
-                parent_node: Some(node_id),
+                    })),
+                    parent_node: Some(node_id),
+                }
+            ) {
+                $(props.children.clone())
             }
-        ) {
-            $(props.children.clone())
         }
     }
 }

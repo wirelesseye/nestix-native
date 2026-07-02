@@ -51,6 +51,14 @@ impl From<HashSet<String>> for ClassList {
 #[derive(Debug, Clone)]
 pub enum StyleSelector {
     Class(ClassList),
+    Child {
+        parent: Box<StyleSelector>,
+        child: Box<StyleSelector>,
+    },
+    Descendant {
+        ancestor: Box<StyleSelector>,
+        descendant: Box<StyleSelector>,
+    },
     List(Vec<StyleSelector>),
 }
 
@@ -65,6 +73,30 @@ impl StyleSelector {
                 Some(class.specificity())
             }
             StyleSelector::Class(_) => None,
+            StyleSelector::Child { parent, child } => {
+                let child_specificity = child.matched_specificity(context)?;
+                let parent_context = context.parent()?;
+                let parent_specificity = parent.matched_specificity(&parent_context)?;
+                Some(parent_specificity + child_specificity)
+            }
+            StyleSelector::Descendant {
+                ancestor,
+                descendant,
+            } => {
+                let descendant_specificity = descendant.matched_specificity(context)?;
+
+                context
+                    .ancestors
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, ancestor_class_list)| {
+                        let ancestor_context = context.ancestor_at(index, ancestor_class_list);
+                        ancestor.matched_specificity(&ancestor_context).map(
+                            |ancestor_specificity| ancestor_specificity + descendant_specificity,
+                        )
+                    })
+                    .max()
+            }
             StyleSelector::List(selectors) => selectors
                 .iter()
                 .filter_map(|selector| selector.matched_specificity(context))
@@ -217,16 +249,38 @@ pub fn matched_style(
     class: PropValue<ClassList>,
     default_classes: &'static [&'static str],
 ) -> nestix::Computed<Option<ResolvedStyle>> {
-    let style_sheet = style_context.map(|style_context| style_context.style_sheet.clone());
+    let style_sheet = style_context
+        .as_ref()
+        .and_then(|style_context| style_context.style_sheet.clone());
+    let ancestors = style_context
+        .map(|style_context| style_context.ancestors.clone())
+        .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
     computed!(
-        [style_sheet, class] || {
+        [style_sheet, ancestors, class] || {
             style_sheet.as_ref().map(|style_sheet| {
-                style_sheet.get().matched_props(&MatchContext {
-                    class_list: class.get().with_defaults(default_classes),
-                })
+                style_sheet.get().matched_props(
+                    &MatchContext::new(class.get().with_defaults(default_classes))
+                        .with_ancestors(ancestors.get()),
+                )
             })
         }
     )
+}
+
+fn scope_ancestors(
+    parent_ancestors: PropValue<Vec<ClassList>>,
+    class: PropValue<ClassList>,
+    default_classes: PropValue<Vec<&'static str>>,
+) -> PropValue<Vec<ClassList>> {
+    PropValue::from_signal(computed!(
+        [parent_ancestors, class, default_classes] || {
+            let mut ancestors = Vec::new();
+            let default_classes = default_classes.get();
+            ancestors.push(class.get().with_defaults(&default_classes));
+            ancestors.extend(parent_ancestors.get());
+            ancestors
+        }
+    ))
 }
 
 fn inline_or_style<T: Copy + PartialEq>(inline: T, default: T, style: Option<T>) -> T {
@@ -367,10 +421,38 @@ impl StyleSheet {
 #[derive(Debug, Clone)]
 pub struct MatchContext {
     pub class_list: ClassList,
+    pub ancestors: Vec<ClassList>,
+}
+
+impl MatchContext {
+    pub fn new(class_list: ClassList) -> Self {
+        Self {
+            class_list,
+            ancestors: Vec::new(),
+        }
+    }
+
+    pub fn with_ancestors(mut self, ancestors: impl Into<Vec<ClassList>>) -> Self {
+        self.ancestors = ancestors.into();
+        self
+    }
+
+    fn parent(&self) -> Option<Self> {
+        let parent = self.ancestors.first()?;
+        Some(self.ancestor_at(0, parent))
+    }
+
+    fn ancestor_at(&self, index: usize, class_list: &ClassList) -> Self {
+        Self {
+            class_list: class_list.clone(),
+            ancestors: self.ancestors[index + 1..].to_vec(),
+        }
+    }
 }
 
 pub struct StyleContext {
-    pub style_sheet: PropValue<StyleSheet>,
+    pub style_sheet: Option<PropValue<StyleSheet>>,
+    pub ancestors: PropValue<Vec<ClassList>>,
 }
 
 #[props]
@@ -384,18 +466,57 @@ pub struct StyleProviderProps {
 #[component]
 pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
     let parent_style_context = element.context::<StyleContext>();
-    let style_sheet = if let Some(parent_style_context) = parent_style_context {
-        PropValue::from_signal(computed!(
-            [parent: parent_style_context.style_sheet, local: props.style_sheet] || {
-                parent.get().merged(&local.get())
-            }
-        ))
+    let style_sheet = if let Some(parent_style_context) = &parent_style_context {
+        if let Some(parent_style_sheet) = parent_style_context.style_sheet.clone() {
+            PropValue::from_signal(computed!(
+                [parent_style_sheet, local: props.style_sheet] || {
+                    parent_style_sheet.get().merged(&local.get())
+                }
+            ))
+        } else {
+            props.style_sheet.clone()
+        }
     } else {
         props.style_sheet.clone()
     };
+    let ancestors = parent_style_context
+        .map(|style_context| style_context.ancestors.clone())
+        .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet}) {
+        ContextProvider<StyleContext>(StyleContext {style_sheet: Some(style_sheet), ancestors}) {
+            $(props.children.clone())
+        }
+    }
+}
+
+#[props]
+pub struct StyleScopeProps {
+    #[props(default)]
+    class: ClassList,
+    #[props(default)]
+    default_classes: Vec<&'static str>,
+    #[props(default)]
+    children: Layout,
+}
+
+#[component]
+pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
+    let parent_style_context = element.context::<StyleContext>();
+    let style_sheet = parent_style_context
+        .as_ref()
+        .and_then(|style_context| style_context.style_sheet.clone());
+    let parent_ancestors = parent_style_context
+        .map(|style_context| style_context.ancestors.clone())
+        .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
+    let ancestors = scope_ancestors(
+        parent_ancestors,
+        props.class.clone(),
+        props.default_classes.clone(),
+    );
+
+    layout! {
+        ContextProvider<StyleContext>(StyleContext {style_sheet, ancestors}) {
             $(props.children.clone())
         }
     }
