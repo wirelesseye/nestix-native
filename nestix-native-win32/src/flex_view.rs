@@ -4,7 +4,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    FlexDirection, FlexViewProps, TreeContext, FlexWrap,
+    FlexDirection, FlexViewProps, FlexWrap, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
 };
 use taffy::{NodeId, Size, Style};

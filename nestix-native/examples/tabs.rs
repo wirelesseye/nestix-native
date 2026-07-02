@@ -3,8 +3,8 @@ use nestix::{
     Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    AlignItems, Button, Color, FlexDirection, FlexView, Input, RGBColor, Root, StyleProvider, TabView,
-    TabViewItem, Text, Window, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, Input, RGBColor, Root, StyleProvider,
+    TabView, TabViewItem, Text, Window, style,
 };
 
 fn main() {

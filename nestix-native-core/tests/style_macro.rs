@@ -152,6 +152,25 @@ fn style_macro_supports_view_props() {
 }
 
 #[test]
+fn style_macro_supports_flex_view_props() {
+    let sheet = style! {
+        .panel {
+            flex-direction: row-reverse;
+            align-items: stretch;
+            flex-wrap: wrap;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext {
+        class_list: ClassList::from("panel"),
+    });
+
+    assert_eq!(props.flex_direction, Some(FlexDirection::RowReverse));
+    assert_eq!(props.align_items, Some(AlignItems::Stretch));
+    assert_eq!(props.flex_wrap, Some(FlexWrap::Wrap));
+}
+
+#[test]
 fn style_margin_shorthand_expands_and_cascades_per_edge() {
     let sheet = style! {
         .panel {

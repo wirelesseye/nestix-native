@@ -390,6 +390,18 @@ fn expand_declaration(prop: StylePropInput) -> Result<Vec<TokenStream2>> {
             let align_self = expand_align_items(value)?;
             Ok(vec![expand_property("AlignSelf", align_self)])
         }
+        "flex_direction" => {
+            let flex_direction = expand_flex_direction(value)?;
+            Ok(vec![expand_property("FlexDirection", flex_direction)])
+        }
+        "align_items" => {
+            let align_items = expand_align_items(value)?;
+            Ok(vec![expand_property("AlignItems", align_items)])
+        }
+        "flex_wrap" => {
+            let flex_wrap = expand_flex_wrap(value)?;
+            Ok(vec![expand_property("FlexWrap", flex_wrap)])
+        }
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             format!(
@@ -520,6 +532,42 @@ fn expand_align_items(value: StyleValueInput) -> Result<TokenStream2> {
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "align-self must be unset, start, end, flex-start, flex-end, center, baseline, stretch, or an inserted AlignItems",
+        )),
+    }
+}
+
+fn expand_flex_direction(value: StyleValueInput) -> Result<TokenStream2> {
+    let core_path = core_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+
+    match value.as_str() {
+        "row" => Ok(quote!(#core_path::FlexDirection::Row)),
+        "row_reverse" | "row-reverse" => Ok(quote!(#core_path::FlexDirection::RowReverse)),
+        "column" => Ok(quote!(#core_path::FlexDirection::Column)),
+        "column_reverse" | "column-reverse" => Ok(quote!(#core_path::FlexDirection::ColumnReverse)),
+        _ => Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "flex-direction must be row, row-reverse, column, column-reverse, or an inserted FlexDirection",
+        )),
+    }
+}
+
+fn expand_flex_wrap(value: StyleValueInput) -> Result<TokenStream2> {
+    let core_path = core_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+
+    match value.as_str() {
+        "nowrap" | "no_wrap" | "no-wrap" => Ok(quote!(#core_path::FlexWrap::NoWrap)),
+        "wrap" => Ok(quote!(#core_path::FlexWrap::Wrap)),
+        _ => Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "flex-wrap must be wrap, no-wrap, nowrap, or an inserted FlexWrap",
         )),
     }
 }

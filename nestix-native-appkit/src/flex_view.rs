@@ -4,8 +4,9 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, FlexViewProps, StyleContext, TreeContext, matched_style, style_align_self,
-    style_dimension, style_grow, style_margin,
+    Dimension, FlexViewProps, StyleContext, TreeContext, matched_style, style_align_items,
+    style_align_self, style_dimension, style_flex_direction, style_flex_wrap, style_grow,
+    style_margin,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
@@ -192,9 +193,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.flex_direction] || {
+        [tree_context, style_props, props.flex_direction] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_direction: flex_direction.get().to_taffy(),
+                flex_direction: style_flex_direction(style_props.as_ref(), flex_direction.get())
+                    .to_taffy(),
                 ..prev
             });
 
@@ -204,9 +207,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_items] || {
+        [tree_context, style_props, props.align_items] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_items: align_items.get().to_taffy(),
+                align_items: style_align_items(style_props.as_ref(), align_items.get()).to_taffy(),
                 ..prev
             });
 
@@ -216,9 +220,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.flex_wrap] || {
+        [tree_context, style_props, props.flex_wrap] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_wrap: flex_wrap.get().to_taffy(),
+                flex_wrap: style_flex_wrap(style_props.as_ref(), flex_wrap.get()).to_taffy(),
                 ..prev
             });
 

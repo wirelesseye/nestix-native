@@ -5,7 +5,7 @@ use std::{
 
 use nestix::{ContextProvider, Element, Layout, PropValue, component, computed, layout, props};
 
-use crate::{AlignItems, Color, Dimension, Rect};
+use crate::{AlignItems, Color, Dimension, FlexDirection, FlexWrap, Rect};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClassList(HashSet<String>);
@@ -86,6 +86,9 @@ pub enum StyleProperty {
     MarginBottom(Dimension),
     Grow(f32),
     AlignSelf(AlignItems),
+    FlexDirection(FlexDirection),
+    AlignItems(AlignItems),
+    FlexWrap(FlexWrap),
 }
 
 impl StyleProperty {
@@ -102,6 +105,9 @@ impl StyleProperty {
             StyleProperty::MarginBottom(_) => "margin_bottom",
             StyleProperty::Grow(_) => "grow",
             StyleProperty::AlignSelf(_) => "align_self",
+            StyleProperty::FlexDirection(_) => "flex_direction",
+            StyleProperty::AlignItems(_) => "align_items",
+            StyleProperty::FlexWrap(_) => "flex_wrap",
         }
     }
 }
@@ -140,6 +146,9 @@ pub struct ResolvedStyle {
     pub margin_bottom: Option<Dimension>,
     pub grow: Option<f32>,
     pub align_self: Option<AlignItems>,
+    pub flex_direction: Option<FlexDirection>,
+    pub align_items: Option<AlignItems>,
+    pub flex_wrap: Option<FlexWrap>,
     custom: HashMap<String, String>,
 }
 
@@ -186,6 +195,15 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::AlignSelf(align_self)) => {
                 self.align_self = Some(align_self);
+            }
+            StyleDeclaration::Property(StyleProperty::FlexDirection(flex_direction)) => {
+                self.flex_direction = Some(flex_direction);
+            }
+            StyleDeclaration::Property(StyleProperty::AlignItems(align_items)) => {
+                self.align_items = Some(align_items);
+            }
+            StyleDeclaration::Property(StyleProperty::FlexWrap(flex_wrap)) => {
+                self.flex_wrap = Some(flex_wrap);
             }
             StyleDeclaration::Custom { name, value } => {
                 self.custom.insert(name.clone(), value.clone());
@@ -237,6 +255,30 @@ pub fn style_align_self(style: Option<&ResolvedStyle>, inline: AlignItems) -> Al
         inline,
         AlignItems::Unset,
         style.and_then(|style| style.align_self),
+    )
+}
+
+pub fn style_flex_direction(style: Option<&ResolvedStyle>, inline: FlexDirection) -> FlexDirection {
+    inline_or_style(
+        inline,
+        FlexDirection::Column,
+        style.and_then(|style| style.flex_direction),
+    )
+}
+
+pub fn style_align_items(style: Option<&ResolvedStyle>, inline: AlignItems) -> AlignItems {
+    inline_or_style(
+        inline,
+        AlignItems::Unset,
+        style.and_then(|style| style.align_items),
+    )
+}
+
+pub fn style_flex_wrap(style: Option<&ResolvedStyle>, inline: FlexWrap) -> FlexWrap {
+    inline_or_style(
+        inline,
+        FlexWrap::NoWrap,
+        style.and_then(|style| style.flex_wrap),
     )
 }
 

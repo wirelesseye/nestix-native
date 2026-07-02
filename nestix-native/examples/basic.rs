@@ -1,6 +1,6 @@
 use env_logger::Env;
 use nestix::{Element, callback, component, create_state, layout, mount_root};
-use nestix_native::{Button, FlexDirection, FlexView, Root, Text, Window, FlexWrap};
+use nestix_native::{Button, FlexDirection, FlexView, FlexWrap, Root, Text, Window};
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
