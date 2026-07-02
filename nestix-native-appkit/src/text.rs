@@ -1,5 +1,8 @@
 use nestix::{Element, closure, component, scoped_effect};
-use nestix_native_core::{Dimension, TextProps, TreeContext};
+use nestix_native_core::{
+    Dimension, StyleContext, TextProps, TreeContext, matched_style, style_align_self,
+    style_dimension, style_margin,
+};
 use objc2::MainThreadMarker;
 use objc2_app_kit::NSTextField;
 use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize, NSString};
@@ -12,6 +15,12 @@ pub fn Text(props: &TextProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
+    let style_props = matched_style(
+        style_context,
+        props.class.clone(),
+        &["__Text", "__appkit_Text"],
+    );
 
     let mtm = MainThreadMarker::new().unwrap();
     let ns_string = NSString::from_str(&props.text.get());
@@ -45,22 +54,36 @@ pub fn Text(props: &TextProps, element: &Element) {
             window_context.scale_factor,
             parent_context.parent_node,
             tree_context,
+            style_props,
             label,
             props.view.width,
             props.view.height,
             props.text,
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
             let ns_string = NSString::from_str(&text.get());
             label.setStringValue(&ns_string);
+            let width = style_dimension(
+                style_props.as_ref(),
+                width.get(),
+                Dimension::Auto,
+                |style| style.width,
+            );
+            let height = style_dimension(
+                style_props.as_ref(),
+                height.get(),
+                Dimension::Auto,
+                |style| style.height,
+            );
 
-            let intrinsic_size = (width.get().is_auto() || height.get().is_auto())
-                .then(|| label.intrinsicContentSize());
-            let width = match width.get() {
+            let intrinsic_size =
+                (width.is_auto() || height.is_auto()).then(|| label.intrinsicContentSize());
+            let width = match width {
                 Dimension::Auto => intrinsic_size.unwrap().width as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
-            let height = match height.get() {
+            let height = match height {
                 Dimension::Auto => intrinsic_size.unwrap().height as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
@@ -84,12 +107,17 @@ pub fn Text(props: &TextProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             tree_context.update_style(node_id, |prev| Style {
-                margin: margin_to_taffy(margin.get(), scale_factor),
+                margin: margin_to_taffy(
+                    style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
                 ..prev
             });
 
@@ -99,9 +127,10 @@ pub fn Text(props: &TextProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.align_self] || {
+        [tree_context, style_props, props.view.align_self] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_self: align_self.get().to_taffy(),
+                align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
 

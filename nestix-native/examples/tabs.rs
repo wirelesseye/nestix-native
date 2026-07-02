@@ -3,12 +3,20 @@ use nestix::{
     Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    AlignItems, Button, Direction, FlexView, Input, Root, TabView, TabViewItem, Text, Window,
+    AlignItems, Button, Color, Direction, FlexView, Input, RGBColor, Root, StyleProvider, TabView,
+    TabViewItem, Text, Window, style,
 };
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
     mount_root(&layout! {ExampleApp});
+}
+
+fn random_color() -> Color {
+    let r = rand::random();
+    let g = rand::random();
+    let b = rand::random();
+    Color::RGB(RGBColor::from_rgb(r, g, b))
 }
 
 #[component]
@@ -24,15 +32,11 @@ fn ExampleApp() -> Element {
                     TabViewItem(
                         .id = "counter",
                         .title = "Counter",
-                    ) {
-                        Counter
-                    }
+                    ) { Counter }
                     TabViewItem(
                         .id = "todo_list",
                         .title = "Todo List",
-                    ) {
-                        TodoList
-                    }
+                    ) { TodoList }
                 }
             }
         }
@@ -42,18 +46,28 @@ fn ExampleApp() -> Element {
 #[component]
 fn Counter() -> Element {
     let count = create_state(0);
+    let bg_color = create_state(Color::TRANSPARENT);
+    let styles = style! {
+        [bg_color]
+        .counter {
+            bg_color: $(bg_color.get());
+        }
+    };
 
     layout! {
-        FlexView {
-            Text(computed!([count] || format!("Count: {}", count.get())))
-            Button(
-                .title = "Click",
-                .on_click = callback!([count] || {
-                    count.mutate(|count| *count += 1);
-                }),
-            )
-            if count.get() % 2 == 0 {
-                Text("Is Even!")
+        StyleProvider(styles) {
+            FlexView(.class = "counter") {
+                Text(computed!([count] || format!("Count: {}", count.get())))
+                Button(
+                    .title = "Click",
+                    .on_click = callback!([count] || {
+                        count.mutate(|count| *count += 1);
+                        bg_color.set(random_color());
+                    }),
+                )
+                if count.get() % 2 == 0 {
+                    Text("Is Even!")
+                }
             }
         }
     }

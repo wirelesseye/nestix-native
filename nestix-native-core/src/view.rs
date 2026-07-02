@@ -1,3 +1,4 @@
+use dpi::LogicalUnit;
 use nestix::{Computed, computed, props};
 
 use crate::{AlignItems, Dimension, Rect};
@@ -21,13 +22,13 @@ pub struct ViewProps {
     #[props(default = Dimension::Auto)]
     pub height: Dimension,
 
-    #[props(default = Dimension::Auto)]
+    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_left: Dimension,
-    #[props(default = Dimension::Auto)]
+    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_right: Dimension,
-    #[props(default = Dimension::Auto)]
+    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_top: Dimension,
-    #[props(default = Dimension::Auto)]
+    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_bottom: Dimension,
 
     #[props(default = 0.0)]

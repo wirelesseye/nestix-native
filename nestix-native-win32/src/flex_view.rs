@@ -116,7 +116,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [props.background_color] || {
+        [props.bg_color] || {
             if let Some(brush) =
                 BACKGROUND_BRUSHES.with_borrow_mut(|brushes| brushes.remove(&hwnd.0))
             {

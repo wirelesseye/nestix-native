@@ -5,6 +5,7 @@ pub mod dimension;
 pub mod flex_view;
 pub mod input;
 pub mod root;
+pub mod style;
 pub mod tab_view;
 pub mod text;
 pub mod view;
@@ -17,12 +18,15 @@ pub use dimension::*;
 pub use flex_view::*;
 pub use input::*;
 pub use root::*;
+pub use style::*;
 pub use tab_view::*;
 pub use text::*;
 pub use view::*;
 pub use window::*;
 
 pub use dpi;
+pub use nestix;
+pub use nestix_native_macros::*;
 
 use nestix::Element;
 

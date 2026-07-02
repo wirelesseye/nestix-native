@@ -1,8 +1,13 @@
 use nestix::{Element, Shared, props};
 
+use crate::ClassList;
+
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct WindowProps {
+    #[props(default)]
+    pub class: ClassList,
+
     pub children: Option<Element>,
 
     #[props(default)]

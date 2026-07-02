@@ -1,7 +1,10 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
-use nestix_native_core::{Dimension, InputProps, TreeContext};
+use nestix_native_core::{
+    Dimension, InputProps, StyleContext, TreeContext, matched_style, style_align_self,
+    style_dimension, style_grow, style_margin,
+};
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
@@ -23,6 +26,12 @@ pub fn Input(props: &InputProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
+    let style_props = matched_style(
+        style_context,
+        props.class.clone(),
+        &["__Input", "__appkit_Input"],
+    );
 
     let mtm = MainThreadMarker::new().unwrap();
     let string_value = NSString::from_str(&props.value.get());
@@ -66,9 +75,10 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.grow] || {
+        [tree_context, style_props, props.view.grow] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_grow: grow.get(),
+                flex_grow: style_grow(style_props.as_ref(), grow.get()),
                 ..prev
             });
 
@@ -82,22 +92,36 @@ pub fn Input(props: &InputProps, element: &Element) {
             window_context.scale_factor,
             tree_context,
             parent_context.parent_node,
+            style_props,
             input,
             props.view.width,
             props.view.height,
             props.value,
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
             let string_value = NSString::from_str(&value.get());
             input.setStringValue(&string_value);
+            let width = style_dimension(
+                style_props.as_ref(),
+                width.get(),
+                Dimension::Auto,
+                |style| style.width,
+            );
+            let height = style_dimension(
+                style_props.as_ref(),
+                height.get(),
+                Dimension::Auto,
+                |style| style.height,
+            );
 
-            let intrinsic_size = (width.get().is_auto() || height.get().is_auto())
-                .then(|| input.intrinsicContentSize());
-            let width = match width.get() {
+            let intrinsic_size =
+                (width.is_auto() || height.is_auto()).then(|| input.intrinsicContentSize());
+            let width = match width {
                 Dimension::Auto => intrinsic_size.unwrap().width as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
-            let height = match height.get() {
+            let height = match height {
                 Dimension::Auto => intrinsic_size.unwrap().height as f32,
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
@@ -121,12 +145,17 @@ pub fn Input(props: &InputProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             tree_context.update_style(node_id, |prev| Style {
-                margin: margin_to_taffy(margin.get(), scale_factor),
+                margin: margin_to_taffy(
+                    style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
                 ..prev
             });
 
@@ -136,9 +165,10 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.align_self] || {
+        [tree_context, style_props, props.view.align_self] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_self: align_self.get().to_taffy(),
+                align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
 

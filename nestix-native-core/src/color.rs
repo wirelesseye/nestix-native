@@ -16,6 +16,21 @@ impl Color {
             Color::RGB(rgb) => rgb,
         }
     }
+
+    pub fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "white" => Ok(Color::WHITE),
+            "black" => Ok(Color::BLACK),
+            "transparent" => Ok(Color::TRANSPARENT),
+            "red" => Ok(Color::RED),
+            "green" => Ok(Color::GREEN),
+            "blue" => Ok(Color::BLUE),
+            _ => {
+                let rgb_color = RGBColor::parse(value)?;
+                Ok(Self::RGB(rgb_color))
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,6 +58,26 @@ impl RGBColor {
             blue: b,
             alpha: a,
         }
+    }
+
+    pub fn parse(value: &str) -> Result<Self, String> {
+        let hex = value.trim().strip_prefix('#').unwrap_or(value.trim());
+
+        if hex.len() != 6 && hex.len() != 8 {
+            return Err("Hex colour must be 6 or 8 characters long".to_string());
+        }
+
+        let parse_pair = |i: usize| -> Result<u8, String> {
+            u8::from_str_radix(&hex[i..i + 2], 16)
+                .map_err(|_| format!("Invalid hex value: {}", &hex[i..i + 2]))
+        };
+
+        Ok(Self {
+            red: parse_pair(0)?,
+            green: parse_pair(2)?,
+            blue: parse_pair(4)?,
+            alpha: if hex.len() == 8 { parse_pair(6)? } else { 255 },
+        })
     }
 }
 
