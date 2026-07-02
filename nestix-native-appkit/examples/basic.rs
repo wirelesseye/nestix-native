@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use env_logger::Env;
 use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
 use nestix_native_appkit::{Button, FlexView, Input, Root, TabView, TabViewItem, Text, Window};
-use nestix_native_core::Direction;
+use nestix_native_core::FlexDirection;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
@@ -78,7 +78,7 @@ fn TodoList() -> Element {
 
     layout! {
         FlexView {
-            FlexView(.direction = Direction::Row) {
+            FlexView(.flex_direction = FlexDirection::Row) {
                 Input(.value = input_text, .on_text_change = on_text_change)
                 Button(.title = "Add", .on_click = add)
             }

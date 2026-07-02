@@ -3,7 +3,7 @@ use nestix::{
     Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    AlignItems, Button, Color, Direction, FlexView, Input, RGBColor, Root, StyleProvider, TabView,
+    AlignItems, Button, Color, FlexDirection, FlexView, Input, RGBColor, Root, StyleProvider, TabView,
     TabViewItem, Text, Window, style,
 };
 
@@ -131,7 +131,7 @@ fn TodoList() -> Element {
     layout! {
         FlexView {
             FlexView(
-                .direction = Direction::Row,
+                .flex_direction = FlexDirection::Row,
                 .align_items = AlignItems::Center,
             ) {
                 Input(
@@ -179,7 +179,7 @@ fn TodoListItem(props: &TodoListItemProps) -> Element {
     let value = computed!([props.data] || data.get().1);
 
     layout! {
-        FlexView(.direction = Direction::Row, .align_items = AlignItems::Center) {
+        FlexView(.flex_direction = FlexDirection::Row, .align_items = AlignItems::Center) {
             Button(
                 .view(.width = 24),
                 .title = "✕",

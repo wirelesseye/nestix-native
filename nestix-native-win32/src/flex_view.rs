@@ -4,7 +4,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Direction, FlexViewProps, TreeContext, Wrap,
+    FlexDirection, FlexViewProps, TreeContext, FlexWrap,
     dpi::{LogicalPosition, LogicalSize},
 };
 use taffy::{NodeId, Size, Style};
@@ -214,13 +214,13 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.direction] || {
+        [tree_context, props.flex_direction] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_direction: match direction.get() {
-                    Direction::Row => taffy::FlexDirection::Row,
-                    Direction::RowReverse => taffy::FlexDirection::RowReverse,
-                    Direction::Column => taffy::FlexDirection::Column,
-                    Direction::ColumnReverse => taffy::FlexDirection::ColumnReverse,
+                    FlexDirection::Row => taffy::FlexDirection::Row,
+                    FlexDirection::RowReverse => taffy::FlexDirection::RowReverse,
+                    FlexDirection::Column => taffy::FlexDirection::Column,
+                    FlexDirection::ColumnReverse => taffy::FlexDirection::ColumnReverse,
                 },
                 ..prev
             });
@@ -243,11 +243,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.wrap] || {
+        [tree_context, props.flex_wrap] || {
             tree_context.update_style(node_id, |prev| Style {
                 flex_wrap: match wrap.get() {
-                    Wrap::NoWrap => taffy::FlexWrap::NoWrap,
-                    Wrap::Wrap => taffy::FlexWrap::Wrap,
+                    FlexWrap::NoWrap => taffy::FlexWrap::NoWrap,
+                    FlexWrap::Wrap => taffy::FlexWrap::Wrap,
                 },
                 ..prev
             });

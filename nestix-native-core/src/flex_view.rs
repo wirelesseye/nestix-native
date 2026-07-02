@@ -3,11 +3,23 @@ use nestix::{Layout, props};
 use crate::{ClassList, Color, ViewProps};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Direction {
+pub enum FlexDirection {
     Row,
     RowReverse,
     Column,
     ColumnReverse,
+}
+
+#[cfg(feature = "taffy")]
+impl FlexDirection {
+    pub fn to_taffy(&self) -> taffy::FlexDirection {
+        match self {
+            FlexDirection::Row => taffy::FlexDirection::Row,
+            FlexDirection::RowReverse => taffy::FlexDirection::RowReverse,
+            FlexDirection::Column => taffy::FlexDirection::Column,
+            FlexDirection::ColumnReverse => taffy::FlexDirection::ColumnReverse,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,9 +51,19 @@ impl AlignItems {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Wrap {
+pub enum FlexWrap {
     NoWrap,
     Wrap,
+}
+
+#[cfg(feature = "taffy")]
+impl FlexWrap {
+    pub fn to_taffy(&self) -> taffy::FlexWrap {
+        match self {
+            FlexWrap::NoWrap => taffy::FlexWrap::NoWrap,
+            FlexWrap::Wrap => taffy::FlexWrap::Wrap,
+        }
+    }
 }
 
 #[props(debug)]
@@ -56,12 +78,12 @@ pub struct FlexViewProps {
     #[props(default)]
     pub children: Layout,
 
-    #[props(default = Direction::Column)]
-    pub direction: Direction,
+    #[props(default = FlexDirection::Column)]
+    pub flex_direction: FlexDirection,
     #[props(default = AlignItems::Unset)]
     pub align_items: AlignItems,
-    #[props(default = Wrap::NoWrap)]
-    pub wrap: Wrap,
+    #[props(default = FlexWrap::NoWrap)]
+    pub flex_wrap: FlexWrap,
 
     pub bg_color: Option<Color>,
 }
