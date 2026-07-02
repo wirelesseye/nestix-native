@@ -4,8 +4,10 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    FlexDirection, FlexViewProps, FlexWrap, TreeContext,
+    Dimension, FlexViewProps, StyleContext, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
+    matched_style, style_align_items, style_align_self, style_dimension, style_flex_direction,
+    style_flex_wrap, style_grow, style_margin,
 };
 use taffy::{NodeId, Size, Style};
 use windows::{
@@ -61,6 +63,12 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
+    let style_props = matched_style(
+        style_context,
+        props.class.clone(),
+        &["__FlexView", "__win32_FlexView"],
+    );
     let child_nodes = Rc::new(RefCell::new(Vec::new()));
 
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
@@ -116,7 +124,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [props.bg_color] || {
+        [style_props, props.bg_color] || {
+            let style_props = style_props.get();
             if let Some(brush) =
                 BACKGROUND_BRUSHES.with_borrow_mut(|brushes| brushes.remove(&hwnd.0))
             {
@@ -125,8 +134,13 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 }
             }
 
-            if let Some(background_color) = background_color.get() {
-                let rgb = background_color.into_rgb();
+            let bg_color = bg_color.get().or_else(|| {
+                style_props
+                    .as_ref()
+                    .and_then(|style_props| style_props.bg_color)
+            });
+            if let Some(bg_color) = bg_color {
+                let rgb = bg_color.into_rgb();
                 if rgb.alpha > 0 {
                     let color = COLORREF(
                         rgb.red as u32 | ((rgb.green as u32) << 8) | ((rgb.blue as u32) << 16),
@@ -146,9 +160,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.grow] || {
+        [tree_context, style_props, props.view.grow] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_grow: grow.get(),
+                flex_grow: style_grow(style_props.as_ref(), grow.get()),
                 ..prev
             });
 
@@ -162,17 +177,31 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             window_context,
             tree_context,
             parent_context.parent_node,
+            style_props,
             props.view.width,
             props.view.height,
         ] || {
             let scale_factor = window_context.scale_factor.get();
+            let style_props = style_props.get();
+            let width = style_dimension(
+                style_props.as_ref(),
+                width.get(),
+                Dimension::Auto,
+                |style| style.width,
+            );
+            let height = style_dimension(
+                style_props.as_ref(),
+                height.get(),
+                Dimension::Auto,
+                |style| style.height,
+            );
 
             if parent_node.is_some() {
                 // Update size when the node is not root
                 tree_context.update_style(node_id, |prev| Style {
                     size: Size {
-                        width: width.get().to_taffy(scale_factor),
-                        height: height.get().to_taffy(scale_factor),
+                        width: width.to_taffy(scale_factor),
+                        height: height.to_taffy(scale_factor),
                     },
                     ..prev
                 });
@@ -187,12 +216,17 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             tree_context.update_style(node_id, |prev| Style {
-                margin: margin_to_taffy(margin.get(), scale_factor),
+                margin: margin_to_taffy(
+                    style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
                 ..prev
             });
 
@@ -202,9 +236,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.align_self] || {
+        [tree_context, style_props, props.view.align_self] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_self: align_self.get().to_taffy(),
+                align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
 
@@ -214,14 +249,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.flex_direction] || {
+        [tree_context, style_props, props.flex_direction] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_direction: match direction.get() {
-                    FlexDirection::Row => taffy::FlexDirection::Row,
-                    FlexDirection::RowReverse => taffy::FlexDirection::RowReverse,
-                    FlexDirection::Column => taffy::FlexDirection::Column,
-                    FlexDirection::ColumnReverse => taffy::FlexDirection::ColumnReverse,
-                },
+                flex_direction: style_flex_direction(style_props.as_ref(), flex_direction.get())
+                    .to_taffy(),
                 ..prev
             });
 
@@ -231,9 +263,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.align_items] || {
+        [tree_context, style_props, props.align_items] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_items: align_items.get().to_taffy(),
+                align_items: style_align_items(style_props.as_ref(), align_items.get()).to_taffy(),
                 ..prev
             });
 
@@ -243,12 +276,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.flex_wrap] || {
+        [tree_context, style_props, props.flex_wrap] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_wrap: match wrap.get() {
-                    FlexWrap::NoWrap => taffy::FlexWrap::NoWrap,
-                    FlexWrap::Wrap => taffy::FlexWrap::Wrap,
-                },
+                flex_wrap: style_flex_wrap(style_props.as_ref(), flex_wrap.get()).to_taffy(),
                 ..prev
             });
 

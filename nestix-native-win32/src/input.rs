@@ -1,7 +1,8 @@
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
-    Dimension, InputProps, TreeContext,
+    Dimension, InputProps, StyleContext, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    matched_style, style_align_self, style_dimension, style_grow, style_margin,
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
@@ -34,6 +35,12 @@ pub fn Input(props: &InputProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
+    let style_props = matched_style(
+        style_context,
+        props.class.clone(),
+        &["__Input", "__win32_Input"],
+    );
 
     let value = HSTRING::from(props.value.get());
     let hwnd = unsafe {
@@ -108,9 +115,10 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.grow] || {
+        [tree_context, style_props, props.view.grow] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_grow: grow.get(),
+                flex_grow: style_grow(style_props.as_ref(), grow.get()),
                 ..prev
             });
 
@@ -123,11 +131,13 @@ pub fn Input(props: &InputProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.value,
             props.view.width,
             props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             let value = value.get();
             let string = HSTRING::from(&value);
@@ -147,11 +157,24 @@ pub fn Input(props: &InputProps, element: &Element) {
                 DeleteObject(font.into()).unwrap();
             }
 
-            let width = match width.get() {
+            let width = style_dimension(
+                style_props.as_ref(),
+                width.get(),
+                Dimension::Auto,
+                |style| style.width,
+            );
+            let height = style_dimension(
+                style_props.as_ref(),
+                height.get(),
+                Dimension::Auto,
+                |style| style.height,
+            );
+
+            let width = match width {
                 Dimension::Auto => PhysicalUnit::new(size.cx + 12).to_logical(scale_factor),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor),
             };
-            let height = match height.get() {
+            let height = match height {
                 Dimension::Auto => PhysicalUnit::new(size.cy + 8).to_logical(scale_factor),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor).into(),
             };
@@ -172,12 +195,17 @@ pub fn Input(props: &InputProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             tree_context.update_style(node_id, |prev| Style {
-                margin: margin_to_taffy(margin.get(), scale_factor),
+                margin: margin_to_taffy(
+                    style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
                 ..prev
             });
 
@@ -187,9 +215,10 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.align_self] || {
+        [tree_context, style_props, props.view.align_self] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_self: align_self.get().to_taffy(),
+                align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
 

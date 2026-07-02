@@ -5,8 +5,9 @@ use nestix::{
     layout, scoped_effect,
 };
 use nestix_native_core::{
-    TabViewItemProps, TabViewProps, TreeContext,
+    Dimension as NativeDimension, StyleContext, TabViewItemProps, TabViewProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalSize},
+    matched_style, style_align_self, style_dimension, style_grow, style_margin,
 };
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 use windows::{
@@ -55,6 +56,12 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
+    let style_props = matched_style(
+        style_context,
+        props.class.clone(),
+        &["__TabView", "__win32_TabView"],
+    );
 
     let current_selected = create_state(None);
 
@@ -140,9 +147,10 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.grow] || {
+        [tree_context, style_props, props.view.grow] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_grow: grow.get(),
+                flex_grow: style_grow(style_props.as_ref(), grow.get()),
                 ..prev
             });
 
@@ -156,17 +164,31 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             window_context,
             tree_context,
             parent_context.parent_node,
+            style_props,
             props.view.width,
             props.view.height,
         ] || {
             let scale_factor = window_context.scale_factor.get();
+            let style_props = style_props.get();
+            let width = style_dimension(
+                style_props.as_ref(),
+                width.get(),
+                NativeDimension::Auto,
+                |style| style.width,
+            );
+            let height = style_dimension(
+                style_props.as_ref(),
+                height.get(),
+                NativeDimension::Auto,
+                |style| style.height,
+            );
 
             if parent_node.is_some() {
                 // Update size when the node is not root
                 tree_context.update_style(node_id, |prev| Style {
                     size: Size {
-                        width: width.get().to_taffy(scale_factor),
-                        height: height.get().to_taffy(scale_factor),
+                        width: width.to_taffy(scale_factor),
+                        height: height.to_taffy(scale_factor),
                     },
                     ..prev
                 });
@@ -181,12 +203,17 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             tree_context.update_style(node_id, |prev| Style {
-                margin: margin_to_taffy(margin.get(), scale_factor),
+                margin: margin_to_taffy(
+                    style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
                 ..prev
             });
 
@@ -196,9 +223,10 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.align_self] || {
+        [tree_context, style_props, props.view.align_self] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_self: align_self.get().to_taffy(),
+                align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
 

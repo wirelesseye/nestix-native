@@ -1,7 +1,8 @@
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    Dimension, TextProps, TreeContext,
+    Dimension, StyleContext, TextProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    matched_style, style_align_self, style_dimension, style_margin,
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
@@ -26,6 +27,12 @@ pub fn Text(props: &TextProps, element: &Element) {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
+    let style_props = matched_style(
+        style_context,
+        props.class.clone(),
+        &["__Text", "__win32_Text"],
+    );
 
     let text = HSTRING::from(props.text.get());
     let hwnd = unsafe {
@@ -89,11 +96,13 @@ pub fn Text(props: &TextProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.text,
             props.view.width,
             props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             let hds = unsafe { GetDC(Some(hwnd)) };
             let string = HSTRING::from(text.get());
@@ -109,11 +118,24 @@ pub fn Text(props: &TextProps, element: &Element) {
                 DeleteObject(font.into()).unwrap();
             }
 
-            let width = match width.get() {
+            let width = style_dimension(
+                style_props.as_ref(),
+                width.get(),
+                Dimension::Auto,
+                |style| style.width,
+            );
+            let height = style_dimension(
+                style_props.as_ref(),
+                height.get(),
+                Dimension::Auto,
+                |style| style.height,
+            );
+
+            let width = match width {
                 Dimension::Auto => PhysicalUnit::new(size.cx).to_logical(scale_factor),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor),
             };
-            let height = match height.get() {
+            let height = match height {
                 Dimension::Auto => PhysicalUnit::new(size.cy).to_logical(scale_factor),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor).into(),
             };
@@ -134,12 +156,17 @@ pub fn Text(props: &TextProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            style_props,
             props.view.margin()
         ] || {
             let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
 
             tree_context.update_style(node_id, |prev| Style {
-                margin: margin_to_taffy(margin.get(), scale_factor),
+                margin: margin_to_taffy(
+                    style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
                 ..prev
             });
 
@@ -149,9 +176,10 @@ pub fn Text(props: &TextProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, props.view.align_self] || {
+        [tree_context, style_props, props.view.align_self] || {
+            let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                align_self: align_self.get().to_taffy(),
+                align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
 
