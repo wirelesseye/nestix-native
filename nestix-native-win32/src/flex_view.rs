@@ -60,14 +60,17 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES = ["__FlexView", "__win32_FlexView"];
+    
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__FlexView", "__win32_FlexView"],
+        &DEFAULT_CLASSES,
     );
     let child_nodes = Rc::new(RefCell::new(Vec::new()));
 
@@ -320,7 +323,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = ["__FlexView", "__win32_FlexView"]) {
+        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<ParentContext>(
                 ParentContext {
                     parent_hwnd: hwnd,

@@ -1,9 +1,13 @@
 use std::{
+    cell::RefCell,
     collections::{HashMap, HashSet},
     rc::Rc,
 };
 
-use nestix::{ContextProvider, Element, Layout, PropValue, component, computed, layout, props};
+use nestix::{
+    ContextProvider, Element, Layout, PropValue, State, component, computed, create_state, layout,
+    props,
+};
 
 use crate::{AlignItems, Color, Dimension, FlexDirection, FlexWrap, Rect};
 
@@ -59,6 +63,14 @@ pub enum StyleSelector {
         ancestor: Box<StyleSelector>,
         descendant: Box<StyleSelector>,
     },
+    AdjacentSibling {
+        previous: Box<StyleSelector>,
+        sibling: Box<StyleSelector>,
+    },
+    SubsequentSibling {
+        previous: Box<StyleSelector>,
+        sibling: Box<StyleSelector>,
+    },
     List(Vec<StyleSelector>),
 }
 
@@ -94,6 +106,28 @@ impl StyleSelector {
                         ancestor.matched_specificity(&ancestor_context).map(
                             |ancestor_specificity| ancestor_specificity + descendant_specificity,
                         )
+                    })
+                    .max()
+            }
+            StyleSelector::AdjacentSibling { previous, sibling } => {
+                let sibling_specificity = sibling.matched_specificity(context)?;
+                let previous_context = context.previous_sibling()?;
+                let previous_specificity = previous.matched_specificity(&previous_context)?;
+                Some(previous_specificity + sibling_specificity)
+            }
+            StyleSelector::SubsequentSibling { previous, sibling } => {
+                let sibling_specificity = sibling.matched_specificity(context)?;
+
+                context
+                    .previous_siblings
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(index, previous_class_list)| {
+                        let previous_context =
+                            context.previous_sibling_at(index, previous_class_list);
+                        previous
+                            .matched_specificity(&previous_context)
+                            .map(|previous_specificity| previous_specificity + sibling_specificity)
                     })
                     .max()
             }
@@ -246,21 +280,59 @@ impl ResolvedStyle {
 
 pub fn matched_style(
     style_context: Option<Rc<StyleContext>>,
+    element: &Element,
     class: PropValue<ClassList>,
     default_classes: &'static [&'static str],
 ) -> nestix::Computed<Option<ResolvedStyle>> {
+    let class_list = PropValue::from_signal(computed!(
+        [class] || { class.get().with_defaults(default_classes) }
+    ));
+    let placement_version: State<usize> = create_state(0);
+
     let style_sheet = style_context
         .as_ref()
         .and_then(|style_context| style_context.style_sheet.clone());
     let ancestors = style_context
+        .as_ref()
         .map(|style_context| style_context.ancestors.clone())
         .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
+    let class_registry = style_context
+        .as_ref()
+        .map(|style_context| style_context.class_registry.clone());
+    let style_element = element.clone();
+
+    if let Some(class_registry) = &class_registry {
+        class_registry
+            .borrow_mut()
+            .insert(element.clone(), class_list.clone());
+
+        element.on_unmount({
+            let class_registry = class_registry.clone();
+            let element = element.clone();
+            move || {
+                class_registry.borrow_mut().remove(&element);
+            }
+        });
+
+        element.on_place({
+            let placement_version = placement_version.clone();
+            move |_| {
+                placement_version.update(|version| version + 1);
+            }
+        });
+    }
+
     computed!(
-        [style_sheet, ancestors, class] || {
+        [style_sheet, ancestors, class_list, placement_version] || {
             style_sheet.as_ref().map(|style_sheet| {
+                placement_version.get();
                 style_sheet.get().matched_props(
-                    &MatchContext::new(class.get().with_defaults(default_classes))
-                        .with_ancestors(ancestors.get()),
+                    &MatchContext::new(class_list.get())
+                        .with_ancestors(ancestors.get())
+                        .with_previous_siblings(previous_sibling_class_lists(
+                            &style_element,
+                            class_registry.as_ref(),
+                        )),
                 )
             })
         }
@@ -422,6 +494,7 @@ impl StyleSheet {
 pub struct MatchContext {
     pub class_list: ClassList,
     pub ancestors: Vec<ClassList>,
+    pub previous_siblings: Vec<ClassList>,
 }
 
 impl MatchContext {
@@ -429,11 +502,17 @@ impl MatchContext {
         Self {
             class_list,
             ancestors: Vec::new(),
+            previous_siblings: Vec::new(),
         }
     }
 
     pub fn with_ancestors(mut self, ancestors: impl Into<Vec<ClassList>>) -> Self {
         self.ancestors = ancestors.into();
+        self
+    }
+
+    pub fn with_previous_siblings(mut self, previous_siblings: impl Into<Vec<ClassList>>) -> Self {
+        self.previous_siblings = previous_siblings.into();
         self
     }
 
@@ -446,13 +525,30 @@ impl MatchContext {
         Self {
             class_list: class_list.clone(),
             ancestors: self.ancestors[index + 1..].to_vec(),
+            previous_siblings: Vec::new(),
+        }
+    }
+
+    fn previous_sibling(&self) -> Option<Self> {
+        let previous_sibling = self.previous_siblings.first()?;
+        Some(self.previous_sibling_at(0, previous_sibling))
+    }
+
+    fn previous_sibling_at(&self, index: usize, class_list: &ClassList) -> Self {
+        Self {
+            class_list: class_list.clone(),
+            ancestors: self.ancestors.clone(),
+            previous_siblings: self.previous_siblings[index + 1..].to_vec(),
         }
     }
 }
 
+type ClassRegistry = Rc<RefCell<HashMap<Element, PropValue<ClassList>>>>;
+
 pub struct StyleContext {
     pub style_sheet: Option<PropValue<StyleSheet>>,
     pub ancestors: PropValue<Vec<ClassList>>,
+    class_registry: ClassRegistry,
 }
 
 #[props]
@@ -480,11 +576,15 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
         props.style_sheet.clone()
     };
     let ancestors = parent_style_context
+        .as_ref()
         .map(|style_context| style_context.ancestors.clone())
         .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
+    let class_registry = parent_style_context
+        .map(|style_context| style_context.class_registry.clone())
+        .unwrap_or_else(|| Rc::new(RefCell::new(HashMap::new())));
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet: Some(style_sheet), ancestors}) {
+        ContextProvider<StyleContext>(StyleContext {style_sheet: Some(style_sheet), ancestors, class_registry}) {
             $(props.children.clone())
         }
     }
@@ -507,19 +607,71 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
         .as_ref()
         .and_then(|style_context| style_context.style_sheet.clone());
     let parent_ancestors = parent_style_context
+        .as_ref()
         .map(|style_context| style_context.ancestors.clone())
         .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
+    let class_registry = parent_style_context
+        .map(|style_context| style_context.class_registry.clone())
+        .unwrap_or_else(|| Rc::new(RefCell::new(HashMap::new())));
     let ancestors = scope_ancestors(
         parent_ancestors,
         props.class.clone(),
         props.default_classes.clone(),
     );
+    let class_list = PropValue::from_signal(computed!(
+        [props.class, props.default_classes] || {
+            let default_classes = default_classes.get();
+            class.get().with_defaults(&default_classes)
+        }
+    ));
+    class_registry
+        .borrow_mut()
+        .insert(element.clone(), class_list.clone());
+    element.on_unmount({
+        let class_registry = class_registry.clone();
+        let element = element.clone();
+        move || {
+            class_registry.borrow_mut().remove(&element);
+        }
+    });
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet, ancestors}) {
+        ContextProvider<StyleContext>(StyleContext {style_sheet, ancestors, class_registry}) {
             $(props.children.clone())
         }
     }
+}
+
+fn previous_sibling_class_lists(
+    element: &Element,
+    class_registry: Option<&ClassRegistry>,
+) -> Vec<ClassList> {
+    let Some(class_registry) = class_registry else {
+        return Vec::new();
+    };
+    let previous_siblings = element.previous_siblings();
+    let registry = class_registry.borrow();
+
+    previous_siblings
+        .into_iter()
+        .filter_map(|element| style_class_for_subtree(&element, &registry))
+        .map(|class_list| class_list.get())
+        .collect()
+}
+
+fn style_class_for_subtree(
+    element: &Element,
+    class_registry: &HashMap<Element, PropValue<ClassList>>,
+) -> Option<PropValue<ClassList>> {
+    if let Some(class_list) = class_registry.get(element) {
+        return Some(class_list.clone());
+    }
+
+    element
+        .children()
+        .into_iter()
+        .rev()
+        .find_map(|child| style_class_for_subtree(&child, class_registry))
 }
 
 pub trait ResolvedStyleValue: Sized {

@@ -29,14 +29,17 @@ struct TabViewContext {
 
 #[component]
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__appkit_TabView"];
+
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__TabView", "__appkit_TabView"],
+        &DEFAULT_CLASSES,
     );
 
     let current_selected = create_state(None);
@@ -185,7 +188,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = ["__TabView", "__appkit_TabView"]) {
+        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TabViewContext>(
                 TabViewContext {
                     current_selected: current_selected.into_readonly()
@@ -256,6 +259,8 @@ impl TabViewDelegate {
 
 #[component]
 pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__TabViewItem", "__appkit_TabViewItem"];
+
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let tab_view_context = element.context::<TabViewContext>().unwrap();
@@ -346,7 +351,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = ["__TabViewItem", "__appkit_TabViewItem"]) {
+        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
                 ContextProvider<ParentContext>(
                     ParentContext {

@@ -20,14 +20,17 @@ thread_local! {
 
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__appkit_Button"];
+    
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__Button", "__appkit_Button"],
+        &DEFAULT_CLASSES,
     );
 
     let mtm = MainThreadMarker::new().unwrap();

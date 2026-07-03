@@ -14,6 +14,8 @@ pub struct RootContext {
 
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Root", "__appkit_Root"];
+    
     let mtm = MainThreadMarker::new().unwrap();
     let ns_application = NSApplication::sharedApplication(mtm);
 
@@ -41,7 +43,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
                 ns_application,
             }
         ) {
-            StyleScope(.class = props.class.clone(), .default_classes = ["__Root", "__appkit_Root"]) {
+            StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
                 $(props.children.clone())
             }
         }

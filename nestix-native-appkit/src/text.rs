@@ -12,14 +12,17 @@ use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__appkit_Text"];
+
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__Text", "__appkit_Text"],
+        &DEFAULT_CLASSES,
     );
 
     let mtm = MainThreadMarker::new().unwrap();

@@ -53,6 +53,8 @@ struct TabViewContext {
 
 #[component]
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__win32_TabView"];
+    
     let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
@@ -60,8 +62,9 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__TabView", "__win32_TabView"],
+        &DEFAULT_CLASSES,
     );
 
     let current_selected = create_state(None);
@@ -268,7 +271,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = ["__TabView", "__win32_TabView"]) {
+        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TabViewContext>(
                 tab_view_context
             ) {
@@ -290,6 +293,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
 #[component]
 pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__TabViewItem", "__win32_TabViewItem"];
+
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
@@ -426,7 +431,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = ["__TabViewItem", "__win32_TabViewItem"]) {
+        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
                 ContextProvider<ParentContext>(
                     ParentContext {

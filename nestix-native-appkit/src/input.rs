@@ -23,14 +23,17 @@ thread_local! {
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__appkit_Input"];
+    
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__Input", "__appkit_Input"],
+        &DEFAULT_CLASSES,
     );
 
     let mtm = MainThreadMarker::new().unwrap();

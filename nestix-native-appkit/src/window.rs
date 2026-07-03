@@ -25,6 +25,8 @@ pub struct WindowContext {
 
 #[component]
 pub fn Window(props: &WindowProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__appkit_Window"];
+
     let mtm = MainThreadMarker::new().unwrap();
     let scale_factor = create_state(1.0);
 
@@ -75,7 +77,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     layout! {
         ContextProvider<WindowContext>(window_context) {
             ContextProvider<TreeContext>(tree_context.clone()) {
-                StyleScope(.class = props.class.clone(), .default_classes = ["__Window", "__appkit_Window"]) {
+                StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
                     ContextProvider<ParentContext>(
                         ParentContext {
                             add_child: Some(callback!([ns_window, tree_context] |object: &NSObject, child_node: Option<NodeId>| {

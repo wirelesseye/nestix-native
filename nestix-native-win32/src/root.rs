@@ -110,6 +110,8 @@ impl AppState {
 
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Root", "__win32_Root"];
+    
     let app_state = APP_STATE.with(|app| app.get_or_init(|| Rc::new(AppState::new(props))).clone());
 
     unsafe {
@@ -124,7 +126,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<AppState>(app_state) {
-            StyleScope(.class = props.class.clone(), .default_classes = ["__Root", "__win32_Root"]) {
+            StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
                 $(props.children.clone())
             }
         }

@@ -69,6 +69,43 @@ fn style_macro_supports_descendant_selectors() {
 }
 
 #[test]
+fn style_macro_supports_adjacent_sibling_selectors() {
+    let sheet = style! {
+        .label + .input {
+            bg_color: red;
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("input"))
+            .with_previous_siblings([ClassList::from("label")]),
+    );
+    assert_eq!(props.bg_color, Some(Color::RED));
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("input"))
+            .with_previous_siblings([ClassList::from("spacer"), ClassList::from("label")]),
+    );
+    assert_eq!(props.bg_color, None);
+}
+
+#[test]
+fn style_macro_supports_subsequent_sibling_selectors() {
+    let sheet = style! {
+        .label ~ .input {
+            bg_color: blue;
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("input"))
+            .with_previous_siblings([ClassList::from("spacer"), ClassList::from("label")]),
+    );
+
+    assert_eq!(props.bg_color, Some(Color::BLUE));
+}
+
+#[test]
 fn combinator_specificity_competes_with_plain_selectors() {
     let sheet = style! {
         .button.primary {

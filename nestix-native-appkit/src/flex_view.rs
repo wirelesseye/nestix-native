@@ -17,6 +17,8 @@ use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
+    const DEFAULT_CLASSES: [&str; 2] = ["__FlexView", "__appkit_FlexView"];
+    
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
@@ -46,8 +48,9 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__FlexView", "__appkit_FlexView"],
+        &DEFAULT_CLASSES,
     );
 
     scoped_effect!(
@@ -252,7 +255,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     ));
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = ["__FlexView", "__appkit_FlexView"]) {
+        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<ParentContext>(
                 ParentContext {
                     add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {

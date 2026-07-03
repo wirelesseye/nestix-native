@@ -31,6 +31,8 @@ use crate::{
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__win32_Input"];
+    
     let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
@@ -38,8 +40,9 @@ pub fn Input(props: &InputProps, element: &Element) {
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__Input", "__win32_Input"],
+        &DEFAULT_CLASSES,
     );
 
     let value = HSTRING::from(props.value.get());

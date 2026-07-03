@@ -78,6 +78,8 @@ enum SelectorAst {
     Class(Vec<String>),
     Child(Box<SelectorAst>, Box<SelectorAst>),
     Descendant(Box<SelectorAst>, Box<SelectorAst>),
+    AdjacentSibling(Box<SelectorAst>, Box<SelectorAst>),
+    SubsequentSibling(Box<SelectorAst>, Box<SelectorAst>),
 }
 
 impl Parse for SelectorInput {
@@ -101,21 +103,30 @@ impl Parse for SelectorInput {
 fn parse_selector_chain(input: ParseStream<'_>) -> Result<SelectorAst> {
     let mut selector = SelectorAst::Class(parse_class_list(input)?);
 
-    while input.peek(Token![>]) {
-        input.parse::<Token![>]>()?;
-        let combinator_is_descendant = if input.peek(Token![>]) {
+    loop {
+        let next_selector = if input.peek(Token![>]) {
             input.parse::<Token![>]>()?;
-            true
+            if input.peek(Token![>]) {
+                input.parse::<Token![>]>()?;
+                let next = SelectorAst::Class(parse_class_list(input)?);
+                SelectorAst::Descendant(Box::new(selector), Box::new(next))
+            } else {
+                let next = SelectorAst::Class(parse_class_list(input)?);
+                SelectorAst::Child(Box::new(selector), Box::new(next))
+            }
+        } else if input.peek(Token![+]) {
+            input.parse::<Token![+]>()?;
+            let next = SelectorAst::Class(parse_class_list(input)?);
+            SelectorAst::AdjacentSibling(Box::new(selector), Box::new(next))
+        } else if input.peek(Token![~]) {
+            input.parse::<Token![~]>()?;
+            let next = SelectorAst::Class(parse_class_list(input)?);
+            SelectorAst::SubsequentSibling(Box::new(selector), Box::new(next))
         } else {
-            false
+            break;
         };
 
-        let next = SelectorAst::Class(parse_class_list(input)?);
-        selector = if combinator_is_descendant {
-            SelectorAst::Descendant(Box::new(selector), Box::new(next))
-        } else {
-            SelectorAst::Child(Box::new(selector), Box::new(next))
-        };
+        selector = next_selector;
     }
 
     Ok(selector)
@@ -653,6 +664,26 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
                 #core_path::StyleSelector::Descendant {
                     ancestor: ::std::boxed::Box::new(#ancestor),
                     descendant: ::std::boxed::Box::new(#descendant),
+                }
+            }
+        }
+        SelectorAst::AdjacentSibling(previous, sibling) => {
+            let previous = expand_selector_ast(*previous);
+            let sibling = expand_selector_ast(*sibling);
+            quote! {
+                #core_path::StyleSelector::AdjacentSibling {
+                    previous: ::std::boxed::Box::new(#previous),
+                    sibling: ::std::boxed::Box::new(#sibling),
+                }
+            }
+        }
+        SelectorAst::SubsequentSibling(previous, sibling) => {
+            let previous = expand_selector_ast(*previous);
+            let sibling = expand_selector_ast(*sibling);
+            quote! {
+                #core_path::StyleSelector::SubsequentSibling {
+                    previous: ::std::boxed::Box::new(#previous),
+                    sibling: ::std::boxed::Box::new(#sibling),
                 }
             }
         }

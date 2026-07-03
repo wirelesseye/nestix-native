@@ -33,6 +33,8 @@ const DEFAULT_PADDING_Y: f32 = 3.0;
 
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
+    const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__win32_Button"];
+    
     let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
@@ -40,8 +42,9 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
         style_context,
+        element,
         props.class.clone(),
-        &["__Button", "__win32_Button"],
+        &DEFAULT_CLASSES,
     );
 
     let title = HSTRING::from(props.title.get());
