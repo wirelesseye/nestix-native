@@ -173,19 +173,76 @@ impl StyleSelector {
 
 #[derive(Debug, Clone)]
 pub enum StyleProperty {
+    /// Background color applied to the element.
+    ///
+    /// **Available value**: a named color (`white`, `black`, `transparent`, `red`,
+    /// `green`, `blue`), or a 6/8 digit hex color (`#RRGGBB` or `#RRGGBBAA`).
     BgColor(Color),
+    /// Horizontal position offset from the left edge of the containing block.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     Left(Dimension),
+    /// Vertical position offset from the top edge of the containing block.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     Top(Dimension),
+    /// Preferred layout width.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     Width(Dimension),
+    /// Preferred layout height.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     Height(Dimension),
+    /// Margin applied to all four edges.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    Margin(Dimension),
+    /// Margin applied to the left and right edges.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    MarginHorizontal(Dimension),
+    /// Margin applied to the top and bottom edges.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    MarginVertical(Dimension),
+    /// Margin applied to the left edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     MarginLeft(Dimension),
+    /// Margin applied to the right edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     MarginRight(Dimension),
+    /// Margin applied to the top edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     MarginTop(Dimension),
+    /// Margin applied to the bottom edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     MarginBottom(Dimension),
+    /// Flex grow factor used when distributing free space.
+    ///
+    /// **Available value**: a number.
     Grow(f32),
+    /// Cross-axis alignment override for this element within its flex parent.
+    ///
+    /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
+    /// `center`, `baseline`, or `stretch`.
     AlignSelf(AlignItems),
+    /// Main-axis direction for this element's flex children.
+    ///
+    /// **Available value**: `row`, `row-reverse`, `column`, or `column-reverse`.
     FlexDirection(FlexDirection),
+    /// Cross-axis alignment for this element's flex children.
+    ///
+    /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
+    /// `center`, `baseline`, or `stretch`.
     AlignItems(AlignItems),
+    /// Wrapping behavior for this element's flex children.
+    ///
+    /// **Available value**: `nowrap`, `no-wrap`, or `wrap`.
     FlexWrap(FlexWrap),
 }
 
@@ -197,6 +254,9 @@ impl StyleProperty {
             StyleProperty::Top(_) => "top",
             StyleProperty::Width(_) => "width",
             StyleProperty::Height(_) => "height",
+            StyleProperty::Margin(_) => "margin",
+            StyleProperty::MarginHorizontal(_) => "margin_horizontal",
+            StyleProperty::MarginVertical(_) => "margin_vertical",
             StyleProperty::MarginLeft(_) => "margin_left",
             StyleProperty::MarginRight(_) => "margin_right",
             StyleProperty::MarginTop(_) => "margin_top",
@@ -208,6 +268,30 @@ impl StyleProperty {
             StyleProperty::FlexWrap(_) => "flex_wrap",
         }
     }
+
+    fn affected_names(&self) -> &'static [&'static str] {
+        match self {
+            StyleProperty::BgColor(_) => &["bg_color"],
+            StyleProperty::Left(_) => &["left"],
+            StyleProperty::Top(_) => &["top"],
+            StyleProperty::Width(_) => &["width"],
+            StyleProperty::Height(_) => &["height"],
+            StyleProperty::Margin(_) => {
+                &["margin_left", "margin_right", "margin_top", "margin_bottom"]
+            }
+            StyleProperty::MarginHorizontal(_) => &["margin_left", "margin_right"],
+            StyleProperty::MarginVertical(_) => &["margin_top", "margin_bottom"],
+            StyleProperty::MarginLeft(_) => &["margin_left"],
+            StyleProperty::MarginRight(_) => &["margin_right"],
+            StyleProperty::MarginTop(_) => &["margin_top"],
+            StyleProperty::MarginBottom(_) => &["margin_bottom"],
+            StyleProperty::Grow(_) => &["grow"],
+            StyleProperty::AlignSelf(_) => &["align_self"],
+            StyleProperty::FlexDirection(_) => &["flex_direction"],
+            StyleProperty::AlignItems(_) => &["align_items"],
+            StyleProperty::FlexWrap(_) => &["flex_wrap"],
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -217,10 +301,10 @@ pub enum StyleDeclaration {
 }
 
 impl StyleDeclaration {
-    fn name(&self) -> &str {
+    fn affected_names(&self) -> Vec<&str> {
         match self {
-            StyleDeclaration::Property(property) => property.name(),
-            StyleDeclaration::Custom { name, .. } => name,
+            StyleDeclaration::Property(property) => property.affected_names().to_vec(),
+            StyleDeclaration::Custom { name, .. } => vec![name.as_str()],
         }
     }
 }
@@ -275,6 +359,20 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::Height(dimension)) => {
                 self.height = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::Margin(dimension)) => {
+                self.margin_left = Some(dimension.clone());
+                self.margin_right = Some(dimension.clone());
+                self.margin_top = Some(dimension.clone());
+                self.margin_bottom = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::MarginHorizontal(dimension)) => {
+                self.margin_left = Some(dimension.clone());
+                self.margin_right = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::MarginVertical(dimension)) => {
+                self.margin_top = Some(dimension.clone());
+                self.margin_bottom = Some(dimension);
             }
             StyleDeclaration::Property(StyleProperty::MarginLeft(dimension)) => {
                 self.margin_left = Some(dimension);
@@ -478,7 +576,6 @@ impl StyleSheet {
             };
 
             for declaration in &rule.declarations {
-                let name = declaration.name().to_string();
                 let next = Candidate {
                     specificity,
                     order,
@@ -486,14 +583,16 @@ impl StyleSheet {
                 };
                 order += 1;
 
-                let should_replace = candidates.get(&name).is_none_or(|previous| {
-                    next.specificity > previous.specificity
-                        || (next.specificity == previous.specificity
-                            && next.order >= previous.order)
-                });
+                for name in declaration.affected_names() {
+                    let should_replace = candidates.get(name).is_none_or(|previous| {
+                        next.specificity > previous.specificity
+                            || (next.specificity == previous.specificity
+                                && next.order >= previous.order)
+                    });
 
-                if should_replace {
-                    candidates.insert(name, next);
+                    if should_replace {
+                        candidates.insert(name.to_string(), next.clone());
+                    }
                 }
             }
         }

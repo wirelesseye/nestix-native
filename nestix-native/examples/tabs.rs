@@ -52,7 +52,6 @@ fn Counter() -> Element {
             || style! {
                 .counter {
                     bg_color: $(bg_color.get());
-                    margin_left: 50px;
                 }
             }
     );

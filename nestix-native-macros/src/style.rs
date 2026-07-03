@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
-use proc_macro2::{Delimiter, TokenStream as TokenStream2, TokenTree};
-use quote::quote;
+use proc_macro2::{Delimiter, Span, TokenStream as TokenStream2, TokenTree};
+use quote::{ToTokens, quote};
 use syn::{
     Error, Expr, Ident, Result, Token, braced, parenthesized,
     parse::{Parse, ParseStream},
@@ -177,8 +177,24 @@ fn parse_pseudo_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
 }
 
 struct StylePropInput {
-    name: String,
+    name: StylePropName,
     value: StyleValueInput,
+}
+
+struct StylePropName {
+    text: String,
+    tokens: TokenStream2,
+}
+
+impl StylePropName {
+    fn span(&self) -> Span {
+        self.tokens
+            .clone()
+            .into_iter()
+            .map(|token| token.span())
+            .reduce(|span, next| span.join(next).unwrap_or(span))
+            .unwrap_or_else(Span::call_site)
+    }
 }
 
 impl Parse for StylePropInput {
@@ -220,36 +236,50 @@ impl Parse for StyleValueInput {
     }
 }
 
-fn parse_prop_name(input: ParseStream<'_>) -> Result<String> {
+fn parse_prop_name(input: ParseStream<'_>) -> Result<StylePropName> {
+    let mut tokens = TokenStream2::new();
+
     if input.peek(Token![-]) {
-        input.parse::<Token![-]>()?;
-        input.parse::<Token![-]>()?;
+        tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
+        tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
         let mut name = "--".to_string();
-        name.push_str(&parse_prop_name_segment(input)?);
+        let segment = parse_prop_name_segment(input)?;
+        name.push_str(&segment.text);
+        tokens.extend(segment.tokens);
 
         while input.peek(Token![-]) {
-            input.parse::<Token![-]>()?;
+            tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
             name.push('-');
-            name.push_str(&parse_prop_name_segment(input)?);
+            let segment = parse_prop_name_segment(input)?;
+            name.push_str(&segment.text);
+            tokens.extend(segment.tokens);
         }
 
-        return Ok(name);
+        return Ok(StylePropName { text: name, tokens });
     }
 
-    let mut name = input.parse::<Ident>()?.to_string();
+    let first_segment: Ident = input.parse()?;
+    let mut name = first_segment.to_string();
+    tokens.extend(first_segment.to_token_stream());
 
     while input.peek(Token![-]) {
-        input.parse::<Token![-]>()?;
+        tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
         name.push('-');
-        name.push_str(&parse_prop_name_segment(input)?);
+        let segment = parse_prop_name_segment(input)?;
+        name.push_str(&segment.text);
+        tokens.extend(segment.tokens);
     }
 
-    Ok(name)
+    Ok(StylePropName { text: name, tokens })
 }
 
-fn parse_prop_name_segment(input: ParseStream<'_>) -> Result<String> {
-    match input.parse::<TokenTree>()? {
-        TokenTree::Ident(ident) => Ok(ident.to_string()),
+fn parse_prop_name_segment(input: ParseStream<'_>) -> Result<StylePropName> {
+    let token = input.parse::<TokenTree>()?;
+    match token {
+        TokenTree::Ident(ident) => Ok(StylePropName {
+            text: ident.to_string(),
+            tokens: ident.to_token_stream(),
+        }),
         token => Err(Error::new_spanned(
             token,
             "expected style property name segment",
@@ -355,10 +385,7 @@ fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {
         .props
         .into_iter()
         .map(expand_declaration)
-        .collect::<Result<Vec<_>>>()?
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>>>()?;
 
     Ok(quote! {
         #core_path::StyleRule {
@@ -370,9 +397,10 @@ fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {
     })
 }
 
-fn expand_declaration(prop: StylePropInput) -> Result<Vec<TokenStream2>> {
+fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
     let core_path = core_path();
-    let name = canonical_prop_name(&prop.name);
+    let name = canonical_prop_name(&prop.name.text);
+    let name_span = prop.name.span();
     let value = prop.value;
 
     if name.starts_with("--") {
@@ -380,107 +408,47 @@ fn expand_declaration(prop: StylePropInput) -> Result<Vec<TokenStream2>> {
             StyleValueInput::Literal(value) => quote!(#value.to_string()),
             StyleValueInput::Inserted(value) => quote!((#value).to_string()),
         };
-        return Ok(vec![quote! {
+        return Ok(quote! {
             #core_path::StyleDeclaration::Custom {
                 name: #name.to_string(),
                 value: #value,
             }
-        }]);
+        });
     }
 
-    match name.as_str() {
-        "bg_color" => {
-            let color = expand_color(value)?;
-            Ok(vec![expand_property("BgColor", color)])
-        }
-        "left" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("Left", dimension)])
-        }
-        "top" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("Top", dimension)])
-        }
-        "width" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("Width", dimension)])
-        }
-        "height" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("Height", dimension)])
-        }
-        "margin" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![
-                expand_property("MarginTop", dimension.clone()),
-                expand_property("MarginRight", dimension.clone()),
-                expand_property("MarginBottom", dimension.clone()),
-                expand_property("MarginLeft", dimension),
-            ])
-        }
-        "margin_horizontal" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![
-                expand_property("MarginLeft", dimension.clone()),
-                expand_property("MarginRight", dimension),
-            ])
-        }
-        "margin_vertical" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![
-                expand_property("MarginTop", dimension.clone()),
-                expand_property("MarginBottom", dimension),
-            ])
-        }
-        "margin_left" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("MarginLeft", dimension)])
-        }
-        "margin_right" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("MarginRight", dimension)])
-        }
-        "margin_top" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("MarginTop", dimension)])
-        }
-        "margin_bottom" => {
-            let dimension = expand_dimension(value)?;
-            Ok(vec![expand_property("MarginBottom", dimension)])
-        }
-        "grow" => {
-            let grow = expand_f32(value)?;
-            Ok(vec![expand_property("Grow", grow)])
-        }
-        "align_self" => {
-            let align_self = expand_align_items(value)?;
-            Ok(vec![expand_property("AlignSelf", align_self)])
-        }
-        "flex_direction" => {
-            let flex_direction = expand_flex_direction(value)?;
-            Ok(vec![expand_property("FlexDirection", flex_direction)])
-        }
-        "align_items" => {
-            let align_items = expand_align_items(value)?;
-            Ok(vec![expand_property("AlignItems", align_items)])
-        }
-        "flex_wrap" => {
-            let flex_wrap = expand_flex_wrap(value)?;
-            Ok(vec![expand_property("FlexWrap", flex_wrap)])
-        }
-        _ => Err(Error::new(
-            proc_macro2::Span::call_site(),
+    let (variant, value) = match name.as_str() {
+        "bg_color" => ("BgColor", expand_color(value)?),
+        "left" => ("Left", expand_dimension(value)?),
+        "top" => ("Top", expand_dimension(value)?),
+        "width" => ("Width", expand_dimension(value)?),
+        "height" => ("Height", expand_dimension(value)?),
+        "margin" => ("Margin", expand_dimension(value)?),
+        "margin_horizontal" => ("MarginHorizontal", expand_dimension(value)?),
+        "margin_vertical" => ("MarginVertical", expand_dimension(value)?),
+        "margin_left" => ("MarginLeft", expand_dimension(value)?),
+        "margin_right" => ("MarginRight", expand_dimension(value)?),
+        "margin_top" => ("MarginTop", expand_dimension(value)?),
+        "margin_bottom" => ("MarginBottom", expand_dimension(value)?),
+        "grow" => ("Grow", expand_f32(value)?),
+        "align_self" => ("AlignSelf", expand_align_items(value)?),
+        "flex_direction" => ("FlexDirection", expand_flex_direction(value)?),
+        "align_items" => ("AlignItems", expand_align_items(value)?),
+        "flex_wrap" => ("FlexWrap", expand_flex_wrap(value)?),
+        _ => Err(Error::new_spanned(
+            prop.name.tokens,
             format!(
                 "unknown built-in style property `{}`; use a `--` prefix for custom properties",
-                prop.name
+                prop.name.text
             ),
-        )),
-    }
+        ))?,
+    };
+
+    Ok(expand_property(variant, value, name_span))
 }
 
-fn expand_property(variant: &str, value: TokenStream2) -> TokenStream2 {
+fn expand_property(variant: &str, value: TokenStream2, span: Span) -> TokenStream2 {
     let core_path = core_path();
-    let variant = Ident::new(variant, proc_macro2::Span::call_site());
+    let variant = Ident::new(variant, span);
     quote! {
         #core_path::StyleDeclaration::Property(
             #core_path::StyleProperty::#variant(#value)

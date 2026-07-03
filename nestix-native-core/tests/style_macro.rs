@@ -336,6 +336,27 @@ fn style_margin_shorthand_expands_and_cascades_per_edge() {
 }
 
 #[test]
+fn style_margin_shorthand_evaluates_inserted_value_once() {
+    let mut calls = 0;
+    let sheet = style! {
+        .panel {
+            margin: $({
+                calls += 1;
+                Dimension::from(8.0)
+            });
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
+
+    assert_eq!(calls, 1);
+    assert_eq!(props.margin_top, Some(Dimension::from(8.0)));
+    assert_eq!(props.margin_right, Some(Dimension::from(8.0)));
+    assert_eq!(props.margin_bottom, Some(Dimension::from(8.0)));
+    assert_eq!(props.margin_left, Some(Dimension::from(8.0)));
+}
+
+#[test]
 fn class_list_can_include_renderer_default_classes() {
     let class_list = ClassList::from("primary").with_defaults(&["__Button", "__appkit_Button"]);
 
