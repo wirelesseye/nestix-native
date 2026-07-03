@@ -54,7 +54,7 @@ pub struct WindowContext {
 #[component]
 pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__win32_Window"];
-    
+
     let app_state = element.context::<AppState>().unwrap();
 
     let scale_factor = create_state(1.0);

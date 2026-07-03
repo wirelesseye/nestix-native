@@ -25,7 +25,7 @@ use crate::{WindowContext, contexts::ParentContext, font::ui_font, utils::margin
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__win32_Text"];
-    
+
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();

@@ -28,10 +28,6 @@ impl ClassList {
         classes.extend(defaults.iter().map(|class| (*class).to_string()));
         Self(classes)
     }
-
-    fn specificity(&self) -> usize {
-        self.0.len()
-    }
 }
 
 impl From<&str> for ClassList {
@@ -54,7 +50,9 @@ impl From<HashSet<String>> for ClassList {
 
 #[derive(Debug, Clone)]
 pub enum StyleSelector {
-    Class(ClassList),
+    Class(String),
+    Not(Box<StyleSelector>),
+    All(Vec<StyleSelector>),
     Child {
         parent: Box<StyleSelector>,
         child: Box<StyleSelector>,
@@ -81,10 +79,22 @@ impl StyleSelector {
 
     pub fn matched_specificity(&self, context: &MatchContext) -> Option<usize> {
         match self {
-            StyleSelector::Class(class) if context.class_list.is_superset(class) => {
-                Some(class.specificity())
-            }
+            StyleSelector::Class(class) if context.class_list.contains(class) => Some(1),
             StyleSelector::Class(_) => None,
+            StyleSelector::Not(selector) => {
+                if selector.matches(context) {
+                    None
+                } else {
+                    Some(selector.specificity())
+                }
+            }
+            StyleSelector::All(selectors) => {
+                selectors.iter().try_fold(0, |specificity, selector| {
+                    selector
+                        .matched_specificity(context)
+                        .map(|selector_specificity| specificity + selector_specificity)
+                })
+            }
             StyleSelector::Child { parent, child } => {
                 let child_specificity = child.matched_specificity(context)?;
                 let parent_context = context.parent()?;
@@ -135,6 +145,28 @@ impl StyleSelector {
                 .iter()
                 .filter_map(|selector| selector.matched_specificity(context))
                 .max(),
+        }
+    }
+
+    fn specificity(&self) -> usize {
+        match self {
+            StyleSelector::Class(_) => 1,
+            StyleSelector::Not(selector) => selector.specificity(),
+            StyleSelector::All(selectors) => selectors.iter().map(Self::specificity).sum(),
+            StyleSelector::Child { parent, child } => parent.specificity() + child.specificity(),
+            StyleSelector::Descendant {
+                ancestor,
+                descendant,
+            } => ancestor.specificity() + descendant.specificity(),
+            StyleSelector::AdjacentSibling { previous, sibling } => {
+                previous.specificity() + sibling.specificity()
+            }
+            StyleSelector::SubsequentSibling { previous, sibling } => {
+                previous.specificity() + sibling.specificity()
+            }
+            StyleSelector::List(selectors) => {
+                selectors.iter().map(Self::specificity).max().unwrap_or(0)
+            }
         }
     }
 }

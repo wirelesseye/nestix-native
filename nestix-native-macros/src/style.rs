@@ -75,7 +75,9 @@ struct SelectorInput {
 }
 
 enum SelectorAst {
-    Class(Vec<String>),
+    Class(String),
+    Not(SelectorInput),
+    All(Vec<SelectorAst>),
     Child(Box<SelectorAst>, Box<SelectorAst>),
     Descendant(Box<SelectorAst>, Box<SelectorAst>),
     AdjacentSibling(Box<SelectorAst>, Box<SelectorAst>),
@@ -101,26 +103,26 @@ impl Parse for SelectorInput {
 }
 
 fn parse_selector_chain(input: ParseStream<'_>) -> Result<SelectorAst> {
-    let mut selector = SelectorAst::Class(parse_class_list(input)?);
+    let mut selector = parse_compound_selector(input)?;
 
     loop {
         let next_selector = if input.peek(Token![>]) {
             input.parse::<Token![>]>()?;
             if input.peek(Token![>]) {
                 input.parse::<Token![>]>()?;
-                let next = SelectorAst::Class(parse_class_list(input)?);
+                let next = parse_compound_selector(input)?;
                 SelectorAst::Descendant(Box::new(selector), Box::new(next))
             } else {
-                let next = SelectorAst::Class(parse_class_list(input)?);
+                let next = parse_compound_selector(input)?;
                 SelectorAst::Child(Box::new(selector), Box::new(next))
             }
         } else if input.peek(Token![+]) {
             input.parse::<Token![+]>()?;
-            let next = SelectorAst::Class(parse_class_list(input)?);
+            let next = parse_compound_selector(input)?;
             SelectorAst::AdjacentSibling(Box::new(selector), Box::new(next))
         } else if input.peek(Token![~]) {
             input.parse::<Token![~]>()?;
-            let next = SelectorAst::Class(parse_class_list(input)?);
+            let next = parse_compound_selector(input)?;
             SelectorAst::SubsequentSibling(Box::new(selector), Box::new(next))
         } else {
             break;
@@ -132,20 +134,46 @@ fn parse_selector_chain(input: ParseStream<'_>) -> Result<SelectorAst> {
     Ok(selector)
 }
 
-fn parse_class_list(input: ParseStream<'_>) -> Result<Vec<String>> {
-    let mut classes = Vec::new();
+fn parse_compound_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
+    let mut selectors = Vec::new();
 
     loop {
-        input.parse::<Token![.]>()?;
-        let class_name: Ident = input.parse()?;
-        classes.push(class_name.to_string());
-
-        if !input.peek(Token![.]) {
+        if input.peek(Token![.]) {
+            selectors.push(SelectorAst::Class(parse_class(input)?));
+        } else if input.peek(Token![:]) {
+            selectors.push(parse_pseudo_selector(input)?);
+        } else {
             break;
         }
     }
 
-    Ok(classes)
+    match selectors.len() {
+        0 => Err(input.error("expected selector")),
+        1 => Ok(selectors.pop().unwrap()),
+        _ => Ok(SelectorAst::All(selectors)),
+    }
+}
+
+fn parse_class(input: ParseStream<'_>) -> Result<String> {
+    input.parse::<Token![.]>()?;
+    let class_name: Ident = input.parse()?;
+    Ok(class_name.to_string())
+}
+
+fn parse_pseudo_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
+    input.parse::<Token![:]>()?;
+    let name: Ident = input.parse()?;
+
+    if name != "not" {
+        return Err(Error::new_spanned(
+            name,
+            "unsupported pseudo selector; expected `not`",
+        ));
+    }
+
+    let content;
+    parenthesized!(content in input);
+    Ok(SelectorAst::Not(content.parse()?))
 }
 
 struct StylePropInput {
@@ -641,10 +669,23 @@ fn expand_selector(selector: SelectorInput) -> TokenStream2 {
 fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
     let core_path = core_path();
     match selector {
-        SelectorAst::Class(classes) => {
-            let class_list = classes.join(" ");
+        SelectorAst::Class(class) => {
             quote! {
-                #core_path::StyleSelector::Class(#class_list.into())
+                #core_path::StyleSelector::Class(#class.to_string())
+            }
+        }
+        SelectorAst::Not(selector) => {
+            let selector = expand_selector(selector);
+            quote! {
+                #core_path::StyleSelector::Not(::std::boxed::Box::new(#selector))
+            }
+        }
+        SelectorAst::All(selectors) => {
+            let selectors = selectors.into_iter().map(expand_selector_ast);
+            quote! {
+                #core_path::StyleSelector::All(::std::vec![
+                    #(#selectors),*
+                ])
             }
         }
         SelectorAst::Child(parent, child) => {

@@ -32,7 +32,7 @@ use crate::{
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__win32_Input"];
-    
+
     let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();

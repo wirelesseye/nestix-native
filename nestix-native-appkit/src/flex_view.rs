@@ -18,7 +18,7 @@ use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__FlexView", "__appkit_FlexView"];
-    
+
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();

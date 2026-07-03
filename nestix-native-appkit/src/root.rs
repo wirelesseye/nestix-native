@@ -15,7 +15,7 @@ pub struct RootContext {
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Root", "__appkit_Root"];
-    
+
     let mtm = MainThreadMarker::new().unwrap();
     let ns_application = NSApplication::sharedApplication(mtm);
 

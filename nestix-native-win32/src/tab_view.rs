@@ -54,7 +54,7 @@ struct TabViewContext {
 #[component]
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__win32_TabView"];
-    
+
     let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();

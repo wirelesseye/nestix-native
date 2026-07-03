@@ -33,6 +33,21 @@ fn style_macro_supports_multiple_rules_and_selectors() {
 }
 
 #[test]
+fn style_macro_supports_not_selectors() {
+    let sheet = style! {
+        .button:not(.disabled) {
+            bg_color: red;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("button")));
+    assert_eq!(props.bg_color, Some(Color::RED));
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("button disabled")));
+    assert_eq!(props.bg_color, None);
+}
+
+#[test]
 fn style_macro_supports_child_selectors() {
     let sheet = style! {
         .panel > .button {
@@ -123,6 +138,23 @@ fn combinator_specificity_competes_with_plain_selectors() {
     );
 
     assert_eq!(props.bg_color, Some(Color::BLUE));
+}
+
+#[test]
+fn not_selector_specificity_competes_with_plain_selectors() {
+    let sheet = style! {
+        .button:not(.disabled) {
+            bg_color: red;
+        }
+
+        .button {
+            bg_color: blue;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("button")));
+
+    assert_eq!(props.bg_color, Some(Color::RED));
 }
 
 #[test]

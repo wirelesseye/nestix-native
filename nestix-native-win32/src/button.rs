@@ -34,7 +34,7 @@ const DEFAULT_PADDING_Y: f32 = 3.0;
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__win32_Button"];
-    
+
     let app_state = element.context::<AppState>().unwrap();
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
