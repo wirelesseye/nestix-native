@@ -17,11 +17,11 @@ fn style_macro_builds_class_rule() {
 fn style_macro_supports_multiple_rules_and_selectors() {
     let sheet = style! {
         .counter, .button.primary {
-            bg-color: #FFFFFF;
+            bg_color: #FFFFFF;
         }
 
         .counter.selected {
-            --text-color: red;
+            --text_color: red;
         }
     };
 
@@ -29,7 +29,7 @@ fn style_macro_supports_multiple_rules_and_selectors() {
     assert_eq!(props.bg_color, Some(Color::WHITE));
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter selected")));
-    assert_eq!(props.custom("--text-color"), Some("red"));
+    assert_eq!(props.custom("--text_color"), Some("red"));
 }
 
 #[test]
@@ -274,12 +274,12 @@ fn style_macro_supports_view_props() {
             top: 2px;
             width: 320px;
             height: auto;
-            margin-left: 3px;
-            margin-right: 4px;
-            margin-top: 5px;
-            margin-bottom: 6px;
+            margin_left: 3px;
+            margin_right: 4px;
+            margin_top: 5px;
+            margin_bottom: 6px;
             grow: 2;
-            align-self: center;
+            align_self: center;
         }
     };
 
@@ -301,9 +301,9 @@ fn style_macro_supports_view_props() {
 fn style_macro_supports_flex_view_props() {
     let sheet = style! {
         .panel {
-            flex-direction: row-reverse;
-            align-items: stretch;
-            flex-wrap: wrap;
+            flex_direction: row-reverse;
+            align_items: stretch;
+            flex_wrap: wrap;
         }
     };
 
@@ -319,11 +319,11 @@ fn style_margin_shorthand_expands_and_cascades_per_edge() {
     let sheet = style! {
         .panel {
             margin: 8px;
-            margin-left: 16px;
+            margin_left: 16px;
         }
 
         .panel.selected {
-            margin-right: 24px;
+            margin_right: 24px;
         }
     };
 

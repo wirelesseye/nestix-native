@@ -13,13 +13,13 @@ use proc_macro::TokenStream;
 /// # use nestix_native_core::*;
 /// let styles = style! {
 ///     .counter, .__Button {
-///         bg-color: #FFFFFF;
+///         bg_color: #FFFFFF;
 ///         width: 120px;
 ///         margin: 8px;
-///         margin-left: 16px;
+///         margin_left: 16px;
 ///         grow: 1;
-///         align-self: center;
-///         --accent-token: primary;
+///         align_self: center;
+///         --accent_token: primary;
 ///     }
 /// };
 /// ```
@@ -39,7 +39,7 @@ use proc_macro::TokenStream;
 ///
 /// let styles = nestix::computed!([bg_color] || style! {
 ///     .counter {
-///         bg-color: $(bg_color.get());
+///         bg_color: $(bg_color.get());
 ///         width: $(Dimension::from(240.0));
 ///         --label: $(format!("count-{}", 1));
 ///     }
@@ -53,7 +53,7 @@ use proc_macro::TokenStream;
 /// # use nestix_native_core::*;
 /// let base = style! {
 ///     .counter {
-///         bg-color: blue;
+///         bg_color: blue;
 ///     }
 /// };
 ///

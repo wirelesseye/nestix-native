@@ -1,6 +1,6 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Span, TokenStream as TokenStream2, TokenTree};
-use quote::{ToTokens, quote};
+use quote::quote;
 use syn::{
     Error, Expr, Ident, Result, Token, braced, parenthesized,
     parse::{Parse, ParseStream},
@@ -177,35 +177,32 @@ fn parse_pseudo_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
 }
 
 struct StylePropInput {
-    name: StylePropName,
+    is_custom: bool,
+    name: Ident,
     value: StyleValueInput,
-}
-
-struct StylePropName {
-    text: String,
-    tokens: TokenStream2,
-}
-
-impl StylePropName {
-    fn span(&self) -> Span {
-        self.tokens
-            .clone()
-            .into_iter()
-            .map(|token| token.span())
-            .reduce(|span, next| span.join(next).unwrap_or(span))
-            .unwrap_or_else(Span::call_site)
-    }
 }
 
 impl Parse for StylePropInput {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let name = parse_prop_name(input)?;
+        let is_custom = if input.peek(Token![-]) {
+            input.parse::<Token![-]>()?;
+            input.parse::<Token![-]>()?;
+            true
+        } else {
+            false
+        };
+
+        let name = input.parse()?;
         input.parse::<Token![:]>()?;
 
         let value = input.parse()?;
         input.parse::<Token![;]>()?;
 
-        Ok(Self { name, value })
+        Ok(Self {
+            is_custom,
+            name,
+            value,
+        })
     }
 }
 
@@ -233,57 +230,6 @@ impl Parse for StyleValueInput {
         }
 
         Ok(Self::Literal(css_value_to_string(value)))
-    }
-}
-
-fn parse_prop_name(input: ParseStream<'_>) -> Result<StylePropName> {
-    let mut tokens = TokenStream2::new();
-
-    if input.peek(Token![-]) {
-        tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
-        tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
-        let mut name = "--".to_string();
-        let segment = parse_prop_name_segment(input)?;
-        name.push_str(&segment.text);
-        tokens.extend(segment.tokens);
-
-        while input.peek(Token![-]) {
-            tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
-            name.push('-');
-            let segment = parse_prop_name_segment(input)?;
-            name.push_str(&segment.text);
-            tokens.extend(segment.tokens);
-        }
-
-        return Ok(StylePropName { text: name, tokens });
-    }
-
-    let first_segment: Ident = input.parse()?;
-    let mut name = first_segment.to_string();
-    tokens.extend(first_segment.to_token_stream());
-
-    while input.peek(Token![-]) {
-        tokens.extend(input.parse::<Token![-]>()?.to_token_stream());
-        name.push('-');
-        let segment = parse_prop_name_segment(input)?;
-        name.push_str(&segment.text);
-        tokens.extend(segment.tokens);
-    }
-
-    Ok(StylePropName { text: name, tokens })
-}
-
-fn parse_prop_name_segment(input: ParseStream<'_>) -> Result<StylePropName> {
-    let token = input.parse::<TokenTree>()?;
-    match token {
-        TokenTree::Ident(ident) => Ok(StylePropName {
-            text: ident.to_string(),
-            tokens: ident.to_token_stream(),
-        }),
-        token => Err(Error::new_spanned(
-            token,
-            "expected style property name segment",
-        )),
     }
 }
 
@@ -399,11 +345,12 @@ fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {
 
 fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
     let core_path = core_path();
-    let name = canonical_prop_name(&prop.name.text);
+    let name = prop.name.to_string();
     let name_span = prop.name.span();
     let value = prop.value;
 
-    if name.starts_with("--") {
+    if prop.is_custom {
+        let name = format!("--{}", name);
         let value = match value {
             StyleValueInput::Literal(value) => quote!(#value.to_string()),
             StyleValueInput::Inserted(value) => quote!((#value).to_string()),
@@ -435,10 +382,10 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "align_items" => ("AlignItems", expand_align_items(value)?),
         "flex_wrap" => ("FlexWrap", expand_flex_wrap(value)?),
         _ => Err(Error::new_spanned(
-            prop.name.tokens,
+            prop.name,
             format!(
                 "unknown built-in style property `{}`; use a `--` prefix for custom properties",
-                prop.name.text
+                name
             ),
         ))?,
     };
@@ -453,14 +400,6 @@ fn expand_property(variant: &str, value: TokenStream2, span: Span) -> TokenStrea
         #core_path::StyleDeclaration::Property(
             #core_path::StyleProperty::#variant(#value)
         )
-    }
-}
-
-fn canonical_prop_name(name: &str) -> String {
-    if name.starts_with("--") {
-        name.to_string()
-    } else {
-        name.replace('-', "_")
     }
 }
 
