@@ -21,22 +21,56 @@ fn random_color() -> Color {
 
 #[component]
 fn ExampleApp() -> Element {
+    let styles = style! {
+        .app {
+            // bg_color: #F4F6F8;
+        }
+
+        .counter, .todo {
+            margin: 16px;
+        }
+
+        .counter > .__Text, .counter > .__Button {
+            margin_bottom: 12px;
+        }
+
+        .toolbar {
+            margin_bottom: 12px;
+        }
+
+        .toolbar > .__Input {
+            margin_right: 8px;
+        }
+
+        .todo_item {
+            margin_bottom: 8px;
+        }
+
+        .todo_item > .__Button, .todo_item > .__Text, .todo_item > .__Input {
+            margin_right: 6px;
+        }
+    };
+
     layout! {
-        Root {
-            Window(
-                .title = "Example App",
-                .width = 300,
-                .height = 300,
-            ) {
-                TabView {
-                    TabViewItem(
-                        .id = "counter",
-                        .title = "Counter",
-                    ) { Counter }
-                    TabViewItem(
-                        .id = "todo_list",
-                        .title = "Todo List",
-                    ) { TodoList }
+        StyleProvider(styles) {
+            Root {
+                Window(
+                    .title = "Nestix Tabs",
+                    .width = 520,
+                    .height = 420,
+                ) {
+                    FlexView(.class = "app", .view(.grow = 1.0)) {
+                        TabView(.view(.grow = 1.0)) {
+                            TabViewItem(
+                                .id = "counter",
+                                .title = "Counter",
+                            ) { Counter }
+                            TabViewItem(
+                                .id = "todo_list",
+                                .title = "Todo List",
+                            ) { TodoList }
+                        }
+                    }
                 }
             }
         }
@@ -61,14 +95,14 @@ fn Counter() -> Element {
             FlexView(.class = "counter") {
                 Text(computed!([count] || format!("Count: {}", count.get())))
                 Button(
-                    .title = "Click",
+                    .title = "Increment",
                     .on_click = callback!([count] || {
                         count.mutate(|count| *count += 1);
                         bg_color.set(random_color());
                     }),
                 )
                 if count.get() % 2 == 0 {
-                    Text("Is Even!")
+                    Text("The count is even")
                 }
             }
         }
@@ -131,8 +165,9 @@ fn TodoList() -> Element {
     });
 
     layout! {
-        FlexView {
+        FlexView(.class = "todo") {
             FlexView(
+                .class = "toolbar",
                 .flex_direction = FlexDirection::Row,
                 .align_items = AlignItems::Center,
             ) {
@@ -181,20 +216,17 @@ fn TodoListItem(props: &TodoListItemProps) -> Element {
     let value = computed!([props.data] || data.get().1);
 
     layout! {
-        FlexView(.flex_direction = FlexDirection::Row, .align_items = AlignItems::Center) {
+        FlexView(.class = "todo_item", .flex_direction = FlexDirection::Row, .align_items = AlignItems::Center) {
             Button(
-                .view(.width = 24),
-                .title = "✕",
+                .title = "Delete",
                 .on_click = callback!([key, props.remove] || (remove.get())(&key.get()))
             )
             Button(
-                .view(.width = 24),
-                .title = "↑",
+                .title = "Up",
                 .on_click = callback!([key, props.move_up] || (move_up.get())(&key.get()))
             )
             Button(
-                .view(.width = 24),
-                .title = "↓",
+                .title = "Down",
                 .on_click = callback!([key, props.move_down] || (move_down.get())(&key.get()))
             )
             Button(
