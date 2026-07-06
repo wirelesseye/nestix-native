@@ -68,6 +68,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
+name = "basic"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "nestix",
+ "nestix-native",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -253,6 +262,7 @@ dependencies = [
 [[package]]
 name = "nestix"
 version = "0.1.0"
+source = "git+https://github.com/wirelesseye/nestix.git#c288d55adf0ad3d3aa62de52883540f821378d35"
 dependencies = [
  "log",
  "nestix-macros",
@@ -262,6 +272,7 @@ dependencies = [
 [[package]]
 name = "nestix-macros"
 version = "0.1.0"
+source = "git+https://github.com/wirelesseye/nestix.git#c288d55adf0ad3d3aa62de52883540f821378d35"
 dependencies = [
  "convert_case",
  "proc-macro-crate",
@@ -274,13 +285,10 @@ dependencies = [
 name = "nestix-native"
 version = "0.1.0"
 dependencies = [
- "env_logger",
- "nanoid",
  "nestix",
  "nestix-native-appkit",
  "nestix-native-core",
  "nestix-native-win32",
- "rand 0.9.4",
 ]
 
 [[package]]
@@ -330,6 +338,7 @@ dependencies = [
 [[package]]
 name = "nestix-signal"
 version = "0.1.0"
+source = "git+https://github.com/wirelesseye/nestix.git#c288d55adf0ad3d3aa62de52883540f821378d35"
 dependencies = [
  "log",
 ]
@@ -685,6 +694,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "tabs"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "nanoid",
+ "nestix",
+ "nestix-native",
+ "rand 0.9.4",
 ]
 
 [[package]]

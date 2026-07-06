@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-nestix = { path = "../../nestix/nestix" }
+nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -12,8 +12,3 @@ nestix-native-appkit = { path = "../nestix-native-appkit" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 nestix-native-win32 = { path = "../nestix-native-win32" }
-
-[dev-dependencies]
-nanoid = "0.4.0"
-env_logger = { version = "0.11.8" }
-rand = "0.9"

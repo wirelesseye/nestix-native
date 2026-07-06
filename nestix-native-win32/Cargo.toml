@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-nestix = { path = "../../nestix/nestix" }
+nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core", features = ["taffy"]}
 windows = { version = "0.62", features = [
     "Win32_Foundation",

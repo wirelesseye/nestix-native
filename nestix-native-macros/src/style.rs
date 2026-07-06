@@ -7,7 +7,7 @@ use syn::{
     parse_macro_input,
 };
 
-use crate::util::core_path;
+use crate::util::nestix_native_path;
 
 pub fn style(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as StyleSheetInput);
@@ -290,7 +290,7 @@ fn should_insert_space(previous: Option<TokenKind>, current: TokenKind) -> bool 
 }
 
 fn expand_style(input: StyleSheetInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let items = input
         .items
         .into_iter()
@@ -299,7 +299,7 @@ fn expand_style(input: StyleSheetInput) -> Result<TokenStream2> {
 
     Ok(quote! {
         {
-            let mut __nestix_style_sheet = #core_path::StyleSheet::new(::std::vec![]);
+            let mut __nestix_style_sheet = #nestix_native_path::StyleSheet::new(::std::vec![]);
             #(#items)*
             __nestix_style_sheet
         }
@@ -307,13 +307,13 @@ fn expand_style(input: StyleSheetInput) -> Result<TokenStream2> {
 }
 
 fn expand_item(item: StyleItemInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
 
     match item {
         StyleItemInput::Rule(rule) => {
             let rule = expand_rule(rule)?;
             Ok(quote! {
-                __nestix_style_sheet.extend(&#core_path::StyleSheet::new(::std::vec![
+                __nestix_style_sheet.extend(&#nestix_native_path::StyleSheet::new(::std::vec![
                     #rule
                 ]));
             })
@@ -325,7 +325,7 @@ fn expand_item(item: StyleItemInput) -> Result<TokenStream2> {
 }
 
 fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let selector = expand_selector(rule.selector);
     let declarations = rule
         .props
@@ -334,7 +334,7 @@ fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {
         .collect::<Result<Vec<_>>>()?;
 
     Ok(quote! {
-        #core_path::StyleRule {
+        #nestix_native_path::StyleRule {
             selector: #selector,
             declarations: ::std::vec![
                 #(#declarations),*
@@ -344,7 +344,7 @@ fn expand_rule(rule: StyleRuleInput) -> Result<TokenStream2> {
 }
 
 fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let name = prop.name.to_string();
     let name_span = prop.name.span();
     let value = prop.value;
@@ -356,7 +356,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
             StyleValueInput::Inserted(value) => quote!((#value).to_string()),
         };
         return Ok(quote! {
-            #core_path::StyleDeclaration::Custom {
+            #nestix_native_path::StyleDeclaration::Custom {
                 name: #name.to_string(),
                 value: #value,
             }
@@ -394,29 +394,29 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
 }
 
 fn expand_property(variant: &str, value: TokenStream2, span: Span) -> TokenStream2 {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let variant = Ident::new(variant, span);
     quote! {
-        #core_path::StyleDeclaration::Property(
-            #core_path::StyleProperty::#variant(#value)
+        #nestix_native_path::StyleDeclaration::Property(
+            #nestix_native_path::StyleProperty::#variant(#value)
         )
     }
 }
 
 fn expand_color(value: StyleValueInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
         StyleValueInput::Literal(value) => value,
     };
 
     match value.as_str() {
-        "white" => return Ok(quote!(#core_path::Color::WHITE)),
-        "black" => return Ok(quote!(#core_path::Color::BLACK)),
-        "transparent" => return Ok(quote!(#core_path::Color::TRANSPARENT)),
-        "red" => return Ok(quote!(#core_path::Color::RED)),
-        "green" => return Ok(quote!(#core_path::Color::GREEN)),
-        "blue" => return Ok(quote!(#core_path::Color::BLUE)),
+        "white" => return Ok(quote!(#nestix_native_path::Color::WHITE)),
+        "black" => return Ok(quote!(#nestix_native_path::Color::BLACK)),
+        "transparent" => return Ok(quote!(#nestix_native_path::Color::TRANSPARENT)),
+        "red" => return Ok(quote!(#nestix_native_path::Color::RED)),
+        "green" => return Ok(quote!(#nestix_native_path::Color::GREEN)),
+        "blue" => return Ok(quote!(#nestix_native_path::Color::BLUE)),
         _ => {}
     }
 
@@ -438,19 +438,19 @@ fn expand_color(value: StyleValueInput) -> Result<TokenStream2> {
     };
 
     Ok(quote! {
-        #core_path::Color::RGB(#core_path::RGBColor::from_rgba(#red, #green, #blue, #alpha))
+        #nestix_native_path::Color::RGB(#nestix_native_path::RGBColor::from_rgba(#red, #green, #blue, #alpha))
     })
 }
 
 fn expand_dimension(value: StyleValueInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
         StyleValueInput::Literal(value) => value,
     };
 
     if value == "auto" {
-        return Ok(quote!(#core_path::Dimension::Auto));
+        return Ok(quote!(#nestix_native_path::Dimension::Auto));
     }
 
     let Some(value) = value.strip_suffix("px") else {
@@ -467,7 +467,7 @@ fn expand_dimension(value: StyleValueInput) -> Result<TokenStream2> {
         )
     })?;
 
-    Ok(quote!(#core_path::Dimension::from(#dimension)))
+    Ok(quote!(#nestix_native_path::Dimension::from(#dimension)))
 }
 
 fn expand_f32(value: StyleValueInput) -> Result<TokenStream2> {
@@ -487,21 +487,21 @@ fn expand_f32(value: StyleValueInput) -> Result<TokenStream2> {
 }
 
 fn expand_align_items(value: StyleValueInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
         StyleValueInput::Literal(value) => value,
     };
 
     match value.as_str() {
-        "unset" => Ok(quote!(#core_path::AlignItems::Unset)),
-        "start" => Ok(quote!(#core_path::AlignItems::Start)),
-        "end" => Ok(quote!(#core_path::AlignItems::End)),
-        "flex_start" | "flex-start" => Ok(quote!(#core_path::AlignItems::FlexStart)),
-        "flex_end" | "flex-end" => Ok(quote!(#core_path::AlignItems::FlexEnd)),
-        "center" => Ok(quote!(#core_path::AlignItems::Center)),
-        "baseline" => Ok(quote!(#core_path::AlignItems::Baseline)),
-        "stretch" => Ok(quote!(#core_path::AlignItems::Stretch)),
+        "unset" => Ok(quote!(#nestix_native_path::AlignItems::Unset)),
+        "start" => Ok(quote!(#nestix_native_path::AlignItems::Start)),
+        "end" => Ok(quote!(#nestix_native_path::AlignItems::End)),
+        "flex_start" | "flex-start" => Ok(quote!(#nestix_native_path::AlignItems::FlexStart)),
+        "flex_end" | "flex-end" => Ok(quote!(#nestix_native_path::AlignItems::FlexEnd)),
+        "center" => Ok(quote!(#nestix_native_path::AlignItems::Center)),
+        "baseline" => Ok(quote!(#nestix_native_path::AlignItems::Baseline)),
+        "stretch" => Ok(quote!(#nestix_native_path::AlignItems::Stretch)),
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "align-self must be unset, start, end, flex-start, flex-end, center, baseline, stretch, or an inserted AlignItems",
@@ -510,17 +510,17 @@ fn expand_align_items(value: StyleValueInput) -> Result<TokenStream2> {
 }
 
 fn expand_flex_direction(value: StyleValueInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
         StyleValueInput::Literal(value) => value,
     };
 
     match value.as_str() {
-        "row" => Ok(quote!(#core_path::FlexDirection::Row)),
-        "row_reverse" | "row-reverse" => Ok(quote!(#core_path::FlexDirection::RowReverse)),
-        "column" => Ok(quote!(#core_path::FlexDirection::Column)),
-        "column_reverse" | "column-reverse" => Ok(quote!(#core_path::FlexDirection::ColumnReverse)),
+        "row" => Ok(quote!(#nestix_native_path::FlexDirection::Row)),
+        "row_reverse" | "row-reverse" => Ok(quote!(#nestix_native_path::FlexDirection::RowReverse)),
+        "column" => Ok(quote!(#nestix_native_path::FlexDirection::Column)),
+        "column_reverse" | "column-reverse" => Ok(quote!(#nestix_native_path::FlexDirection::ColumnReverse)),
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "flex-direction must be row, row-reverse, column, column-reverse, or an inserted FlexDirection",
@@ -529,15 +529,15 @@ fn expand_flex_direction(value: StyleValueInput) -> Result<TokenStream2> {
 }
 
 fn expand_flex_wrap(value: StyleValueInput) -> Result<TokenStream2> {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
         StyleValueInput::Literal(value) => value,
     };
 
     match value.as_str() {
-        "nowrap" | "no_wrap" | "no-wrap" => Ok(quote!(#core_path::FlexWrap::NoWrap)),
-        "wrap" => Ok(quote!(#core_path::FlexWrap::Wrap)),
+        "nowrap" | "no_wrap" | "no-wrap" => Ok(quote!(#nestix_native_path::FlexWrap::NoWrap)),
+        "wrap" => Ok(quote!(#nestix_native_path::FlexWrap::Wrap)),
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "flex-wrap must be wrap, no-wrap, nowrap, or an inserted FlexWrap",
@@ -555,7 +555,7 @@ fn parse_hex_pair(hex: &str, index: usize) -> Result<u8> {
 }
 
 fn expand_selector(selector: SelectorInput) -> TokenStream2 {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     let selectors = selector
         .selectors
         .into_iter()
@@ -566,7 +566,7 @@ fn expand_selector(selector: SelectorInput) -> TokenStream2 {
         selectors.into_iter().next().unwrap()
     } else {
         quote! {
-            #core_path::StyleSelector::List(::std::vec![
+            #nestix_native_path::StyleSelector::List(::std::vec![
                 #(#selectors),*
             ])
         }
@@ -574,23 +574,23 @@ fn expand_selector(selector: SelectorInput) -> TokenStream2 {
 }
 
 fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
-    let core_path = core_path();
+    let nestix_native_path = nestix_native_path();
     match selector {
         SelectorAst::Class(class) => {
             quote! {
-                #core_path::StyleSelector::Class(#class.to_string())
+                #nestix_native_path::StyleSelector::Class(#class.to_string())
             }
         }
         SelectorAst::Not(selector) => {
             let selector = expand_selector(selector);
             quote! {
-                #core_path::StyleSelector::Not(::std::boxed::Box::new(#selector))
+                #nestix_native_path::StyleSelector::Not(::std::boxed::Box::new(#selector))
             }
         }
         SelectorAst::All(selectors) => {
             let selectors = selectors.into_iter().map(expand_selector_ast);
             quote! {
-                #core_path::StyleSelector::All(::std::vec![
+                #nestix_native_path::StyleSelector::All(::std::vec![
                     #(#selectors),*
                 ])
             }
@@ -599,7 +599,7 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
             let parent = expand_selector_ast(*parent);
             let child = expand_selector_ast(*child);
             quote! {
-                #core_path::StyleSelector::Child {
+                #nestix_native_path::StyleSelector::Child {
                     parent: ::std::boxed::Box::new(#parent),
                     child: ::std::boxed::Box::new(#child),
                 }
@@ -609,7 +609,7 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
             let ancestor = expand_selector_ast(*ancestor);
             let descendant = expand_selector_ast(*descendant);
             quote! {
-                #core_path::StyleSelector::Descendant {
+                #nestix_native_path::StyleSelector::Descendant {
                     ancestor: ::std::boxed::Box::new(#ancestor),
                     descendant: ::std::boxed::Box::new(#descendant),
                 }
@@ -619,7 +619,7 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
             let previous = expand_selector_ast(*previous);
             let sibling = expand_selector_ast(*sibling);
             quote! {
-                #core_path::StyleSelector::AdjacentSibling {
+                #nestix_native_path::StyleSelector::AdjacentSibling {
                     previous: ::std::boxed::Box::new(#previous),
                     sibling: ::std::boxed::Box::new(#sibling),
                 }
@@ -629,7 +629,7 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
             let previous = expand_selector_ast(*previous);
             let sibling = expand_selector_ast(*sibling);
             quote! {
-                #core_path::StyleSelector::SubsequentSibling {
+                #nestix_native_path::StyleSelector::SubsequentSibling {
                     previous: ::std::boxed::Box::new(#previous),
                     sibling: ::std::boxed::Box::new(#sibling),
                 }

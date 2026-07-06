@@ -5,6 +5,6 @@ edition = "2024"
 
 [dependencies]
 dpi = "0.1.2"
-nestix = { path = "../../nestix/nestix" }
+nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-macros = { path = "../nestix-native-macros" }
 taffy = { version = "0.9.2", optional = true }

@@ -1,4 +1,3 @@
 [workspace]
-members = ["nestix-native", "nestix-native-*"]
-default-members = ["nestix-native", "nestix-native-*"]
-resolver = "2"
+resolver = "3"
+members = ["examples/*", "nestix-native", "nestix-native-*"]
