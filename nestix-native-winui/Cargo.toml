@@ -1,0 +1,20 @@
+[package]
+name = "nestix-native-winui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+nestix = { git = "https://github.com/wirelesseye/nestix.git" }
+nestix-native-core = { path = "../nestix-native-core", features = ["taffy"] }
+windows = { version = "0.62", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_UI_HiDpi",
+] }
+windows-collections = "0.3"
+windows-core = "0.62"
+windows-future = "0.3"
+windows-numerics = "0.3"
+
+[build-dependencies]
+windows-bindgen = "0.62"

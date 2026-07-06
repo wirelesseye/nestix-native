@@ -1,0 +1,489 @@
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    rc::Rc,
+    sync::OnceLock,
+};
+
+use windows::Win32::{
+    Foundation::RPC_E_CHANGED_MODE,
+    System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx},
+    UI::HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
+};
+use windows_core::{Error, HRESULT, HSTRING, Interface, PCWSTR, Result};
+
+use crate::bindings::Microsoft::UI::Xaml::{
+    Application, ApplicationInitializationCallback,
+    Controls::{Button, StackPanel, TextBlock},
+    FrameworkElement, RoutedEventHandler, UIElement, Window,
+};
+
+const E_NOTIMPL: HRESULT = HRESULT(0x80004001u32 as i32);
+const WINDOWS_APP_SDK_RELEASE_MAJORMINOR: u32 = 0x0001_0008;
+const WINDOWS_APP_SDK_MIN_VERSION: u64 = 0;
+const MDDBOOTSTRAP_INITIALIZE_OPTIONS_NONE: u32 = 0;
+
+thread_local! {
+    static PENDING_WINDOWS: RefCell<Vec<XamlElement>> = const { RefCell::new(Vec::new()) };
+    static XAML_RUNNING: Cell<bool> = const { Cell::new(false) };
+    static NEXT_CALLBACK_ID: Cell<u64> = const { Cell::new(1) };
+    static CLICK_CALLBACKS: RefCell<HashMap<u64, nestix::Shared<dyn Fn()>>> = RefCell::new(HashMap::new());
+}
+
+#[link(name = "Microsoft.WindowsAppRuntime.Bootstrap")]
+unsafe extern "system" {
+    fn MddBootstrapInitialize2(
+        major_minor_version: u32,
+        version_tag: PCWSTR,
+        min_version: u64,
+        options: u32,
+    ) -> HRESULT;
+}
+
+#[derive(Clone)]
+pub(crate) struct XamlApp {
+    is_running: Rc<Cell<bool>>,
+}
+
+impl XamlApp {
+    pub fn initialize() -> Result<Self> {
+        initialize_windows_app_runtime()?;
+
+        unsafe {
+            let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+            let hr = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+            if hr == RPC_E_CHANGED_MODE {
+                return Err(Error::new(
+                    RPC_E_CHANGED_MODE,
+                    "WinUI requires an STA thread; the current thread is already initialized differently.",
+                ));
+            }
+            hr.ok()?;
+        }
+
+        Ok(Self {
+            is_running: Rc::new(Cell::new(false)),
+        })
+    }
+
+    pub fn run(&self) {
+        if self.is_running.replace(true) {
+            return;
+        }
+
+        let result = Application::Start(&ApplicationInitializationCallback::new(|_| {
+            XAML_RUNNING.set(true);
+            PENDING_WINDOWS.with_borrow(|windows| -> Result<()> {
+                for window in windows {
+                    window.realize()?;
+                    window.activate()?;
+                }
+                Ok(())
+            })
+        }));
+
+        if let Err(error) = result {
+            panic!("failed to start WinUI application: {error:?}");
+        }
+    }
+
+    pub fn quit(&self) {
+        self.is_running.set(false);
+        if let Ok(app) = Application::Current() {
+            let _ = app.Exit();
+        }
+    }
+}
+
+fn initialize_windows_app_runtime() -> Result<()> {
+    static BOOTSTRAP_RESULT: OnceLock<HRESULT> = OnceLock::new();
+
+    let hr = *BOOTSTRAP_RESULT.get_or_init(|| unsafe {
+        MddBootstrapInitialize2(
+            WINDOWS_APP_SDK_RELEASE_MAJORMINOR,
+            PCWSTR::null(),
+            WINDOWS_APP_SDK_MIN_VERSION,
+            MDDBOOTSTRAP_INITIALIZE_OPTIONS_NONE,
+        )
+    });
+
+    if hr.is_ok() {
+        Ok(())
+    } else {
+        Err(Error::new(
+            hr,
+            "failed to initialize Windows App SDK runtime. Install the Windows App Runtime 1.8 framework package, or use a self-contained deployment before creating WinUI controls.",
+        ))
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct XamlNode {
+    kind: RefCell<XamlKind>,
+    realized: RefCell<Option<RealizedXamlKind>>,
+    children: RefCell<Vec<XamlElement>>,
+    click_handler: RefCell<Option<ClickHandlerState>>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum XamlKind {
+    Window {
+        title: String,
+        width: f64,
+        height: f64,
+    },
+    StackPanel {
+        direction: nestix_native_core::FlexDirection,
+    },
+    Button {
+        title: String,
+        on_click: Option<nestix::Shared<dyn Fn()>>,
+    },
+    TextBlock {
+        text: String,
+    },
+}
+
+#[derive(Debug)]
+pub(crate) enum RealizedXamlKind {
+    Window(Window),
+    StackPanel(StackPanel),
+    Button { control: Button, label: TextBlock },
+    TextBlock(TextBlock),
+}
+
+#[derive(Debug)]
+pub(crate) struct ClickHandlerState {
+    callback_id: u64,
+    token: i64,
+    handler: RoutedEventHandler,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct XamlElement(Rc<XamlNode>);
+
+impl PartialEq for XamlElement {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for XamlElement {}
+
+impl XamlElement {
+    pub fn window(title: String, width: f64, height: f64) -> Result<Self> {
+        let element = Self::new(XamlKind::Window {
+            title,
+            width,
+            height,
+        });
+        PENDING_WINDOWS.with_borrow_mut(|windows| windows.push(element.clone()));
+        Ok(element)
+    }
+
+    pub fn stack_panel() -> Result<Self> {
+        Ok(Self::new(XamlKind::StackPanel {
+            direction: nestix_native_core::FlexDirection::Column,
+        }))
+    }
+
+    pub fn button(title: String) -> Result<Self> {
+        Ok(Self::new(XamlKind::Button {
+            title,
+            on_click: None,
+        }))
+    }
+
+    pub fn text_block(text: String) -> Result<Self> {
+        Ok(Self::new(XamlKind::TextBlock { text }))
+    }
+
+    pub fn activate(&self) -> Result<()> {
+        if !XAML_RUNNING.get() {
+            return Ok(());
+        }
+        self.realize()?;
+        if let Some(RealizedXamlKind::Window(window)) = &*self.0.realized.borrow() {
+            window.Activate()
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn append_child(&self, child: XamlElement) -> Result<()> {
+        if !self.0.children.borrow().contains(&child) {
+            self.0.children.borrow_mut().push(child.clone());
+        }
+
+        if XAML_RUNNING.get() {
+            self.realize()?;
+            child.realize()?;
+            self.append_realized_child(&child)?;
+        }
+        Ok(())
+    }
+
+    pub fn remove_child(&self, child: &XamlElement) -> Result<()> {
+        self.0.children.borrow_mut().retain(|item| item != child);
+
+        let Some(RealizedXamlKind::StackPanel(panel)) = &*self.0.realized.borrow() else {
+            return Ok(());
+        };
+
+        let child = child.as_ui_element()?;
+        let children = panel.Children()?;
+        let mut index = 0;
+        if children.IndexOf(&child, &mut index)? {
+            children.RemoveAt(index)?;
+        }
+        Ok(())
+    }
+
+    pub fn set_text(&self, text: String) -> Result<()> {
+        match &mut *self.0.kind.borrow_mut() {
+            XamlKind::Window { title, .. } | XamlKind::Button { title, .. } => {
+                *title = text.clone()
+            }
+            XamlKind::TextBlock { text: value } => *value = text.clone(),
+            XamlKind::StackPanel { .. } => {}
+        }
+
+        let text = HSTRING::from(text);
+        match &*self.0.realized.borrow() {
+            Some(RealizedXamlKind::Window(window)) => window.SetTitle(&text),
+            Some(RealizedXamlKind::Button { label, .. })
+            | Some(RealizedXamlKind::TextBlock(label)) => label.SetText(&text),
+            Some(RealizedXamlKind::StackPanel(_)) | None => Ok(()),
+        }
+    }
+
+    pub fn set_size(&self, width: f64, height: f64) -> Result<()> {
+        if let XamlKind::Window {
+            width: stored_width,
+            height: stored_height,
+            ..
+        } = &mut *self.0.kind.borrow_mut()
+        {
+            *stored_width = width;
+            *stored_height = height;
+        }
+
+        match &*self.0.realized.borrow() {
+            Some(RealizedXamlKind::Window(window)) => {
+                if let Ok(content) = window.Content() {
+                    let content = content.cast::<FrameworkElement>()?;
+                    content.SetWidth(width)?;
+                    content.SetHeight(height)?;
+                }
+                Ok(())
+            }
+            Some(RealizedXamlKind::StackPanel(panel)) => {
+                panel.SetWidth(width)?;
+                panel.SetHeight(height)
+            }
+            Some(RealizedXamlKind::Button { control, .. }) => {
+                control.SetWidth(width)?;
+                control.SetHeight(height)
+            }
+            Some(RealizedXamlKind::TextBlock(block)) => {
+                block.SetWidth(width)?;
+                block.SetHeight(height)
+            }
+            None => Ok(()),
+        }
+    }
+
+    pub fn set_flex_direction(&self, direction: nestix_native_core::FlexDirection) -> Result<()> {
+        if let XamlKind::StackPanel {
+            direction: stored_direction,
+        } = &mut *self.0.kind.borrow_mut()
+        {
+            *stored_direction = direction;
+        }
+
+        let Some(RealizedXamlKind::StackPanel(panel)) = &*self.0.realized.borrow() else {
+            return Ok(());
+        };
+        panel.SetOrientation(orientation(direction))
+    }
+
+    pub fn set_button_click(&self, handler: Option<nestix::Shared<dyn Fn()>>) -> Result<()> {
+        if let XamlKind::Button { on_click, .. } = &mut *self.0.kind.borrow_mut() {
+            *on_click = handler.clone();
+        }
+
+        let Some(RealizedXamlKind::Button { control, .. }) = &*self.0.realized.borrow() else {
+            return Ok(());
+        };
+
+        self.detach_click_handler(control)?;
+
+        let Some(handler) = handler else {
+            return Ok(());
+        };
+
+        let callback_id = register_click_callback(handler);
+        let routed_handler = RoutedEventHandler::new(move |_, _| {
+            CLICK_CALLBACKS.with_borrow(|callbacks| {
+                if let Some(callback) = callbacks.get(&callback_id) {
+                    callback();
+                }
+            });
+            Ok(())
+        });
+        let token = control.Click(&routed_handler)?;
+        self.0.click_handler.replace(Some(ClickHandlerState {
+            callback_id,
+            token,
+            handler: routed_handler,
+        }));
+
+        Ok(())
+    }
+
+    fn new(kind: XamlKind) -> Self {
+        Self(Rc::new(XamlNode {
+            kind: RefCell::new(kind),
+            realized: RefCell::new(None),
+            children: RefCell::new(Vec::new()),
+            click_handler: RefCell::new(None),
+        }))
+    }
+
+    fn realize(&self) -> Result<()> {
+        if self.0.realized.borrow().is_some() {
+            return Ok(());
+        }
+
+        let kind = self.0.kind.borrow().clone();
+        let realized = match kind {
+            XamlKind::Window {
+                title,
+                width,
+                height,
+            } => {
+                let window = Window::new()?;
+                window.SetTitle(&HSTRING::from(title))?;
+                let realized = RealizedXamlKind::Window(window);
+                self.0.realized.replace(Some(realized));
+                for child in self.0.children.borrow().iter() {
+                    child.realize()?;
+                    self.append_realized_child(child)?;
+                }
+                self.set_size(width, height)?;
+                return Ok(());
+            }
+            XamlKind::StackPanel { direction } => {
+                let panel = StackPanel::new()?;
+                panel.SetOrientation(orientation(direction))?;
+                RealizedXamlKind::StackPanel(panel)
+            }
+            XamlKind::Button { title, on_click } => {
+                let control = Button::new()?;
+                let label = TextBlock::new()?;
+                label.SetText(&HSTRING::from(&title))?;
+                control.SetContent(&label)?;
+                let realized = RealizedXamlKind::Button { control, label };
+                self.0.realized.replace(Some(realized));
+                self.set_button_click(on_click)?;
+                return Ok(());
+            }
+            XamlKind::TextBlock { text } => {
+                let block = TextBlock::new()?;
+                block.SetText(&HSTRING::from(&text))?;
+                RealizedXamlKind::TextBlock(block)
+            }
+        };
+
+        self.0.realized.replace(Some(realized));
+        for child in self.0.children.borrow().iter() {
+            child.realize()?;
+            self.append_realized_child(child)?;
+        }
+        Ok(())
+    }
+
+    fn append_realized_child(&self, child: &XamlElement) -> Result<()> {
+        let child = child.as_ui_element()?;
+        match &*self.0.realized.borrow() {
+            Some(RealizedXamlKind::Window(window)) => window.SetContent(&child),
+            Some(RealizedXamlKind::StackPanel(panel)) => {
+                let children = panel.Children()?;
+                let mut index = 0;
+                if !children.IndexOf(&child, &mut index)? {
+                    children.Append(&child)?;
+                }
+                Ok(())
+            }
+            Some(RealizedXamlKind::Button { .. }) | Some(RealizedXamlKind::TextBlock(_)) | None => {
+                Ok(())
+            }
+        }
+    }
+
+    fn as_ui_element(&self) -> Result<UIElement> {
+        self.realize()?;
+        match &*self.0.realized.borrow() {
+            Some(RealizedXamlKind::Window(_)) => {
+                Err(Error::new(E_NOTIMPL, "Window is not a UIElement."))
+            }
+            Some(RealizedXamlKind::StackPanel(panel)) => panel.cast(),
+            Some(RealizedXamlKind::Button { control, .. }) => control.cast(),
+            Some(RealizedXamlKind::TextBlock(block)) => block.cast(),
+            None => Err(Error::new(E_NOTIMPL, "XAML element was not realized.")),
+        }
+    }
+
+    fn detach_click_handler(&self, control: &Button) -> Result<()> {
+        let Some(handler) = self.0.click_handler.take() else {
+            return Ok(());
+        };
+
+        let _keep_alive = handler.handler;
+        control.RemoveClick(handler.token)?;
+        CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
+            callbacks.remove(&handler.callback_id);
+        });
+        Ok(())
+    }
+}
+
+impl Drop for XamlNode {
+    fn drop(&mut self) {
+        let Some(handler) = self.click_handler.take() else {
+            return;
+        };
+
+        if let Some(RealizedXamlKind::Button { control, .. }) = self.realized.borrow().as_ref() {
+            let _ = control.RemoveClick(handler.token);
+        }
+        CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
+            callbacks.remove(&handler.callback_id);
+        });
+    }
+}
+
+fn register_click_callback(callback: nestix::Shared<dyn Fn()>) -> u64 {
+    NEXT_CALLBACK_ID.with(|next_id| {
+        let id = next_id.get();
+        next_id.set(id.wrapping_add(1).max(1));
+        CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
+            callbacks.insert(id, callback);
+        });
+        id
+    })
+}
+
+fn orientation(
+    direction: nestix_native_core::FlexDirection,
+) -> crate::bindings::Microsoft::UI::Xaml::Controls::Orientation {
+    match direction {
+        nestix_native_core::FlexDirection::Row | nestix_native_core::FlexDirection::RowReverse => {
+            crate::bindings::Microsoft::UI::Xaml::Controls::Orientation::Horizontal
+        }
+        nestix_native_core::FlexDirection::Column
+        | nestix_native_core::FlexDirection::ColumnReverse => {
+            crate::bindings::Microsoft::UI::Xaml::Controls::Orientation::Vertical
+        }
+    }
+}

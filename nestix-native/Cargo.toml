@@ -12,3 +12,7 @@ nestix-native-appkit = { path = "../nestix-native-appkit" }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 nestix-native-win32 = { path = "../nestix-native-win32" }
+nestix-native-winui = { path = "../nestix-native-winui", optional = true }
+
+[features]
+winui = ["dep:nestix-native-winui"]
