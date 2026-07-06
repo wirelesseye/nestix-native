@@ -3,6 +3,7 @@ use nestix_native_core::{
     Dimension, StyleContext, TextProps, TreeContext,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
     matched_style, style_align_self, style_dimension, style_margin,
+    utils::margin_to_taffy,
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
@@ -20,7 +21,7 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{WindowContext, contexts::ParentContext, font::ui_font, utils::margin_to_taffy};
+use crate::{WindowContext, contexts::ParentContext, font::ui_font};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {

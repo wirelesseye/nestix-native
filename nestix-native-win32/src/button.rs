@@ -3,6 +3,7 @@ use nestix_native_core::{
     ButtonProps, Dimension, StyleContext, TreeContext,
     dpi::{LogicalPosition, LogicalSize, LogicalUnit, PhysicalUnit},
     matched_style, style_align_self, style_dimension, style_margin,
+    utils::margin_to_taffy,
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
@@ -21,12 +22,7 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{
-    AppState, WindowContext,
-    contexts::ParentContext,
-    font::ui_font,
-    utils::{hiword, margin_to_taffy},
-};
+use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
 
 const DEFAULT_PADDING_X: f32 = 10.0;
 const DEFAULT_PADDING_Y: f32 = 3.0;

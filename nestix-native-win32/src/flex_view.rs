@@ -7,7 +7,8 @@ use nestix_native_core::{
     Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
     matched_style, style_align_items, style_align_self, style_dimension, style_flex_direction,
-    style_flex_wrap, style_grow, style_margin,
+    style_flex_wrap, style_grow, style_justify_content, style_margin, style_padding,
+    utils::{margin_to_taffy, padding_to_taffy},
 };
 use taffy::{NodeId, Size, Style};
 use windows::{
@@ -30,7 +31,7 @@ use windows::{
     core::{PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext, shared_app_state, utils::margin_to_taffy};
+use crate::{WindowContext, contexts::ParentContext, shared_app_state};
 
 thread_local! {
     static BACKGROUND_BRUSHES: RefCell<HashMap<*mut std::ffi::c_void, HBRUSH>> =
@@ -239,6 +240,29 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            style_props,
+            props.padding()
+        ] || {
+            let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                padding: padding_to_taffy(
+                    style_padding(style_props.as_ref(), padding.get()),
+                    scale_factor,
+                ),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
         [tree_context, style_props, props.view.align_self] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -270,6 +294,20 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
                 align_items: style_align_items(style_props.as_ref(), align_items.get()).to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, style_props, props.justify_content] || {
+            let style_props = style_props.get();
+            tree_context.update_style(node_id, |prev| Style {
+                justify_content: style_justify_content(style_props.as_ref(), justify_content.get())
+                    .to_taffy(),
                 ..prev
             });
 
