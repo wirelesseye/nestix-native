@@ -15,7 +15,8 @@ use objc2_foundation::{
 };
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
+use crate::{WindowContext, contexts::ParentContext};
+use nestix_native_core::utils::margin_to_taffy;
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<InputDelegate>>> = RefCell::new(HashMap::new());

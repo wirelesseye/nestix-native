@@ -10,6 +10,7 @@ pub mod tab_view;
 pub mod text;
 pub mod view;
 pub mod window;
+pub mod utils;
 
 pub use button::*;
 pub use color::*;
@@ -23,6 +24,7 @@ pub use tab_view::*;
 pub use text::*;
 pub use view::*;
 pub use window::*;
+pub use utils::*;
 
 pub use dpi;
 pub use nestix_native_macros::*;

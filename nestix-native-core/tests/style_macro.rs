@@ -304,6 +304,10 @@ fn style_macro_supports_flex_view_props() {
             flex_direction: row-reverse;
             align_items: stretch;
             flex_wrap: wrap;
+            padding_left: 3px;
+            padding_right: 4px;
+            padding_top: 5px;
+            padding_bottom: 6px;
         }
     };
 
@@ -312,6 +316,10 @@ fn style_macro_supports_flex_view_props() {
     assert_eq!(props.flex_direction, Some(FlexDirection::RowReverse));
     assert_eq!(props.align_items, Some(AlignItems::Stretch));
     assert_eq!(props.flex_wrap, Some(FlexWrap::Wrap));
+    assert_eq!(props.padding_left, Some(Dimension::from(3.0)));
+    assert_eq!(props.padding_right, Some(Dimension::from(4.0)));
+    assert_eq!(props.padding_top, Some(Dimension::from(5.0)));
+    assert_eq!(props.padding_bottom, Some(Dimension::from(6.0)));
 }
 
 #[test]
@@ -354,6 +362,48 @@ fn style_margin_shorthand_evaluates_inserted_value_once() {
     assert_eq!(props.margin_right, Some(Dimension::from(8.0)));
     assert_eq!(props.margin_bottom, Some(Dimension::from(8.0)));
     assert_eq!(props.margin_left, Some(Dimension::from(8.0)));
+}
+
+#[test]
+fn style_padding_shorthand_expands_and_cascades_per_edge() {
+    let sheet = style! {
+        .panel {
+            padding: 8px;
+            padding_left: 16px;
+        }
+
+        .panel.selected {
+            padding_right: 24px;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel selected")));
+
+    assert_eq!(props.padding_top, Some(Dimension::from(8.0)));
+    assert_eq!(props.padding_bottom, Some(Dimension::from(8.0)));
+    assert_eq!(props.padding_left, Some(Dimension::from(16.0)));
+    assert_eq!(props.padding_right, Some(Dimension::from(24.0)));
+}
+
+#[test]
+fn style_padding_shorthand_evaluates_inserted_value_once() {
+    let mut calls = 0;
+    let sheet = style! {
+        .panel {
+            padding: $({
+                calls += 1;
+                Dimension::from(8.0)
+            });
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
+
+    assert_eq!(calls, 1);
+    assert_eq!(props.padding_top, Some(Dimension::from(8.0)));
+    assert_eq!(props.padding_right, Some(Dimension::from(8.0)));
+    assert_eq!(props.padding_bottom, Some(Dimension::from(8.0)));
+    assert_eq!(props.padding_left, Some(Dimension::from(8.0)));
 }
 
 #[test]

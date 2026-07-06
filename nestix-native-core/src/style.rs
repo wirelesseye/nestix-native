@@ -222,6 +222,34 @@ pub enum StyleProperty {
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
     MarginBottom(Dimension),
+    /// Padding applied to all four edges.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    Padding(Dimension),
+    /// Padding applied to the left and right edges.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    PaddingHorizontal(Dimension),
+    /// Padding applied to the top and bottom edges.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    PaddingVertical(Dimension),
+    /// Padding applied to the left edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    PaddingLeft(Dimension),
+    /// Padding applied to the right edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    PaddingRight(Dimension),
+    /// Padding applied to the top edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    PaddingTop(Dimension),
+    /// Padding applied to the bottom edge.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    PaddingBottom(Dimension),
     /// Flex grow factor used when distributing free space.
     ///
     /// **Available value**: a number.
@@ -261,6 +289,13 @@ impl StyleProperty {
             StyleProperty::MarginRight(_) => "margin_right",
             StyleProperty::MarginTop(_) => "margin_top",
             StyleProperty::MarginBottom(_) => "margin_bottom",
+            StyleProperty::Padding(_) => "padding",
+            StyleProperty::PaddingHorizontal(_) => "padding_horizontal",
+            StyleProperty::PaddingVertical(_) => "padding_vertical",
+            StyleProperty::PaddingLeft(_) => "padding_left",
+            StyleProperty::PaddingRight(_) => "padding_right",
+            StyleProperty::PaddingTop(_) => "padding_top",
+            StyleProperty::PaddingBottom(_) => "padding_bottom",
             StyleProperty::Grow(_) => "grow",
             StyleProperty::AlignSelf(_) => "align_self",
             StyleProperty::FlexDirection(_) => "flex_direction",
@@ -285,6 +320,18 @@ impl StyleProperty {
             StyleProperty::MarginRight(_) => &["margin_right"],
             StyleProperty::MarginTop(_) => &["margin_top"],
             StyleProperty::MarginBottom(_) => &["margin_bottom"],
+            StyleProperty::Padding(_) => &[
+                "padding_left",
+                "padding_right",
+                "padding_top",
+                "padding_bottom",
+            ],
+            StyleProperty::PaddingHorizontal(_) => &["padding_left", "padding_right"],
+            StyleProperty::PaddingVertical(_) => &["padding_top", "padding_bottom"],
+            StyleProperty::PaddingLeft(_) => &["padding_left"],
+            StyleProperty::PaddingRight(_) => &["padding_right"],
+            StyleProperty::PaddingTop(_) => &["padding_top"],
+            StyleProperty::PaddingBottom(_) => &["padding_bottom"],
             StyleProperty::Grow(_) => &["grow"],
             StyleProperty::AlignSelf(_) => &["align_self"],
             StyleProperty::FlexDirection(_) => &["flex_direction"],
@@ -326,6 +373,10 @@ pub struct ResolvedStyle {
     pub margin_right: Option<Dimension>,
     pub margin_top: Option<Dimension>,
     pub margin_bottom: Option<Dimension>,
+    pub padding_left: Option<Dimension>,
+    pub padding_right: Option<Dimension>,
+    pub padding_top: Option<Dimension>,
+    pub padding_bottom: Option<Dimension>,
     pub grow: Option<f32>,
     pub align_self: Option<AlignItems>,
     pub flex_direction: Option<FlexDirection>,
@@ -385,6 +436,32 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::MarginBottom(dimension)) => {
                 self.margin_bottom = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::Padding(dimension)) => {
+                self.padding_left = Some(dimension.clone());
+                self.padding_right = Some(dimension.clone());
+                self.padding_top = Some(dimension.clone());
+                self.padding_bottom = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::PaddingHorizontal(dimension)) => {
+                self.padding_left = Some(dimension.clone());
+                self.padding_right = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::PaddingVertical(dimension)) => {
+                self.padding_top = Some(dimension.clone());
+                self.padding_bottom = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::PaddingLeft(dimension)) => {
+                self.padding_left = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::PaddingRight(dimension)) => {
+                self.padding_right = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::PaddingTop(dimension)) => {
+                self.padding_top = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::PaddingBottom(dimension)) => {
+                self.padding_bottom = Some(dimension);
             }
             StyleDeclaration::Property(StyleProperty::Grow(grow)) => {
                 self.grow = Some(grow);
@@ -545,6 +622,16 @@ pub fn style_margin(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> R
         bottom: style_dimension(style, inline.bottom, zero, |style| style.margin_bottom),
         left: style_dimension(style, inline.left, zero, |style| style.margin_left),
         right: style_dimension(style, inline.right, zero, |style| style.margin_right),
+    }
+}
+
+pub fn style_padding(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
+    let zero = Dimension::from(0);
+    Rect {
+        top: style_dimension(style, inline.top, zero, |style| style.padding_top),
+        bottom: style_dimension(style, inline.bottom, zero, |style| style.padding_bottom),
+        left: style_dimension(style, inline.left, zero, |style| style.padding_left),
+        right: style_dimension(style, inline.right, zero, |style| style.padding_right),
     }
 }
 

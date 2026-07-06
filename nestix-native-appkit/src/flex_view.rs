@@ -6,14 +6,15 @@ use nestix::{
 use nestix_native_core::{
     Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
     style_align_items, style_align_self, style_dimension, style_flex_direction, style_flex_wrap,
-    style_grow, style_margin,
+    style_grow, style_margin, style_padding,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
+use crate::{WindowContext, contexts::ParentContext};
+use nestix_native_core::utils::{margin_to_taffy, padding_to_taffy};
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
@@ -172,6 +173,29 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             tree_context.update_style(node_id, |prev| Style {
                 margin: margin_to_taffy(
                     style_margin(style_props.as_ref(), margin.get()),
+                    scale_factor,
+                ),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            style_props,
+            props.padding()
+        ] || {
+            let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
+
+            tree_context.update_style(node_id, |prev| Style {
+                padding: padding_to_taffy(
+                    style_padding(style_props.as_ref(), padding.get()),
                     scale_factor,
                 ),
                 ..prev

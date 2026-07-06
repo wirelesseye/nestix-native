@@ -17,7 +17,8 @@ use objc2_app_kit::{NSTabView, NSTabViewDelegate, NSTabViewItem, NSView};
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
+use crate::{WindowContext, contexts::ParentContext};
+use nestix_native_core::utils::margin_to_taffy;
 
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<TabViewDelegate>>> = RefCell::new(HashMap::new());

@@ -26,8 +26,8 @@ fn ExampleApp() -> Element {
             // bg_color: #F4F6F8;
         }
 
-        .counter, .todo {
-            margin: 16px;
+        .counter {
+            padding: 10px;
         }
 
         .counter > .__Text, .counter > .__Button {

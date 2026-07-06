@@ -12,7 +12,8 @@ use objc2_app_kit::NSButton;
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext, utils::margin_to_taffy};
+use crate::{WindowContext, contexts::ParentContext};
+use nestix_native_core::utils::margin_to_taffy;
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<ButtonHandler>>> = RefCell::new(HashMap::new());

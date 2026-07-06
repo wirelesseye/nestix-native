@@ -7,7 +7,7 @@ use syn::{
     parse_macro_input,
 };
 
-use crate::util::nestix_native_path;
+use crate::utils::nestix_native_path;
 
 pub fn style(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as StyleSheetInput);
@@ -376,6 +376,13 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "margin_right" => ("MarginRight", expand_dimension(value)?),
         "margin_top" => ("MarginTop", expand_dimension(value)?),
         "margin_bottom" => ("MarginBottom", expand_dimension(value)?),
+        "padding" => ("Padding", expand_dimension(value)?),
+        "padding_horizontal" => ("PaddingHorizontal", expand_dimension(value)?),
+        "padding_vertical" => ("PaddingVertical", expand_dimension(value)?),
+        "padding_left" => ("PaddingLeft", expand_dimension(value)?),
+        "padding_right" => ("PaddingRight", expand_dimension(value)?),
+        "padding_top" => ("PaddingTop", expand_dimension(value)?),
+        "padding_bottom" => ("PaddingBottom", expand_dimension(value)?),
         "grow" => ("Grow", expand_f32(value)?),
         "align_self" => ("AlignSelf", expand_align_items(value)?),
         "flex_direction" => ("FlexDirection", expand_flex_direction(value)?),
@@ -520,7 +527,9 @@ fn expand_flex_direction(value: StyleValueInput) -> Result<TokenStream2> {
         "row" => Ok(quote!(#nestix_native_path::FlexDirection::Row)),
         "row_reverse" | "row-reverse" => Ok(quote!(#nestix_native_path::FlexDirection::RowReverse)),
         "column" => Ok(quote!(#nestix_native_path::FlexDirection::Column)),
-        "column_reverse" | "column-reverse" => Ok(quote!(#nestix_native_path::FlexDirection::ColumnReverse)),
+        "column_reverse" | "column-reverse" => {
+            Ok(quote!(#nestix_native_path::FlexDirection::ColumnReverse))
+        }
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "flex-direction must be row, row-reverse, column, column-reverse, or an inserted FlexDirection",
