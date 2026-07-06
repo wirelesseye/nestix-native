@@ -9,7 +9,7 @@ use nestix::{
     props,
 };
 
-use crate::{AlignItems, Color, Dimension, FlexDirection, FlexWrap, Rect};
+use crate::{AlignItems, Color, Dimension, FlexDirection, FlexWrap, JustifyContent, Rect};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClassList(HashSet<String>);
@@ -268,6 +268,11 @@ pub enum StyleProperty {
     /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `baseline`, or `stretch`.
     AlignItems(AlignItems),
+    /// Main-axis distribution for this element's flex children.
+    ///
+    /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
+    /// `center`, `stretch`, `space-between`, `space-evenly`, or `space-around`.
+    JustifyContent(JustifyContent),
     /// Wrapping behavior for this element's flex children.
     ///
     /// **Available value**: `nowrap`, `no-wrap`, or `wrap`.
@@ -300,6 +305,7 @@ impl StyleProperty {
             StyleProperty::AlignSelf(_) => "align_self",
             StyleProperty::FlexDirection(_) => "flex_direction",
             StyleProperty::AlignItems(_) => "align_items",
+            StyleProperty::JustifyContent(_) => "justify_content",
             StyleProperty::FlexWrap(_) => "flex_wrap",
         }
     }
@@ -336,6 +342,7 @@ impl StyleProperty {
             StyleProperty::AlignSelf(_) => &["align_self"],
             StyleProperty::FlexDirection(_) => &["flex_direction"],
             StyleProperty::AlignItems(_) => &["align_items"],
+            StyleProperty::JustifyContent(_) => &["justify_content"],
             StyleProperty::FlexWrap(_) => &["flex_wrap"],
         }
     }
@@ -381,6 +388,7 @@ pub struct ResolvedStyle {
     pub align_self: Option<AlignItems>,
     pub flex_direction: Option<FlexDirection>,
     pub align_items: Option<AlignItems>,
+    pub justify_content: Option<JustifyContent>,
     pub flex_wrap: Option<FlexWrap>,
     custom: HashMap<String, String>,
 }
@@ -474,6 +482,9 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::AlignItems(align_items)) => {
                 self.align_items = Some(align_items);
+            }
+            StyleDeclaration::Property(StyleProperty::JustifyContent(justify_content)) => {
+                self.justify_content = Some(justify_content);
             }
             StyleDeclaration::Property(StyleProperty::FlexWrap(flex_wrap)) => {
                 self.flex_wrap = Some(flex_wrap);
@@ -604,6 +615,17 @@ pub fn style_align_items(style: Option<&ResolvedStyle>, inline: AlignItems) -> A
         inline,
         AlignItems::Unset,
         style.and_then(|style| style.align_items),
+    )
+}
+
+pub fn style_justify_content(
+    style: Option<&ResolvedStyle>,
+    inline: JustifyContent,
+) -> JustifyContent {
+    inline_or_style(
+        inline,
+        JustifyContent::Unset,
+        style.and_then(|style| style.justify_content),
     )
 }
 

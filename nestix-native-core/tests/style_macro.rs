@@ -303,6 +303,7 @@ fn style_macro_supports_flex_view_props() {
         .panel {
             flex_direction: row-reverse;
             align_items: stretch;
+            justify_content: space-between;
             flex_wrap: wrap;
             padding_left: 3px;
             padding_right: 4px;
@@ -315,6 +316,7 @@ fn style_macro_supports_flex_view_props() {
 
     assert_eq!(props.flex_direction, Some(FlexDirection::RowReverse));
     assert_eq!(props.align_items, Some(AlignItems::Stretch));
+    assert_eq!(props.justify_content, Some(JustifyContent::SpaceBetween));
     assert_eq!(props.flex_wrap, Some(FlexWrap::Wrap));
     assert_eq!(props.padding_left, Some(Dimension::from(3.0)));
     assert_eq!(props.padding_right, Some(Dimension::from(4.0)));

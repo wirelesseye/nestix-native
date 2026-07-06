@@ -52,6 +52,38 @@ impl AlignItems {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JustifyContent {
+    Unset,
+    Start,
+    End,
+    FlexStart,
+    FlexEnd,
+    Center,
+    Stretch,
+    SpaceBetween,
+    SpaceEvenly,
+    SpaceAround,
+}
+
+#[cfg(feature = "taffy")]
+impl JustifyContent {
+    pub fn to_taffy(&self) -> Option<taffy::JustifyContent> {
+        match self {
+            JustifyContent::Unset => None,
+            JustifyContent::Start => Some(taffy::JustifyContent::Start),
+            JustifyContent::End => Some(taffy::JustifyContent::End),
+            JustifyContent::FlexStart => Some(taffy::JustifyContent::FlexStart),
+            JustifyContent::FlexEnd => Some(taffy::JustifyContent::FlexEnd),
+            JustifyContent::Center => Some(taffy::JustifyContent::Center),
+            JustifyContent::Stretch => Some(taffy::JustifyContent::Stretch),
+            JustifyContent::SpaceBetween => Some(taffy::JustifyContent::SpaceBetween),
+            JustifyContent::SpaceEvenly => Some(taffy::JustifyContent::SpaceEvenly),
+            JustifyContent::SpaceAround => Some(taffy::JustifyContent::SpaceAround),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlexWrap {
     NoWrap,
     Wrap,
@@ -88,6 +120,8 @@ pub struct FlexViewProps {
     pub flex_direction: FlexDirection,
     #[props(default = AlignItems::Unset)]
     pub align_items: AlignItems,
+    #[props(default = JustifyContent::Unset)]
+    pub justify_content: JustifyContent,
     #[props(default = FlexWrap::NoWrap)]
     pub flex_wrap: FlexWrap,
 

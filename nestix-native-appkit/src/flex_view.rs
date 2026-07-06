@@ -6,7 +6,7 @@ use nestix::{
 use nestix_native_core::{
     Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
     style_align_items, style_align_self, style_dimension, style_flex_direction, style_flex_wrap,
-    style_grow, style_margin, style_padding,
+    style_grow, style_justify_content, style_margin, style_padding,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
@@ -238,6 +238,20 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
                 align_items: style_align_items(style_props.as_ref(), align_items.get()).to_taffy(),
+                ..prev
+            });
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [tree_context, style_props, props.justify_content] || {
+            let style_props = style_props.get();
+            tree_context.update_style(node_id, |prev| Style {
+                justify_content: style_justify_content(style_props.as_ref(), justify_content.get())
+                    .to_taffy(),
                 ..prev
             });
 

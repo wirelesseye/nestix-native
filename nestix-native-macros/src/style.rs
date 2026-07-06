@@ -387,6 +387,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "align_self" => ("AlignSelf", expand_align_items(value)?),
         "flex_direction" => ("FlexDirection", expand_flex_direction(value)?),
         "align_items" => ("AlignItems", expand_align_items(value)?),
+        "justify_content" => ("JustifyContent", expand_justify_content(value)?),
         "flex_wrap" => ("FlexWrap", expand_flex_wrap(value)?),
         _ => Err(Error::new_spanned(
             prop.name,
@@ -533,6 +534,37 @@ fn expand_flex_direction(value: StyleValueInput) -> Result<TokenStream2> {
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "flex-direction must be row, row-reverse, column, column-reverse, or an inserted FlexDirection",
+        )),
+    }
+}
+
+fn expand_justify_content(value: StyleValueInput) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+
+    match value.as_str() {
+        "unset" => Ok(quote!(#nestix_native_path::JustifyContent::Unset)),
+        "start" => Ok(quote!(#nestix_native_path::JustifyContent::Start)),
+        "end" => Ok(quote!(#nestix_native_path::JustifyContent::End)),
+        "flex_start" | "flex-start" => Ok(quote!(#nestix_native_path::JustifyContent::FlexStart)),
+        "flex_end" | "flex-end" => Ok(quote!(#nestix_native_path::JustifyContent::FlexEnd)),
+        "center" => Ok(quote!(#nestix_native_path::JustifyContent::Center)),
+        "stretch" => Ok(quote!(#nestix_native_path::JustifyContent::Stretch)),
+        "space_between" | "space-between" => {
+            Ok(quote!(#nestix_native_path::JustifyContent::SpaceBetween))
+        }
+        "space_evenly" | "space-evenly" => {
+            Ok(quote!(#nestix_native_path::JustifyContent::SpaceEvenly))
+        }
+        "space_around" | "space-around" => {
+            Ok(quote!(#nestix_native_path::JustifyContent::SpaceAround))
+        }
+        _ => Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "justify-content must be unset, start, end, flex-start, flex-end, center, stretch, space-between, space-evenly, space-around, or an inserted JustifyContent",
         )),
     }
 }
