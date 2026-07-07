@@ -13,25 +13,22 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     let panel = XamlElement::stack_panel().expect("failed to create WinUI StackPanel");
     element.provide_handle(panel.clone());
 
-    let placed_panel = panel.clone();
     element.on_place(closure!(
-        [parent_context] | _ | {
-            (parent_context.add_child)(placed_panel.clone());
+        [panel, parent_context] | _ | {
+            (parent_context.add_child)(panel.clone());
         }
     ));
 
-    let unmount_panel = panel.clone();
     element.on_unmount(closure!(
-        [parent_context] || {
-            (parent_context.remove_child)(&unmount_panel);
+        [panel, parent_context] || {
+            (parent_context.remove_child)(&panel);
         }
     ));
 
-    let direction_panel = panel.clone();
     scoped_effect!(
         element,
-        [props.flex_direction] || {
-            let _ = direction_panel.set_flex_direction(flex_direction.get());
+        [panel, props.flex_direction] || {
+            let _ = panel.set_flex_direction(flex_direction.get());
         }
     );
 

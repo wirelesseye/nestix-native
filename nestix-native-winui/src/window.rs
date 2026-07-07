@@ -31,26 +31,23 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         .expect("failed to create WinUI window");
     element.provide_handle(window.clone());
 
-    let mount_window = window.clone();
     element.after_mount(closure!(
-        [mount_window] || {
-            let _ = mount_window.activate();
+        [window] || {
+            let _ = window.activate();
         }
     ));
 
-    let title_window = window.clone();
     scoped_effect!(
         element,
-        [props.title] || {
-            let _ = title_window.set_text(title.get());
+        [window, props.title] || {
+            let _ = window.set_text(title.get());
         }
     );
 
-    let size_window = window.clone();
     scoped_effect!(
         element,
-        [props.width, props.height] || {
-            let _ = size_window.set_size(width.get(), height.get());
+        [window, props.width, props.height] || {
+            let _ = window.set_size(width.get(), height.get());
         }
     );
 

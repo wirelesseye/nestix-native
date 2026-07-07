@@ -9,33 +9,29 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     let button = XamlElement::button(props.title.get()).expect("failed to create WinUI Button");
     element.provide_handle(button.clone());
 
-    let placed_button = button.clone();
     element.on_place(closure!(
-        [parent_context] | _ | {
-            (parent_context.add_child)(placed_button.clone());
+        [button, parent_context] | _ | {
+            (parent_context.add_child)(button.clone());
         }
     ));
 
-    let unmount_button = button.clone();
     element.on_unmount(closure!(
-        [parent_context] || {
-            (parent_context.remove_child)(&unmount_button);
+        [button, parent_context] || {
+            (parent_context.remove_child)(&button);
         }
     ));
 
-    let title_button = button.clone();
     scoped_effect!(
         element,
-        [props.title] || {
-            let _ = title_button.set_text(title.get());
+        [button, props.title] || {
+            let _ = button.set_text(title.get());
         }
     );
 
-    let click_button = button.clone();
     scoped_effect!(
         element,
-        [props.on_click] || {
-            let _ = click_button.set_button_click(on_click.get());
+        [button, props.on_click] || {
+            let _ = button.set_button_click(on_click.get());
         }
     );
 }

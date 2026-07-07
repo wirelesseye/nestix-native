@@ -10,25 +10,22 @@ pub fn Text(props: &TextProps, element: &Element) {
         XamlElement::text_block(props.text.get()).expect("failed to create WinUI TextBlock");
     element.provide_handle(text_block.clone());
 
-    let placed_text = text_block.clone();
     element.on_place(closure!(
-        [parent_context] | _ | {
-            (parent_context.add_child)(placed_text.clone());
+        [text_block, parent_context] | _ | {
+            (parent_context.add_child)(text_block.clone());
         }
     ));
 
-    let unmount_text = text_block.clone();
     element.on_unmount(closure!(
-        [parent_context] || {
-            (parent_context.remove_child)(&unmount_text);
+        [text_block, parent_context] || {
+            (parent_context.remove_child)(&text_block);
         }
     ));
 
-    let effect_text = text_block.clone();
     scoped_effect!(
         element,
-        [props.text] || {
-            let _ = effect_text.set_text(text.get());
+        [text_block, props.text] || {
+            let _ = text_block.set_text(text.get());
         }
     );
 }
