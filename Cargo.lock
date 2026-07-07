@@ -68,7 +68,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
-name = "basic"
+name = "basic-example"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "nestix",
+ "nestix-native",
+ "nestix-native-win32-build",
+]
+
+[[package]]
+name = "basic-winui-example"
 version = "0.1.0"
 dependencies = [
  "env_logger",
@@ -335,6 +345,10 @@ dependencies = [
  "taffy",
  "windows 0.62.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "nestix-native-win32-build"
+version = "0.1.0"
 
 [[package]]
 name = "nestix-native-winui"
@@ -712,7 +726,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tabs"
+name = "tabs-example"
 version = "0.1.0"
 dependencies = [
  "env_logger",

@@ -1,10 +1,12 @@
 [package]
-name = "basic"
+name = "basic-example"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 env_logger = { version = "0.11.8" }
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
-nestix-native = { path = "../../nestix-native", default-features = false, features = ["appkit"] }
-nestix-native-winui = { path = "../../nestix-native-winui" }
+nestix-native = { path = "../../nestix-native" }
+
+[build-dependencies]
+nestix-native-win32-build = { path = "../../nestix-native-win32-build" }

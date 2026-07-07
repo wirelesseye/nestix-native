@@ -1,12 +1,10 @@
 [package]
-name = "tabs-example"
+name = "basic-winui-example"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 env_logger = { version = "0.11.8" }
-nanoid = "0.4.0"
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native = { path = "../../nestix-native", default-features = false, features = ["appkit"] }
 nestix-native-winui = { path = "../../nestix-native-winui" }
-rand = "0.9"
