@@ -46,11 +46,14 @@ fn main() {
     args.extend([
         "--out".to_string(),
         out,
-        "--no-allow".to_string(),
+        "--implement".to_string(),
         "--filter".to_string(),
         "Microsoft.UI.Xaml.Application".to_string(),
         "Microsoft.UI.Xaml.ApplicationInitializationCallback".to_string(),
         "Microsoft.UI.Xaml.DependencyObject".to_string(),
+        "Microsoft.UI.Xaml.IApplicationOverrides".to_string(),
+        "Microsoft.UI.Xaml.LaunchActivatedEventArgs".to_string(),
+        "Microsoft.UI.Xaml.ResourceDictionary".to_string(),
         "Microsoft.UI.Xaml.Window".to_string(),
         "Microsoft.UI.Xaml.Thickness".to_string(),
         "Microsoft.UI.Xaml.HorizontalAlignment".to_string(),
@@ -58,6 +61,7 @@ fn main() {
         "Microsoft.UI.Xaml.Controls.Button".to_string(),
         "Microsoft.UI.Xaml.Controls.ContentControl".to_string(),
         "Microsoft.UI.Xaml.Controls.Control".to_string(),
+        "Microsoft.UI.Xaml.Controls.XamlControlsResources".to_string(),
         "Microsoft.UI.Xaml.Controls.Panel".to_string(),
         "Microsoft.UI.Xaml.Controls.Primitives.ButtonBase".to_string(),
         "Microsoft.UI.Xaml.Controls.StackPanel".to_string(),
@@ -66,17 +70,16 @@ fn main() {
         "Microsoft.UI.Xaml.Controls.Orientation".to_string(),
         "Microsoft.UI.Xaml.UIElement".to_string(),
         "Microsoft.UI.Xaml.FrameworkElement".to_string(),
+        "Microsoft.UI.Xaml.Markup.IXamlMetadataProvider".to_string(),
+        "Microsoft.UI.Xaml.Markup.IXamlType".to_string(),
+        "Microsoft.UI.Xaml.Markup.XmlnsDefinition".to_string(),
         "Microsoft.UI.Xaml.RoutedEventArgs".to_string(),
         "Microsoft.UI.Xaml.RoutedEventHandler".to_string(),
+        "Microsoft.UI.Xaml.XamlTypeInfo.XamlControlsXamlMetaDataProvider".to_string(),
+        "Windows.UI.Xaml.Interop.TypeName".to_string(),
     ]);
 
-    let warnings = windows_bindgen::bindgen(args);
-    if !warnings.is_empty() {
-        println!(
-            "cargo:warning=windows-bindgen skipped {} WinUI methods whose dependency types were not included",
-            warnings.len()
-        );
-    }
+    windows_bindgen::bindgen(args);
 
     link_windows_app_runtime_bootstrap(&foundation_dir);
 }
@@ -116,6 +119,7 @@ fn link_windows_app_runtime_bootstrap(foundation_dir: &Path) {
     println!("cargo:rustc-link-search=native={}", lib_dir.display());
     println!("cargo:rustc-link-lib=Microsoft.WindowsAppRuntime.Bootstrap");
     println!("cargo:rerun-if-changed={}", bootstrap_dll.display());
+    println!("cargo:rerun-if-changed=assets/resources.pri");
 
     if let Some(target_dir) = target_profile_dir() {
         fs::create_dir_all(&target_dir).unwrap();
@@ -127,6 +131,16 @@ fn link_windows_app_runtime_bootstrap(foundation_dir: &Path) {
             panic!(
                 "failed to copy {} to {}: {err}",
                 bootstrap_dll.display(),
+                target_dir.display()
+            )
+        });
+        fs::write(
+            target_dir.join("resources.pri"),
+            include_bytes!("assets/resources.pri"),
+        )
+        .unwrap_or_else(|err| {
+            panic!(
+                "failed to write resources.pri to {}: {err}",
                 target_dir.display()
             )
         });

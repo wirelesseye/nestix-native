@@ -10,12 +10,12 @@ use windows::Win32::{
     System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx},
     UI::HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
 };
-use windows_core::{Error, HRESULT, HSTRING, Interface, PCWSTR, Result};
+use windows_core::{Error, EventRevoker, HRESULT, HSTRING, Interface, PCWSTR, Result};
 
 use crate::bindings::Microsoft::UI::Xaml::{
     Application, ApplicationInitializationCallback,
     Controls::{Button, StackPanel, TextBlock},
-    FrameworkElement, RoutedEventHandler, UIElement, Window,
+    FrameworkElement, UIElement, Window,
 };
 
 const E_NOTIMPL: HRESULT = HRESULT(0x80004001u32 as i32);
@@ -24,8 +24,10 @@ const WINDOWS_APP_SDK_MIN_VERSION: u64 = 0;
 const MDDBOOTSTRAP_INITIALIZE_OPTIONS_NONE: u32 = 0;
 
 thread_local! {
+    static XAML_APPLICATION: RefCell<Option<crate::app_shim::CreatedXamlApplication>> = const { RefCell::new(None) };
     static PENDING_WINDOWS: RefCell<Vec<XamlElement>> = const { RefCell::new(Vec::new()) };
     static XAML_RUNNING: Cell<bool> = const { Cell::new(false) };
+    static XAML_CONTROLS_RESOURCES_INSTALLED: Cell<bool> = const { Cell::new(false) };
     static NEXT_CALLBACK_ID: Cell<u64> = const { Cell::new(1) };
     static CLICK_CALLBACKS: RefCell<HashMap<u64, nestix::Shared<dyn Fn()>>> = RefCell::new(HashMap::new());
 }
@@ -72,14 +74,16 @@ impl XamlApp {
         }
 
         let result = Application::Start(&ApplicationInitializationCallback::new(|_| {
-            XAML_RUNNING.set(true);
-            PENDING_WINDOWS.with_borrow(|windows| -> Result<()> {
-                for window in windows {
-                    window.realize()?;
-                    window.activate()?;
-                }
-                Ok(())
-            })
+            let created_app = crate::app_shim::create_xaml_application(Box::new(|| {
+                XAML_RUNNING.set(true);
+                install_xaml_controls_resources()?;
+                realize_pending_windows()
+            }))?;
+
+            XAML_APPLICATION.with_borrow_mut(|slot| {
+                *slot = Some(created_app);
+            });
+            Ok(())
         }));
 
         if let Err(error) = result {
@@ -92,7 +96,46 @@ impl XamlApp {
         if let Ok(app) = Application::Current() {
             let _ = app.Exit();
         }
+        XAML_APPLICATION.with_borrow_mut(|slot| {
+            *slot = None;
+        });
     }
+}
+
+fn realize_pending_windows() -> Result<()> {
+    PENDING_WINDOWS.with_borrow(|windows| -> Result<()> {
+        for window in windows {
+            window.realize()?;
+            window.activate()?;
+        }
+        Ok(())
+    })
+}
+
+fn install_xaml_controls_resources() -> Result<()> {
+    XAML_CONTROLS_RESOURCES_INSTALLED.with(|installed| {
+        if installed.get() {
+            return Ok(());
+        }
+
+        let controls_resources: crate::bindings::Microsoft::UI::Xaml::ResourceDictionary =
+            crate::bindings::Microsoft::UI::Xaml::Controls::XamlControlsResources::new()?.cast()?;
+        let app = Application::Current()?;
+
+        match app.Resources() {
+            Ok(resources) => {
+                resources
+                    .MergedDictionaries()?
+                    .Append(&controls_resources)?;
+            }
+            Err(_) => {
+                app.SetResources(&controls_resources)?;
+            }
+        }
+
+        installed.set(true);
+        Ok(())
+    })
 }
 
 fn initialize_windows_app_runtime() -> Result<()> {
@@ -152,11 +195,18 @@ pub(crate) enum RealizedXamlKind {
     TextBlock(TextBlock),
 }
 
-#[derive(Debug)]
 pub(crate) struct ClickHandlerState {
     callback_id: u64,
-    token: i64,
-    handler: RoutedEventHandler,
+    revoker: EventRevoker,
+}
+
+impl std::fmt::Debug for ClickHandlerState {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ClickHandlerState")
+            .field("callback_id", &self.callback_id)
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -323,19 +373,16 @@ impl XamlElement {
         };
 
         let callback_id = register_click_callback(handler);
-        let routed_handler = RoutedEventHandler::new(move |_, _| {
+        let revoker = control.Click(move |_, _| {
             CLICK_CALLBACKS.with_borrow(|callbacks| {
                 if let Some(callback) = callbacks.get(&callback_id) {
                     callback();
                 }
             });
-            Ok(())
-        });
-        let token = control.Click(&routed_handler)?;
+        })?;
         self.0.click_handler.replace(Some(ClickHandlerState {
             callback_id,
-            token,
-            handler: routed_handler,
+            revoker,
         }));
 
         Ok(())
@@ -434,13 +481,12 @@ impl XamlElement {
         }
     }
 
-    fn detach_click_handler(&self, control: &Button) -> Result<()> {
+    fn detach_click_handler(&self, _control: &Button) -> Result<()> {
         let Some(handler) = self.0.click_handler.take() else {
             return Ok(());
         };
 
-        let _keep_alive = handler.handler;
-        control.RemoveClick(handler.token)?;
+        drop(handler.revoker);
         CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
             callbacks.remove(&handler.callback_id);
         });
@@ -454,9 +500,7 @@ impl Drop for XamlNode {
             return;
         };
 
-        if let Some(RealizedXamlKind::Button { control, .. }) = self.realized.borrow().as_ref() {
-            let _ = control.RemoveClick(handler.token);
-        }
+        drop(handler.revoker);
         CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
             callbacks.remove(&handler.callback_id);
         });

@@ -1,3 +1,4 @@
+mod app_shim;
 pub mod button;
 mod contexts;
 pub mod flex_view;
