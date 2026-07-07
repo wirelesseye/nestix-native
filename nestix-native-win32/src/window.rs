@@ -27,7 +27,7 @@ use crate::{AppState, contexts::ParentContext, root::shared_app_state};
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeWindow");
-    const INIT_WINDOW_CLASS: Once = Once::new();
+    static INIT_WINDOW_CLASS: Once = Once::new();
 
     INIT_WINDOW_CLASS.call_once(|| unsafe {
         let wc = WNDCLASSW {

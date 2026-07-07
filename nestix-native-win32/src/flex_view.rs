@@ -40,7 +40,7 @@ thread_local! {
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeFlexView");
-    const INIT_WINDOW_CLASS: Once = Once::new();
+    static INIT_WINDOW_CLASS: Once = Once::new();
 
     INIT_WINDOW_CLASS.call_once(|| unsafe {
         let wc = WNDCLASSW {
