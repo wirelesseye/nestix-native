@@ -16,9 +16,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<BackendContext>(
-            BackendContext {
-                backend
-            },
+            BackendContext::new(backend),
         ) {
             $(platform_root),
         }

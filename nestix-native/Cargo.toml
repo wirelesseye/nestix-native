@@ -3,12 +3,17 @@ name = "nestix-native"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["appkit", "win32"]
+appkit = ["dep:nestix-native-appkit"]
+win32 = ["dep:nestix-native-win32"]
+
 [dependencies]
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core" }
 
 [target.'cfg(target_os = "macos")'.dependencies]
-nestix-native-appkit = { path = "../nestix-native-appkit" }
+nestix-native-appkit = { path = "../nestix-native-appkit", optional = true }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-nestix-native-win32 = { path = "../nestix-native-win32" }
+nestix-native-win32 = { path = "../nestix-native-win32", optional = true }
