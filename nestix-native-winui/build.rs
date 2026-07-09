@@ -54,6 +54,7 @@ fn main() {
         "Microsoft.UI.Xaml.IApplicationOverrides".to_string(),
         "Microsoft.UI.Xaml.LaunchActivatedEventArgs".to_string(),
         "Microsoft.UI.Xaml.ResourceDictionary".to_string(),
+        "Microsoft.UI.Windowing.AppWindow".to_string(),
         "Microsoft.UI.Xaml.Window".to_string(),
         "Microsoft.UI.Xaml.Thickness".to_string(),
         "Microsoft.UI.Xaml.HorizontalAlignment".to_string(),
@@ -70,12 +71,15 @@ fn main() {
         "Microsoft.UI.Xaml.Controls.Orientation".to_string(),
         "Microsoft.UI.Xaml.UIElement".to_string(),
         "Microsoft.UI.Xaml.FrameworkElement".to_string(),
+        "Microsoft.UI.Xaml.SizeChangedEventArgs".to_string(),
+        "Microsoft.UI.Xaml.SizeChangedEventHandler".to_string(),
         "Microsoft.UI.Xaml.Markup.IXamlMetadataProvider".to_string(),
         "Microsoft.UI.Xaml.Markup.IXamlType".to_string(),
         "Microsoft.UI.Xaml.Markup.XmlnsDefinition".to_string(),
         "Microsoft.UI.Xaml.RoutedEventArgs".to_string(),
         "Microsoft.UI.Xaml.RoutedEventHandler".to_string(),
         "Microsoft.UI.Xaml.XamlTypeInfo.XamlControlsXamlMetaDataProvider".to_string(),
+        "Windows.Graphics.SizeInt32".to_string(),
         "Windows.UI.Xaml.Interop.TypeName".to_string(),
     ]);
 

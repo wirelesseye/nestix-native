@@ -4,7 +4,10 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, create_state, layout,
     scoped_effect,
 };
-use nestix_native_core::{StyleScope, TreeContext, WindowProps};
+use nestix_native_core::{
+    StyleScope, TreeContext, WindowProps,
+    dpi::{LogicalSize, PhysicalSize},
+};
 
 use crate::{
     contexts::{AppContext, ParentContext},
@@ -27,8 +30,13 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     });
     let tree_context = Rc::new(TreeContext::new());
 
-    let window = XamlElement::window(props.title.get(), props.width.get(), props.height.get())
+    let window = XamlElement::window(props.title.get())
         .expect("failed to create WinUI window");
+    window
+        .set_scale_factor_changed(Some(callback!([scale_factor] |value: f64| {
+            scale_factor.set(value);
+        })))
+        .expect("failed to watch WinUI window scale factor");
     element.provide_handle(window.clone());
 
     element.after_mount(closure!(
@@ -46,7 +54,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [window, props.width, props.height] || {
+        [window, scale_factor, props.width, props.height] || {
+            let logical_size = LogicalSize::new(width.get(), height.get());
+            let physical_size: PhysicalSize<i32> = logical_size.to_physical(scale_factor.get());
+            let _ = window.set_window_size(physical_size.width, physical_size.height);
             let _ = window.set_size(width.get(), height.get());
         }
     );

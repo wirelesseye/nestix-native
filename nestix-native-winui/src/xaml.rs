@@ -6,22 +6,55 @@ use std::{
 };
 
 use windows::Win32::{
-    Foundation::RPC_E_CHANGED_MODE,
+    Foundation::{HWND, RPC_E_CHANGED_MODE},
     System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx},
-    UI::HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
+    UI::HiDpi::{
+        DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, GetDpiForWindow, SetProcessDpiAwarenessContext,
+    },
 };
 use windows_core::{Error, EventRevoker, HRESULT, HSTRING, Interface, PCWSTR, Result};
 
-use crate::bindings::Microsoft::UI::Xaml::{
-    Application, ApplicationInitializationCallback,
-    Controls::{Button, StackPanel, TextBlock},
-    FrameworkElement, UIElement, Window,
+use crate::bindings::{
+    Microsoft::UI::Xaml::{
+        Application, ApplicationInitializationCallback,
+        Controls::{Button, StackPanel, TextBlock},
+        FrameworkElement, UIElement, Window,
+    },
+    Windows::Graphics::SizeInt32,
 };
 
 const E_NOTIMPL: HRESULT = HRESULT(0x80004001u32 as i32);
 const WINDOWS_APP_SDK_RELEASE_MAJORMINOR: u32 = 0x0001_0008;
 const WINDOWS_APP_SDK_MIN_VERSION: u64 = 0;
 const MDDBOOTSTRAP_INITIALIZE_OPTIONS_NONE: u32 = 0;
+
+windows_core::imp::define_interface!(
+    IWindowNative,
+    IWindowNative_Vtbl,
+    0xeecdbf0e_bae9_4cb6_a68e_9598e1cb57bb
+);
+windows_core::imp::interface_hierarchy!(IWindowNative, windows_core::IUnknown);
+
+impl IWindowNative {
+    #[allow(non_snake_case)]
+    unsafe fn WindowHandle(&self, hwnd: *mut HWND) -> Result<()> {
+        unsafe {
+            (windows_core::Interface::vtable(self).WindowHandle)(
+                windows_core::Interface::as_raw(self),
+                hwnd.cast(),
+            )
+            .ok()
+        }
+    }
+}
+
+#[repr(C)]
+#[allow(non_snake_case)]
+pub struct IWindowNative_Vtbl {
+    pub base__: windows_core::IUnknown_Vtbl,
+    pub WindowHandle:
+        unsafe extern "system" fn(*mut core::ffi::c_void, *mut *mut core::ffi::c_void) -> HRESULT,
+}
 
 thread_local! {
     static XAML_APPLICATION: RefCell<Option<crate::app_shim::CreatedXamlApplication>> = const { RefCell::new(None) };
@@ -30,6 +63,7 @@ thread_local! {
     static XAML_CONTROLS_RESOURCES_INSTALLED: Cell<bool> = const { Cell::new(false) };
     static NEXT_CALLBACK_ID: Cell<u64> = const { Cell::new(1) };
     static CLICK_CALLBACKS: RefCell<HashMap<u64, nestix::Shared<dyn Fn()>>> = RefCell::new(HashMap::new());
+    static SCALE_FACTOR_CALLBACKS: RefCell<HashMap<u64, nestix::Shared<dyn Fn(f64)>>> = RefCell::new(HashMap::new());
 }
 
 #[link(name = "Microsoft.WindowsAppRuntime.Bootstrap")]
@@ -166,14 +200,16 @@ pub(crate) struct XamlNode {
     realized: RefCell<Option<RealizedXamlKind>>,
     children: RefCell<Vec<XamlElement>>,
     click_handler: RefCell<Option<ClickHandlerState>>,
+    scale_factor_callback_id: Cell<Option<u64>>,
+    scale_factor_handler: RefCell<Option<ScaleFactorHandlerState>>,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum XamlKind {
     Window {
         title: String,
-        width: f64,
-        height: f64,
+        width: i32,
+        height: i32,
     },
     StackPanel {
         direction: nestix_native_core::FlexDirection,
@@ -200,10 +236,24 @@ pub(crate) struct ClickHandlerState {
     revoker: EventRevoker,
 }
 
+pub(crate) struct ScaleFactorHandlerState {
+    callback_id: u64,
+    revoker: EventRevoker,
+}
+
 impl std::fmt::Debug for ClickHandlerState {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("ClickHandlerState")
+            .field("callback_id", &self.callback_id)
+            .finish_non_exhaustive()
+    }
+}
+
+impl std::fmt::Debug for ScaleFactorHandlerState {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ScaleFactorHandlerState")
             .field("callback_id", &self.callback_id)
             .finish_non_exhaustive()
     }
@@ -221,11 +271,11 @@ impl PartialEq for XamlElement {
 impl Eq for XamlElement {}
 
 impl XamlElement {
-    pub fn window(title: String, width: f64, height: f64) -> Result<Self> {
+    pub fn window(title: String) -> Result<Self> {
         let element = Self::new(XamlKind::Window {
             title,
-            width,
-            height,
+            width: 200,
+            height: 200,
         });
         PENDING_WINDOWS.with_borrow_mut(|windows| windows.push(element.clone()));
         Ok(element)
@@ -308,16 +358,6 @@ impl XamlElement {
     }
 
     pub fn set_size(&self, width: f64, height: f64) -> Result<()> {
-        if let XamlKind::Window {
-            width: stored_width,
-            height: stored_height,
-            ..
-        } = &mut *self.0.kind.borrow_mut()
-        {
-            *stored_width = width;
-            *stored_height = height;
-        }
-
         match &*self.0.realized.borrow() {
             Some(RealizedXamlKind::Window(window)) => {
                 if let Ok(content) = window.Content() {
@@ -341,6 +381,44 @@ impl XamlElement {
             }
             None => Ok(()),
         }
+    }
+
+    pub fn set_window_size(&self, width: i32, height: i32) -> Result<()> {
+        if let XamlKind::Window {
+            width: stored_width,
+            height: stored_height,
+            ..
+        } = &mut *self.0.kind.borrow_mut()
+        {
+            *stored_width = width;
+            *stored_height = height;
+        }
+
+        match &*self.0.realized.borrow() {
+            Some(RealizedXamlKind::Window(window)) => {
+                window.AppWindow()?.ResizeClient(SizeInt32 {
+                    Width: width,
+                    Height: height,
+                })
+            }
+            None => Ok(()),
+            other => panic!("XamlElement is not a window: {:?}", other)
+        }
+    }
+
+    pub fn set_scale_factor_changed(
+        &self,
+        handler: Option<nestix::Shared<dyn Fn(f64)>>,
+    ) -> Result<()> {
+        self.detach_scale_factor_handler();
+        self.0
+            .scale_factor_callback_id
+            .set(handler.map(register_scale_factor_callback));
+
+        if let Some(RealizedXamlKind::Window(window)) = &*self.0.realized.borrow() {
+            self.attach_window_scale_factor_handler(window)?;
+        }
+        Ok(())
     }
 
     pub fn set_flex_direction(&self, direction: nestix_native_core::FlexDirection) -> Result<()> {
@@ -394,6 +472,8 @@ impl XamlElement {
             realized: RefCell::new(None),
             children: RefCell::new(Vec::new()),
             click_handler: RefCell::new(None),
+            scale_factor_callback_id: Cell::new(None),
+            scale_factor_handler: RefCell::new(None),
         }))
     }
 
@@ -417,7 +497,7 @@ impl XamlElement {
                     child.realize()?;
                     self.append_realized_child(child)?;
                 }
-                self.set_size(width, height)?;
+                self.set_window_size(width, height)?;
                 return Ok(());
             }
             XamlKind::StackPanel { direction } => {
@@ -453,7 +533,10 @@ impl XamlElement {
     fn append_realized_child(&self, child: &XamlElement) -> Result<()> {
         let child = child.as_ui_element()?;
         match &*self.0.realized.borrow() {
-            Some(RealizedXamlKind::Window(window)) => window.SetContent(&child),
+            Some(RealizedXamlKind::Window(window)) => {
+                window.SetContent(&child)?;
+                self.attach_window_scale_factor_handler(window)
+            }
             Some(RealizedXamlKind::StackPanel(panel)) => {
                 let children = panel.Children()?;
                 let mut index = 0;
@@ -492,18 +575,65 @@ impl XamlElement {
         });
         Ok(())
     }
+
+    fn attach_window_scale_factor_handler(&self, window: &Window) -> Result<()> {
+        let Some(callback_id) = self.0.scale_factor_callback_id.get() else {
+            self.0.scale_factor_handler.take();
+            return Ok(());
+        };
+
+        self.0.scale_factor_handler.take();
+        invoke_scale_factor_callback(callback_id, window_scale_factor(window));
+
+        let content = match window.Content() {
+            Ok(content) => content.cast::<FrameworkElement>()?,
+            Err(_) => return Ok(()),
+        };
+        let hwnd = window_hwnd(window)?;
+        let hwnd_value = hwnd.0 as isize;
+        let revoker = content.SizeChanged(move |_, _| {
+            invoke_scale_factor_callback(callback_id, hwnd_scale_factor(HWND(hwnd_value as _)));
+        })?;
+        self.0
+            .scale_factor_handler
+            .replace(Some(ScaleFactorHandlerState {
+                callback_id,
+                revoker,
+            }));
+        Ok(())
+    }
+
+    fn detach_scale_factor_handler(&self) {
+        if let Some(handler) = self.0.scale_factor_handler.take() {
+            drop(handler.revoker);
+        }
+        if let Some(callback_id) = self.0.scale_factor_callback_id.take() {
+            SCALE_FACTOR_CALLBACKS.with_borrow_mut(|callbacks| {
+                callbacks.remove(&callback_id);
+            });
+        }
+    }
 }
 
 impl Drop for XamlNode {
     fn drop(&mut self) {
-        let Some(handler) = self.click_handler.take() else {
-            return;
-        };
+        if let Some(handler) = self.scale_factor_handler.take() {
+            drop(handler.revoker);
+            SCALE_FACTOR_CALLBACKS.with_borrow_mut(|callbacks| {
+                callbacks.remove(&handler.callback_id);
+            });
+        } else if let Some(callback_id) = self.scale_factor_callback_id.take() {
+            SCALE_FACTOR_CALLBACKS.with_borrow_mut(|callbacks| {
+                callbacks.remove(&callback_id);
+            });
+        }
 
-        drop(handler.revoker);
-        CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
-            callbacks.remove(&handler.callback_id);
-        });
+        if let Some(handler) = self.click_handler.take() {
+            drop(handler.revoker);
+            CLICK_CALLBACKS.with_borrow_mut(|callbacks| {
+                callbacks.remove(&handler.callback_id);
+            });
+        }
     }
 }
 
@@ -516,6 +646,49 @@ fn register_click_callback(callback: nestix::Shared<dyn Fn()>) -> u64 {
         });
         id
     })
+}
+
+fn register_scale_factor_callback(callback: nestix::Shared<dyn Fn(f64)>) -> u64 {
+    NEXT_CALLBACK_ID.with(|next_id| {
+        let id = next_id.get();
+        next_id.set(id.wrapping_add(1).max(1));
+        SCALE_FACTOR_CALLBACKS.with_borrow_mut(|callbacks| {
+            callbacks.insert(id, callback);
+        });
+        id
+    })
+}
+
+fn invoke_scale_factor_callback(callback_id: u64, scale_factor: f64) {
+    SCALE_FACTOR_CALLBACKS.with_borrow(|callbacks| {
+        if let Some(callback) = callbacks.get(&callback_id) {
+            callback(scale_factor);
+        }
+    });
+}
+
+fn window_scale_factor(window: &Window) -> f64 {
+    match window_hwnd(window) {
+        Ok(hwnd) => hwnd_scale_factor(hwnd),
+        Err(_) => 1.0,
+    }
+}
+
+fn window_hwnd(window: &Window) -> Result<HWND> {
+    let mut hwnd = HWND::default();
+    let native = window.cast::<IWindowNative>()?;
+    unsafe {
+        native.WindowHandle(&mut hwnd)?;
+    }
+    Ok(hwnd)
+}
+
+fn hwnd_scale_factor(hwnd: HWND) -> f64 {
+    if hwnd.is_invalid() {
+        return 1.0;
+    }
+    let dpi = unsafe { GetDpiForWindow(hwnd) };
+    if dpi == 0 { 1.0 } else { dpi as f64 / 96.0 }
 }
 
 fn orientation(
