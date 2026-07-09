@@ -1,4 +1,3 @@
 [workspace]
 resolver = "3"
 members = ["examples/*", "nestix-native", "nestix-native-*"]
-exclude = ["nestix-native-winui"]

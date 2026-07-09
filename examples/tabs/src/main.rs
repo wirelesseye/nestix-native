@@ -1,26 +1,15 @@
-use std::rc::Rc;
-
 use env_logger::Env;
 use nestix::{
-    ContextProvider, Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
+    Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
 };
 use nestix_native::{
-    AlignItems, BackendContext, Button, Color, FlexDirection, FlexView, Input, RGBColor, Root, StyleProvider, TabView, TabViewItem, Text, Window, default_backend, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, Input, RGBColor, Root, StyleProvider,
+    TabView, TabViewItem, Text, Window, style,
 };
-use nestix_native_winui::WinUiBackend;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    let backend = if cfg!(target_os = "windows") {
-        Rc::new(WinUiBackend)
-    } else {
-        default_backend()
-    };
-    mount_root(&layout! {
-        ContextProvider<BackendContext>(BackendContext::new(backend)) {
-            ExampleApp
-        }
-    });
+    mount_root(&layout! { ExampleApp });
 }
 
 fn random_color() -> Color {
