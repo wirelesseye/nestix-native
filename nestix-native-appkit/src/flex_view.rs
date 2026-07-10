@@ -14,7 +14,7 @@ use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSS
 use taffy::{NodeId, Size, Style};
 
 use crate::{WindowContext, contexts::ParentContext};
-use nestix_native_core::utils::{gap_to_taffy, margin_to_taffy, padding_to_taffy};
+use nestix_native_core::utils::{gap_to_taffy, inset_to_taffy, margin_to_taffy, padding_to_taffy};
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
@@ -154,6 +154,34 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                     ..prev
                 });
             }
+
+            tree_context.refresh();
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [
+            window_context.scale_factor,
+            tree_context,
+            style_props,
+            props.view.left,
+            props.view.top
+        ] || {
+            let scale_factor = scale_factor.get();
+            let style_props = style_props.get();
+            let left =
+                style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |style| {
+                    style.left
+                });
+            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |style| {
+                style.top
+            });
+
+            tree_context.update_style(node_id, |prev| Style {
+                inset: inset_to_taffy(left, top, scale_factor),
+                ..prev
+            });
 
             tree_context.refresh();
         }

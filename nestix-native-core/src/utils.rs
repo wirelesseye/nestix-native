@@ -31,6 +31,19 @@ mod taffy {
         dimension_to_length_percentage(dimension, scale_factor)
     }
 
+    pub fn inset_to_taffy(
+        left: Dimension,
+        top: Dimension,
+        scale_factor: f64,
+    ) -> taffy::Rect<taffy::LengthPercentageAuto> {
+        taffy::Rect {
+            left: dimension_to_length_percentage_auto(left, scale_factor),
+            top: dimension_to_length_percentage_auto(top, scale_factor),
+            right: taffy::LengthPercentageAuto::auto(),
+            bottom: taffy::LengthPercentageAuto::auto(),
+        }
+    }
+
     pub fn dimension_to_length_percentage_auto(
         dimension: Dimension,
         scale_factor: f64,
