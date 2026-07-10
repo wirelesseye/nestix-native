@@ -8,14 +8,30 @@ mod taffy {
         scale_factor: f64,
     ) -> taffy::Rect<taffy::LengthPercentageAuto> {
         taffy::Rect {
-            top: margin_dimension_to_taffy(margin.top, scale_factor),
-            bottom: margin_dimension_to_taffy(margin.bottom, scale_factor),
-            left: margin_dimension_to_taffy(margin.left, scale_factor),
-            right: margin_dimension_to_taffy(margin.right, scale_factor),
+            top: dimension_to_length_percentage_auto(margin.top, scale_factor),
+            bottom: dimension_to_length_percentage_auto(margin.bottom, scale_factor),
+            left: dimension_to_length_percentage_auto(margin.left, scale_factor),
+            right: dimension_to_length_percentage_auto(margin.right, scale_factor),
         }
     }
 
-    fn margin_dimension_to_taffy(
+    pub fn padding_to_taffy(
+        padding: Rect<Dimension>,
+        scale_factor: f64,
+    ) -> taffy::Rect<taffy::LengthPercentage> {
+        taffy::Rect {
+            top: dimension_to_length_percentage(padding.top, scale_factor),
+            bottom: dimension_to_length_percentage(padding.bottom, scale_factor),
+            left: dimension_to_length_percentage(padding.left, scale_factor),
+            right: dimension_to_length_percentage(padding.right, scale_factor),
+        }
+    }
+
+    pub fn gap_to_taffy(dimension: Dimension, scale_factor: f64) -> taffy::LengthPercentage {
+        dimension_to_length_percentage(dimension, scale_factor)
+    }
+
+    pub fn dimension_to_length_percentage_auto(
         dimension: Dimension,
         scale_factor: f64,
     ) -> taffy::LengthPercentageAuto {
@@ -27,19 +43,7 @@ mod taffy {
         }
     }
 
-    pub fn padding_to_taffy(
-        padding: Rect<Dimension>,
-        scale_factor: f64,
-    ) -> taffy::Rect<taffy::LengthPercentage> {
-        taffy::Rect {
-            top: padding_dimension_to_taffy(padding.top, scale_factor),
-            bottom: padding_dimension_to_taffy(padding.bottom, scale_factor),
-            left: padding_dimension_to_taffy(padding.left, scale_factor),
-            right: padding_dimension_to_taffy(padding.right, scale_factor),
-        }
-    }
-
-    fn padding_dimension_to_taffy(
+    pub fn dimension_to_length_percentage(
         dimension: Dimension,
         scale_factor: f64,
     ) -> taffy::LengthPercentage {

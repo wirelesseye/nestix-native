@@ -14,6 +14,19 @@ fn style_macro_builds_class_rule() {
 }
 
 #[test]
+fn style_macro_supports_gap() {
+    let sheet = style! {
+        .stack {
+            gap: 12px;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("stack")));
+
+    assert_eq!(props.gap, Some(Dimension::from(12.0)));
+}
+
+#[test]
 fn style_macro_supports_multiple_rules_and_selectors() {
     let sheet = style! {
         .counter, .button.primary {

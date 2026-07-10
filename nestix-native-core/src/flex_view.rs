@@ -126,6 +126,9 @@ pub struct FlexViewProps {
     pub flex_wrap: FlexWrap,
 
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
+    pub gap: Dimension,
+
+    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub padding_left: Dimension,
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub padding_right: Dimension,

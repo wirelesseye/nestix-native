@@ -389,6 +389,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "align_items" => ("AlignItems", expand_align_items(value)?),
         "justify_content" => ("JustifyContent", expand_justify_content(value)?),
         "flex_wrap" => ("FlexWrap", expand_flex_wrap(value)?),
+        "gap" => ("Gap", expand_dimension(value)?),
         _ => Err(Error::new_spanned(
             prop.name,
             format!(

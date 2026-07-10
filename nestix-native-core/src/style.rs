@@ -277,6 +277,10 @@ pub enum StyleProperty {
     ///
     /// **Available value**: `nowrap`, `no-wrap`, or `wrap`.
     FlexWrap(FlexWrap),
+    /// Spacing between this element's flex children.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    Gap(Dimension),
 }
 
 impl StyleProperty {
@@ -307,6 +311,7 @@ impl StyleProperty {
             StyleProperty::AlignItems(_) => "align_items",
             StyleProperty::JustifyContent(_) => "justify_content",
             StyleProperty::FlexWrap(_) => "flex_wrap",
+            StyleProperty::Gap(_) => "gap",
         }
     }
 
@@ -344,6 +349,7 @@ impl StyleProperty {
             StyleProperty::AlignItems(_) => &["align_items"],
             StyleProperty::JustifyContent(_) => &["justify_content"],
             StyleProperty::FlexWrap(_) => &["flex_wrap"],
+            StyleProperty::Gap(_) => &["gap"],
         }
     }
 }
@@ -390,6 +396,7 @@ pub struct ResolvedStyle {
     pub align_items: Option<AlignItems>,
     pub justify_content: Option<JustifyContent>,
     pub flex_wrap: Option<FlexWrap>,
+    pub gap: Option<Dimension>,
     custom: HashMap<String, String>,
 }
 
@@ -488,6 +495,9 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::FlexWrap(flex_wrap)) => {
                 self.flex_wrap = Some(flex_wrap);
+            }
+            StyleDeclaration::Property(StyleProperty::Gap(dimension)) => {
+                self.gap = Some(dimension);
             }
             StyleDeclaration::Custom { name, value } => {
                 self.custom.insert(name.clone(), value.clone());
@@ -635,6 +645,10 @@ pub fn style_flex_wrap(style: Option<&ResolvedStyle>, inline: FlexWrap) -> FlexW
         FlexWrap::NoWrap,
         style.and_then(|style| style.flex_wrap),
     )
+}
+
+pub fn style_gap(style: Option<&ResolvedStyle>, inline: Dimension) -> Dimension {
+    style_dimension(style, inline, Dimension::from(0), |style| style.gap)
 }
 
 pub fn style_margin(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
