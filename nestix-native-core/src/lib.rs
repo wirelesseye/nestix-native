@@ -5,12 +5,13 @@ pub mod dimension;
 pub mod flex_view;
 pub mod input;
 pub mod root;
+pub mod scroll_view;
 pub mod style;
 pub mod tab_view;
 pub mod text;
+pub mod utils;
 pub mod view;
 pub mod window;
-pub mod utils;
 
 pub use button::*;
 pub use color::*;
@@ -19,12 +20,13 @@ pub use dimension::*;
 pub use flex_view::*;
 pub use input::*;
 pub use root::*;
+pub use scroll_view::*;
 pub use style::*;
 pub use tab_view::*;
 pub use text::*;
+pub use utils::*;
 pub use view::*;
 pub use window::*;
-pub use utils::*;
 
 pub use dpi;
 pub use nestix_native_macros::*;
@@ -32,19 +34,39 @@ pub use nestix_native_macros::*;
 use nestix::Element;
 
 pub trait Backend {
-    fn create_root(&self, props: RootProps) -> Option<Element>;
+    fn create_root(&self, _props: RootProps) -> Option<Element> {
+        None
+    }
 
-    fn create_button(&self, props: ButtonProps) -> Option<Element>;
+    fn create_scroll_view(&self, _props: ScrollViewProps) -> Option<Element> {
+        None
+    }
 
-    fn create_flex_view(&self, props: FlexViewProps) -> Option<Element>;
+    fn create_button(&self, _props: ButtonProps) -> Option<Element> {
+        None
+    }
 
-    fn create_input(&self, props: InputProps) -> Option<Element>;
+    fn create_flex_view(&self, _props: FlexViewProps) -> Option<Element> {
+        None
+    }
 
-    fn create_text(&self, props: TextProps) -> Option<Element>;
+    fn create_input(&self, _props: InputProps) -> Option<Element> {
+        None
+    }
 
-    fn create_tab_view(&self, props: TabViewProps) -> Option<Element>;
+    fn create_text(&self, _props: TextProps) -> Option<Element> {
+        None
+    }
 
-    fn create_tab_view_item(&self, props: TabViewItemProps) -> Option<Element>;
+    fn create_tab_view(&self, _props: TabViewProps) -> Option<Element> {
+        None
+    }
 
-    fn create_window(&self, props: WindowProps) -> Option<Element>;
+    fn create_tab_view_item(&self, _props: TabViewItemProps) -> Option<Element> {
+        None
+    }
+
+    fn create_window(&self, _props: WindowProps) -> Option<Element> {
+        None
+    }
 }

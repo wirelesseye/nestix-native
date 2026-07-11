@@ -2,6 +2,7 @@ pub mod button;
 pub mod flex_view;
 pub mod input;
 pub mod root;
+pub mod scroll_view;
 pub mod tab_view;
 pub mod text;
 pub mod window;
@@ -12,6 +13,7 @@ pub use button::*;
 pub use flex_view::*;
 pub use input::*;
 pub use root::*;
+pub use scroll_view::*;
 pub use tab_view::*;
 pub use text::*;
 pub use window::*;
@@ -24,6 +26,13 @@ pub struct AppkitBackend;
 impl Backend for AppkitBackend {
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {
         Some(create_element::<Root>(props))
+    }
+
+    fn create_scroll_view(
+        &self,
+        props: nestix_native_core::ScrollViewProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<ScrollView>(props))
     }
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {

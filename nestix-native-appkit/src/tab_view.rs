@@ -1,12 +1,13 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+use nestix::computed;
 use nestix::{
     Element, Readonly, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension as NativeDimension, StyleContext, StyleScope, matched_style, style_align_self,
-    style_dimension, style_grow, style_margin,
+    Dimension, StyleContext, StyleScope, matched_style, style_align_self, style_dimension,
+    style_grow, style_margin,
 };
 use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext};
 use objc2::{
@@ -15,7 +16,7 @@ use objc2::{
 };
 use objc2_app_kit::{NSTabView, NSTabViewDelegate, NSTabViewItem, NSView};
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
-use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
+use taffy::{NodeId, Size, Style, prelude::FromLength};
 
 use crate::{WindowContext, contexts::ParentContext};
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
@@ -114,13 +115,13 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             let width = style_dimension(
                 style_props.as_ref(),
                 width.get(),
-                NativeDimension::Auto,
+                Dimension::Auto,
                 |style| style.width,
             );
             let height = style_dimension(
                 style_props.as_ref(),
                 height.get(),
-                NativeDimension::Auto,
+                Dimension::Auto,
                 |style| style.height,
             );
 
@@ -149,18 +150,13 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
-            let left = style_dimension(
-                style_props.as_ref(),
-                left.get(),
-                NativeDimension::Auto,
-                |style| style.left,
-            );
-            let top = style_dimension(
-                style_props.as_ref(),
-                top.get(),
-                NativeDimension::Auto,
-                |style| style.top,
-            );
+            let left =
+                style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |style| {
+                    style.left
+                });
+            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |style| {
+                style.top
+            });
 
             tree_context.update_style(node_id, |prev| Style {
                 inset: inset_to_taffy(left, top, scale_factor),
@@ -228,30 +224,29 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                     current_selected: current_selected.into_readonly()
                 }
             ) {
-                ContextProvider<ParentContext>(
-                    ParentContext {
-                        add_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
-                            let item = child.downcast_ref::<NSTabViewItem>().unwrap();
-                            if view.tabViewItems().containsObject(item) {
-                                view.removeTabViewItem(item);
-                            }
-                            view.addTabViewItem(item);
-                        })),
-                        insert_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>, index: usize| {
-                            let item = child.downcast_ref::<NSTabViewItem>().unwrap();
-                            if view.tabViewItems().containsObject(item) {
-                                view.removeTabViewItem(item);
-                            }
-                            view.insertTabViewItem_atIndex(item, index as _);
-                        })),
-                        remove_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
-                            let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                ContextProvider<ParentContext>(ParentContext {
+                    add_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
+                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                        if view.tabViewItems().containsObject(item) {
                             view.removeTabViewItem(item);
-                        })),
-                        parent_node: Some(node_id),
-                    },
-                    .children = props.children.clone(),
-                )
+                        }
+                        view.addTabViewItem(item);
+                    })),
+                    insert_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>, index: usize| {
+                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                        if view.tabViewItems().containsObject(item) {
+                            view.removeTabViewItem(item);
+                        }
+                        view.insertTabViewItem_atIndex(item, index as _);
+                    })),
+                    remove_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
+                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                        view.removeTabViewItem(item);
+                    })),
+                    parent_node: Some(node_id),
+                }) {
+                    $(props.children.clone())
+                }
             }
         }
     }
@@ -349,8 +344,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                     let frame = item.view(mtm).unwrap().frame();
                     subtree_context.update_style(root_node, |prev| Style {
                         size: Size {
-                            width: Dimension::from_length(frame.size.width as f32),
-                            height: Dimension::from_length(frame.size.height as f32),
+                            width: taffy::Dimension::from_length(frame.size.width as f32),
+                            height: taffy::Dimension::from_length(frame.size.height as f32),
                         },
                         ..prev
                     });
@@ -382,8 +377,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                         let frame = item.view(mtm).unwrap().frame();
                         subtree_context.update_style(root_node, |prev| Style {
                             size: Size {
-                                width: Dimension::from_length(frame.size.width as f32),
-                                height: Dimension::from_length(frame.size.height as f32),
+                                width: taffy::Dimension::from_length(frame.size.width as f32),
+                                height: taffy::Dimension::from_length(frame.size.height as f32),
                             },
                             ..prev
                         });
@@ -397,31 +392,32 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     layout! {
         StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
-                ContextProvider<ParentContext>(
-                    ParentContext {
-                        add_child: Some(callback!([item] |object: &NSObject, child_node: Option<NodeId>| {
-                            let view = object.downcast_ref::<NSView>().unwrap();
-                            item.setView(Some(view));
-                            subtree_context.set_root_node(child_node);
+                ContextProvider<ParentContext>(ParentContext {
+                    add_child: Some(callback!([item, subtree_context] |object: &NSObject, child_node: Option<NodeId>| {
+                        let view = object.downcast_ref::<NSView>().unwrap();
+                        item.setView(Some(view));
+                        subtree_context.set_root_node(child_node);
 
-                            let frame = view.frame();
-                            if let Some(child_node) = child_node {
-                                subtree_context.update_style(child_node, |prev| Style {
-                                    size: Size {
-                                        width: Dimension::from_length(frame.size.width as f32),
-                                        height: Dimension::from_length(frame.size.height as f32)
-                                    },
-                                    ..prev
-                                });
-                                subtree_context.refresh();
-                            }
-                        })),
-                        insert_child: None,
-                        remove_child: None,
-                        parent_node: None,
-                    },
-                ) {
-                    $(props.children.get())
+                        let frame = view.frame();
+                        if let Some(child_node) = child_node {
+                            subtree_context.update_style(child_node, |prev| Style {
+                                size: Size {
+                                    width: taffy::Dimension::from_length(frame.size.width as f32),
+                                    height: taffy::Dimension::from_length(frame.size.height as f32)
+                                },
+                                ..prev
+                            });
+                            subtree_context.refresh();
+                        }
+                    })),
+                    insert_child: None,
+                    remove_child: Some(callback!([item] |_: &NSObject, _: Option<NodeId>| {
+                        item.setView(None);
+                        subtree_context.set_root_node(None);
+                    })),
+                    parent_node: None,
+                }) {
+                    $(computed!([props.children] || children.get()))
                 }
             }
         }

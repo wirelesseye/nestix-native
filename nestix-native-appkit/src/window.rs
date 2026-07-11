@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use nestix::{
-    Element, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
+    Element, Layout, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -78,34 +78,32 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         ContextProvider<WindowContext>(window_context) {
             ContextProvider<TreeContext>(tree_context.clone()) {
                 StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
-                    ContextProvider<ParentContext>(
-                        ParentContext {
-                            add_child: Some(callback!([ns_window, tree_context] |object: &NSObject, child_node: Option<NodeId>| {
-                                let view = object.downcast_ref::<NSView>().unwrap();
-                                ns_window.setContentView(Some(view));
-                                tree_context.set_root_node(child_node);
+                    ContextProvider<ParentContext>(ParentContext {
+                        add_child: Some(callback!([ns_window, tree_context] |object: &NSObject, child_node: Option<NodeId>| {
+                            let view = object.downcast_ref::<NSView>().unwrap();
+                            ns_window.setContentView(Some(view));
+                            tree_context.set_root_node(child_node);
 
-                                let size = view.frame().size;
-                                if let Some(child_node) = child_node {
-                                    tree_context.update_style(child_node, |prev| Style {
-                                        size: Size {
-                                            width: Dimension::from_length(size.width as f32),
-                                            height: Dimension::from_length(size.height as f32)
-                                        },
-                                        ..prev
-                                    });
-                                    tree_context.refresh();
-                                }
-                            })),
-                            insert_child: None,
-                            remove_child: Some(callback!([ns_window] |_: &NSObject, _: Option<NodeId>| {
-                                ns_window.setContentView(None);
-                                tree_context.set_root_node(None);
-                            })),
-                            parent_node: None,
-                        }
-                    ) {
-                        $(props.children.get())
+                            let size = view.frame().size;
+                            if let Some(child_node) = child_node {
+                                tree_context.update_style(child_node, |prev| Style {
+                                    size: Size {
+                                        width: Dimension::from_length(size.width as f32),
+                                        height: Dimension::from_length(size.height as f32)
+                                    },
+                                    ..prev
+                                });
+                                tree_context.refresh();
+                            }
+                        })),
+                        insert_child: None,
+                        remove_child: Some(callback!([ns_window] |_: &NSObject, _: Option<NodeId>| {
+                            ns_window.setContentView(None);
+                            tree_context.set_root_node(None);
+                        })),
+                        parent_node: None,
+                    }) {
+                        $(props.children.clone().map(|element| Layout::from(element.clone())))
                     }
                 }
             }
