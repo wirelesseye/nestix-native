@@ -1,7 +1,8 @@
 use std::{cell::Cell, rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, callback, component, components::ContextProvider, create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     StyleScope, TreeContext, WindowProps,
