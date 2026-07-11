@@ -1,6 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use nestix::computed;
 use nestix::{
     Element, Layout, Readonly, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
@@ -27,6 +26,7 @@ thread_local! {
 
 struct TabViewContext {
     current_selected: Readonly<Option<String>>,
+    subtrees: Rc<RefCell<HashMap<String, Rc<TreeContext>>>>,
 }
 
 #[component]
@@ -45,9 +45,15 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     let current_selected = create_state(None);
+    let subtrees = Rc::new(RefCell::new(HashMap::new()));
 
     let mtm = MainThreadMarker::new().unwrap();
-    let view = NSTabView::new(mtm);
+    let view = NNTabView::new(
+        mtm,
+        NNTabViewState {
+            subtrees: subtrees.clone(),
+        },
+    );
     let delegate = TabViewDelegate::new(
         mtm,
         TabViewState {
@@ -221,7 +227,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TabViewContext>(
                 TabViewContext {
-                    current_selected: current_selected.into_readonly()
+                    current_selected: current_selected.into_readonly(),
+                    subtrees,
                 }
             ) {
                 ContextProvider<ParentContext>(ParentContext {
@@ -249,6 +256,70 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                 }
             }
         }
+    }
+}
+
+struct NNTabViewState {
+    subtrees: Rc<RefCell<HashMap<String, Rc<TreeContext>>>>,
+}
+
+define_class!(
+    #[unsafe(super = NSTabView)]
+    #[thread_kind = MainThreadOnly]
+    #[ivars = NNTabViewState]
+    struct NNTabView;
+
+    unsafe impl NSObjectProtocol for NNTabView {}
+
+    impl NNTabView {
+        #[unsafe(method(layout))]
+        fn layout(&self) {
+            unsafe {
+                let _: () = msg_send![super(self), layout];
+            }
+
+            let subtrees = self.ivars().subtrees.borrow();
+            for item in self.tabViewItems().iter() {
+                let Some(identifier) = item.identifier() else {
+                    continue;
+                };
+                let Some(identifier) = identifier.downcast_ref::<NSString>() else {
+                    continue;
+                };
+                let Some(subtree_context) = subtrees.get(&identifier.to_string()) else {
+                    continue;
+                };
+                let Some(root_node) = subtree_context.root_node() else {
+                    continue;
+                };
+                let Some(item_view) = item.view(self.mtm()) else {
+                    continue;
+                };
+
+                let size = item_view.frame().size;
+                subtree_context.update_style(root_node, |prev| Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(size.width as f32),
+                        height: taffy::Dimension::from_length(size.height as f32),
+                    },
+                    ..prev
+                });
+                subtree_context.refresh();
+            }
+        }
+    }
+);
+
+impl NNTabView {
+    fn new(mtm: MainThreadMarker, state: NNTabViewState) -> Retained<Self> {
+        let this = Self::alloc(mtm).set_ivars(state);
+        unsafe { msg_send![super(this), init] }
+    }
+}
+
+impl AsRef<NSObject> for NNTabView {
+    fn as_ref(&self) -> &NSObject {
+        self
     }
 }
 
@@ -312,12 +383,17 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     ));
 
     let subtree_context = Rc::new(TreeContext::new());
+    tab_view_context
+        .subtrees
+        .borrow_mut()
+        .insert(props.id.get(), subtree_context.clone());
 
     element.on_unmount(closure!(
-        [parent_context, item] || {
+        [parent_context, item, tab_view_context, props.id] || {
             if let Some(remove_child) = &parent_context.remove_child {
                 remove_child(&item, None);
             }
+            tab_view_context.subtrees.borrow_mut().remove(&id.get());
         }
     ));
 
@@ -408,6 +484,11 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                                 ..prev
                             });
                             subtree_context.refresh();
+                        }
+
+                        if let Some(tab_view) = item.tabView(mtm) {
+                            tab_view.setNeedsLayout(true);
+                            tab_view.layoutSubtreeIfNeeded();
                         }
                     })),
                     insert_child: None,
