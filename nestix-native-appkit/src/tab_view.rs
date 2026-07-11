@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::computed;
 use nestix::{
-    Element, Readonly, State, callback, closure, component, components::ContextProvider,
+    Element, Layout, Readonly, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -417,7 +417,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                     })),
                     parent_node: None,
                 }) {
-                    $(computed!([props.children] || children.get()))
+                    $(props.children.clone().map(|element| Layout::from(element.clone())))
                 }
             }
         }
