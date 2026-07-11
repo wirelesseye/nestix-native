@@ -48,6 +48,7 @@ fn init_common_controls() {
 struct TabViewContext {
     current_selected: State<Option<String>>,
     tab_ids: RefCell<Vec<String>>,
+    pages: RefCell<Vec<(HWND, Rc<TreeContext>)>>,
 }
 
 #[component]
@@ -104,6 +105,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let tab_view_context = Rc::new(TabViewContext {
         current_selected: current_selected.clone(),
         tab_ids: RefCell::new(Vec::new()),
+        pages: RefCell::new(Vec::new()),
     });
 
     app_state.add_control_handler(
@@ -273,7 +275,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         [
             window_context.scale_factor,
             tree_context,
-            parent_context.parent_node
+            parent_context.parent_node,
+            tab_view_context,
         ] || {
             if parent_node.is_some() {
                 if let Some(layout) = tree_context.layout(node_id) {
@@ -294,6 +297,15 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                             SWP_NOZORDER,
                         )
                         .unwrap();
+                    }
+
+                    // A tab page can be mounted while the tab control still has
+                    // its initial zero-sized window. Size every registered page
+                    // from the native control after the control receives its
+                    // computed layout, so no page can miss this first update.
+                    let pages = tab_view_context.pages.borrow().clone();
+                    for (page_hwnd, page_tree_context) in pages {
+                        resize_tab_view_content(&page_tree_context, scale_factor, hwnd, page_hwnd);
                     }
                 }
             }
@@ -375,7 +387,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     ));
 
     element.on_unmount(closure!(
-        [parent_context, tab_view_context, props.id] || {
+        [parent_context, tab_view_context, props.id, subtree_root] || {
             let id = id.get();
             let existing_index = tab_view_context
                 .tab_ids
@@ -393,6 +405,13 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                         None,
                     );
                 }
+            }
+
+            if let Some(subtree_root) = subtree_root.get() {
+                tab_view_context
+                    .pages
+                    .borrow_mut()
+                    .retain(|(page_hwnd, _)| *page_hwnd != subtree_root);
             }
         }
     ));
@@ -453,7 +472,6 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                             parent_hwnd,
                             subtree_root,
                         );
-                        subtree_context.refresh();
                     }
                 }
             }
@@ -466,9 +484,14 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 ContextProvider<ParentContext>(
                     ParentContext {
                         parent_hwnd: parent_context.parent_hwnd,
-                        add_child: Some(callback!([window_context.scale_factor] |child_hwnd: HWND, child_node: Option<NodeId>| {
+                        add_child: Some(callback!([window_context.scale_factor, tab_view_context] |child_hwnd: HWND, child_node: Option<NodeId>| {
                             subtree_context.set_root_node(child_node);
                             subtree_root.set(Some(child_hwnd));
+
+                            let mut pages = tab_view_context.pages.borrow_mut();
+                            pages.retain(|(page_hwnd, _)| *page_hwnd != child_hwnd);
+                            pages.push((child_hwnd, subtree_context.clone()));
+                            drop(pages);
 
                             resize_tab_view_content(&subtree_context, scale_factor.get(), parent_context.parent_hwnd, child_hwnd);
                         })),
@@ -529,7 +552,10 @@ fn resize_tab_view_content(
         GetClientRect(tab_control, &mut tab_control_rect).unwrap();
     }
 
-    let mut adjust_rect = RECT::default();
+    // TCM_ADJUSTRECT expects the tab control's window rectangle as input when
+    // calculating the display rectangle. Passing an empty rectangle can leave
+    // a newly-created page with an invalid size until the next window resize.
+    let mut adjust_rect = tab_control_rect;
     unsafe {
         SendMessageW(
             tab_control,
@@ -539,21 +565,15 @@ fn resize_tab_view_content(
         );
     }
 
-    let client_rect = RECT {
-        left: tab_control_rect.left + adjust_rect.left,
-        top: tab_control_rect.top + adjust_rect.top,
-        right: tab_control_rect.right + adjust_rect.right,
-        bottom: tab_control_rect.bottom + adjust_rect.bottom,
-    };
-    let width = client_rect.right - client_rect.left;
-    let height = client_rect.bottom - client_rect.top;
+    let width = adjust_rect.right - adjust_rect.left;
+    let height = adjust_rect.bottom - adjust_rect.top;
 
     unsafe {
         SetWindowPos(
             content,
             None,
-            client_rect.left,
-            client_rect.top,
+            adjust_rect.left,
+            adjust_rect.top,
             width,
             height,
             SWP_NOZORDER,
@@ -570,5 +590,9 @@ fn resize_tab_view_content(
             },
             ..prev
         });
+        // The root is registered during placement, after its initial style
+        // effects may already have run. Refresh here so every tab page gets a
+        // layout immediately instead of waiting for an external resize.
+        tree_context.refresh();
     }
 }
