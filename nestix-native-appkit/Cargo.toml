@@ -8,7 +8,7 @@ nanoid = "0.4.0"
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core", features = ["taffy"]}
 objc2 = "0.6.3"
-objc2-app-kit = { version = "0.3.2", features = ["NSLayoutConstraint"]}
+objc2-app-kit = { version = "0.3.2", features = ["NSImageView", "NSLayoutConstraint"]}
 objc2-foundation = { version = "0.3.2", features = ["NSNotification"]}
 taffy = "0.9.2"
 

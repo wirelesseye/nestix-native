@@ -3,6 +3,7 @@ pub mod color;
 pub mod contexts;
 pub mod dimension;
 pub mod flex_view;
+pub mod image_view;
 pub mod input;
 pub mod root;
 pub mod scroll_view;
@@ -18,6 +19,7 @@ pub use color::*;
 pub use contexts::*;
 pub use dimension::*;
 pub use flex_view::*;
+pub use image_view::*;
 pub use input::*;
 pub use root::*;
 pub use scroll_view::*;
@@ -53,6 +55,10 @@ pub trait Backend {
     }
 
     fn create_input(&self, _props: InputProps) -> Option<Element> {
+        None
+    }
+
+    fn create_image_view(&self, _props: ImageViewProps) -> Option<Element> {
         None
     }
 

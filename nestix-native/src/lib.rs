@@ -1,5 +1,6 @@
 pub mod button;
 pub mod flex_view;
+pub mod image_view;
 pub mod input;
 pub mod root;
 pub mod scroll_view;
@@ -9,6 +10,7 @@ pub mod window;
 
 pub use button::*;
 pub use flex_view::*;
+pub use image_view::*;
 pub use input::*;
 pub use root::*;
 pub use scroll_view::*;
