@@ -37,7 +37,7 @@ pub struct ViewProps {
     pub flex_basis: Dimension,
     #[props(default = 1.0)]
     pub flex_shrink: f32,
-    #[props(default = AlignItems::Unset)]
+    #[props(default = AlignItems::Normal)]
     pub align_self: AlignItems,
 }
 

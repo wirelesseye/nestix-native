@@ -255,12 +255,16 @@ pub enum StyleProperty {
     /// **Available value**: a number.
     FlexGrow(f32),
     /// Initial main size of the flex item.
+    ///
+    /// **Available value**: `auto`, or a pixel value such as `30px`.
     FlexBasis(Dimension),
     /// Flex shrink factor used when distributing negative free space.
+    ///
+    /// **Available value**: a number.
     FlexShrink(f32),
     /// Cross-axis alignment override for this element within its flex parent.
     ///
-    /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
+    /// **Available value**: `normal`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `baseline`, or `stretch`.
     AlignSelf(AlignItems),
     /// Main-axis direction for this element's flex children.
@@ -269,12 +273,12 @@ pub enum StyleProperty {
     FlexDirection(FlexDirection),
     /// Cross-axis alignment for this element's flex children.
     ///
-    /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
+    /// **Available value**: `normal`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `baseline`, or `stretch`.
     AlignItems(AlignItems),
     /// Main-axis distribution for this element's flex children.
     ///
-    /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
+    /// **Available value**: `normal`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `stretch`, `space-between`, `space-evenly`, or `space-around`.
     JustifyContent(JustifyContent),
     /// Wrapping behavior for this element's flex children.
@@ -633,7 +637,7 @@ pub fn style_flex_shrink(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
 pub fn style_align_self(style: Option<&ResolvedStyle>, inline: AlignItems) -> AlignItems {
     inline_or_style(
         inline,
-        AlignItems::Unset,
+        AlignItems::Normal,
         style.and_then(|style| style.align_self),
     )
 }
@@ -649,7 +653,7 @@ pub fn style_flex_direction(style: Option<&ResolvedStyle>, inline: FlexDirection
 pub fn style_align_items(style: Option<&ResolvedStyle>, inline: AlignItems) -> AlignItems {
     inline_or_style(
         inline,
-        AlignItems::Unset,
+        AlignItems::Normal,
         style.and_then(|style| style.align_items),
     )
 }
@@ -660,7 +664,7 @@ pub fn style_justify_content(
 ) -> JustifyContent {
     inline_or_style(
         inline,
-        JustifyContent::Unset,
+        JustifyContent::Normal,
         style.and_then(|style| style.justify_content),
     )
 }

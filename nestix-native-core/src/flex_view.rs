@@ -25,7 +25,7 @@ impl FlexDirection {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlignItems {
-    Unset,
+    Normal,
     Start,
     End,
     FlexStart,
@@ -39,7 +39,7 @@ pub enum AlignItems {
 impl AlignItems {
     pub fn to_taffy(&self) -> Option<taffy::AlignItems> {
         match self {
-            AlignItems::Unset => None,
+            AlignItems::Normal => None,
             AlignItems::FlexStart => Some(taffy::AlignItems::FlexStart),
             AlignItems::FlexEnd => Some(taffy::AlignItems::FlexEnd),
             AlignItems::Center => Some(taffy::AlignItems::Center),
@@ -53,7 +53,7 @@ impl AlignItems {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JustifyContent {
-    Unset,
+    Normal,
     Start,
     End,
     FlexStart,
@@ -69,7 +69,7 @@ pub enum JustifyContent {
 impl JustifyContent {
     pub fn to_taffy(&self) -> Option<taffy::JustifyContent> {
         match self {
-            JustifyContent::Unset => None,
+            JustifyContent::Normal => None,
             JustifyContent::Start => Some(taffy::JustifyContent::Start),
             JustifyContent::End => Some(taffy::JustifyContent::End),
             JustifyContent::FlexStart => Some(taffy::JustifyContent::FlexStart),
@@ -118,9 +118,9 @@ pub struct FlexViewProps {
 
     #[props(default = FlexDirection::Column)]
     pub flex_direction: FlexDirection,
-    #[props(default = AlignItems::Unset)]
+    #[props(default = AlignItems::Normal)]
     pub align_items: AlignItems,
-    #[props(default = JustifyContent::Unset)]
+    #[props(default = JustifyContent::Normal)]
     pub justify_content: JustifyContent,
     #[props(default = FlexWrap::NoWrap)]
     pub flex_wrap: FlexWrap,

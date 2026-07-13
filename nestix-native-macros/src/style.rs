@@ -505,7 +505,7 @@ fn expand_align_items(value: StyleValueInput) -> Result<TokenStream2> {
     };
 
     match value.as_str() {
-        "unset" => Ok(quote!(#nestix_native_path::AlignItems::Unset)),
+        "normal" => Ok(quote!(#nestix_native_path::AlignItems::Normal)),
         "start" => Ok(quote!(#nestix_native_path::AlignItems::Start)),
         "end" => Ok(quote!(#nestix_native_path::AlignItems::End)),
         "flex_start" | "flex-start" => Ok(quote!(#nestix_native_path::AlignItems::FlexStart)),
@@ -515,7 +515,7 @@ fn expand_align_items(value: StyleValueInput) -> Result<TokenStream2> {
         "stretch" => Ok(quote!(#nestix_native_path::AlignItems::Stretch)),
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
-            "align-self must be unset, start, end, flex-start, flex-end, center, baseline, stretch, or an inserted AlignItems",
+            "align-self must be normal, start, end, flex-start, flex-end, center, baseline, stretch, or an inserted AlignItems",
         )),
     }
 }
@@ -549,7 +549,7 @@ fn expand_justify_content(value: StyleValueInput) -> Result<TokenStream2> {
     };
 
     match value.as_str() {
-        "unset" => Ok(quote!(#nestix_native_path::JustifyContent::Unset)),
+        "normal" => Ok(quote!(#nestix_native_path::JustifyContent::Normal)),
         "start" => Ok(quote!(#nestix_native_path::JustifyContent::Start)),
         "end" => Ok(quote!(#nestix_native_path::JustifyContent::End)),
         "flex_start" | "flex-start" => Ok(quote!(#nestix_native_path::JustifyContent::FlexStart)),
@@ -567,7 +567,7 @@ fn expand_justify_content(value: StyleValueInput) -> Result<TokenStream2> {
         }
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
-            "justify-content must be unset, start, end, flex-start, flex-end, center, stretch, space-between, space-evenly, space-around, or an inserted JustifyContent",
+            "justify-content must be normal, start, end, flex-start, flex-end, center, stretch, space-between, space-evenly, space-around, or an inserted JustifyContent",
         )),
     }
 }
