@@ -14,5 +14,7 @@ windows = { version = "0.62", features = [
     "Win32_UI_Shell_Common",
     "Win32_System_LibraryLoader",
     "Win32_Graphics_Gdi",
+    "Win32_Graphics_GdiPlus",
+    "Win32_System_Com",
 ] }
 taffy = "0.9.2"
