@@ -121,10 +121,6 @@ pub fn Text(props: &TextProps, element: &Element) {
                         width: taffy::Dimension::from_length(width),
                         height: taffy::Dimension::from_length(height),
                     },
-                    min_size: Size {
-                        width: taffy::Dimension::from_length(width),
-                        height: taffy::Dimension::from_length(height),
-                    },
                     ..prev
                 });
             }

@@ -7,7 +7,8 @@ use nestix::{
 use nestix_native_core::{
     Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
-    matched_style, style_align_self, style_dimension, style_flex_grow, style_margin,
+    matched_style, style_align_self, style_dimension, style_flex_basis, style_flex_grow,
+    style_flex_shrink, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{NodeId, Size, Style, style_helpers::FromLength};
@@ -204,11 +205,17 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             tree_context,
             styles,
             props.view.flex_grow,
+            props.view.flex_basis,
+            props.view.flex_shrink,
+            window.scale_factor,
             props.view.align_self
         ] || {
             let style = styles.get();
             tree_context.update_style(node, |prev| Style {
                 flex_grow: style_flex_grow(style.as_ref(), flex_grow.get()),
+                flex_basis: style_flex_basis(style.as_ref(), flex_basis.get())
+                    .to_taffy(scale_factor.get()),
+                flex_shrink: style_flex_shrink(style.as_ref(), flex_shrink.get()),
                 align_self: style_align_self(style.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
