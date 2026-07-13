@@ -18,23 +18,21 @@ pub use window::*;
 
 pub use nestix_native_core::*;
 
-use std::rc::Rc;
-
 #[cfg(all(target_os = "macos", feature = "appkit"))]
-pub fn default_backend() -> Rc<dyn Backend> {
-    Rc::new(nestix_native_appkit::AppkitBackend)
+pub fn default_backend() -> &'static dyn Backend {
+    &nestix_native_appkit::APPKIT_BACKEND
 }
 
 #[cfg(all(target_os = "windows", feature = "win32"))]
-pub fn default_backend() -> Rc<dyn Backend> {
-    Rc::new(nestix_native_win32::Win32Backend)
+pub fn default_backend() -> &'static dyn Backend {
+    &nestix_native_win32::WIN32_BACKEND
 }
 
 #[cfg(not(any(
     all(target_os = "macos", feature = "appkit"),
     all(target_os = "windows", feature = "win32")
 )))]
-pub fn default_backend() -> Rc<dyn Backend> {
+pub fn default_backend() -> &'static dyn Backend {
     panic!(
         "nestix-native has no default backend for this build; enable the platform feature or provide a BackendContext"
     )
@@ -42,11 +40,5 @@ pub fn default_backend() -> Rc<dyn Backend> {
 
 #[derive(Clone)]
 pub struct BackendContext {
-    backend: Rc<dyn Backend>,
-}
-
-impl BackendContext {
-    pub fn new(backend: Rc<dyn Backend>) -> Self {
-        Self { backend }
-    }
+    pub backend: &'static dyn Backend,
 }

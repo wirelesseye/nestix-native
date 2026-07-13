@@ -34,6 +34,8 @@ pub use nestix_native_macros::*;
 use nestix::Element;
 
 pub trait Backend {
+    fn backend_id(&self) -> &'static str;
+
     fn create_root(&self, _props: RootProps) -> Option<Element> {
         None
     }

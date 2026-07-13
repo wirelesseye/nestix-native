@@ -21,9 +21,15 @@ pub use window::*;
 use nestix::create_element;
 use nestix_native_core::Backend;
 
+pub const APPKIT_BACKEND: AppkitBackend = AppkitBackend;
+
 pub struct AppkitBackend;
 
 impl Backend for AppkitBackend {
+    fn backend_id(&self) -> &'static str {
+        "nestix-native-appkit"
+    }
+
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {
         Some(create_element::<Root>(props))
     }

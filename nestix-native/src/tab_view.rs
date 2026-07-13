@@ -6,7 +6,7 @@ use crate::BackendContext;
 
 #[component]
 pub fn TabView(props: &TabViewProps, element: &Element) -> Option<Element> {
-    let backend = &element.context::<BackendContext>().unwrap().backend;
+    let backend = element.context::<BackendContext>().unwrap().backend;
     let platform_view = backend.create_tab_view(props.clone());
 
     platform_view
@@ -14,7 +14,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Option<Element> {
 
 #[component]
 pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Option<Element> {
-    let backend = &element.context::<BackendContext>().unwrap().backend;
+    let backend = element.context::<BackendContext>().unwrap().backend;
     let platform_item = backend.create_tab_view_item(props.clone());
 
     platform_item

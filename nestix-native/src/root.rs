@@ -7,7 +7,7 @@ use crate::{BackendContext, default_backend};
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
     let backend = if let Some(ctx) = element.context::<BackendContext>() {
-        ctx.backend.clone()
+        ctx.backend
     } else {
         default_backend()
     };
@@ -16,7 +16,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<BackendContext>(
-            BackendContext::new(backend),
+            BackendContext { backend },
         ) {
             $(platform_root),
         }

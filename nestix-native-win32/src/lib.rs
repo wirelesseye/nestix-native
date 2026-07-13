@@ -23,9 +23,15 @@ pub use window::*;
 use nestix::create_element;
 use nestix_native_core::Backend;
 
+pub const WIN32_BACKEND: Win32Backend = Win32Backend;
+
 pub struct Win32Backend;
 
 impl Backend for Win32Backend {
+    fn backend_id(&self) -> &'static str {
+        "nestix-native-appkit"
+    }
+
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {
         Some(create_element::<Root>(props))
     }

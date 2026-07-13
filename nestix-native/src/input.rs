@@ -6,7 +6,7 @@ use crate::BackendContext;
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) -> Option<Element> {
-    let backend = &element.context::<BackendContext>().unwrap().backend;
+    let backend = element.context::<BackendContext>().unwrap().backend;
     let platform_input = backend.create_input(props.clone());
 
     platform_input
