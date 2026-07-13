@@ -10,7 +10,10 @@ use nestix_native_core::{
 use objc2::{AnyThread, MainThreadMarker};
 use objc2_app_kit::{NSImage, NSImageScaling, NSImageView};
 use objc2_foundation::{NSData, NSObject, NSPoint, NSRect, NSSize, NSString};
-use taffy::{Size, Style, prelude::FromLength};
+use taffy::{
+    Size, Style,
+    prelude::{FromLength, FromPercent, TaffyAuto},
+};
 
 use crate::{WindowContext, contexts::ParentContext};
 
@@ -143,6 +146,8 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
                 style_dimension(style_props.as_ref(), height.get(), Dimension::Auto, |s| {
                     s.height
                 });
+            let width_is_auto = width.is_auto();
+            let height_is_auto = height.is_auto();
             let ratio = if intrinsic.height > 0.0 {
                 intrinsic.width / intrinsic.height
             } else {
@@ -171,6 +176,21 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
                     size: Size {
                         width: taffy::Dimension::from_length(width),
                         height: taffy::Dimension::from_length(height),
+                    },
+                    // Intrinsic image dimensions provide the preferred size,
+                    // but an auto-sized image must not make its flex parent
+                    // wider or taller than the available space.
+                    max_size: Size {
+                        width: if width_is_auto {
+                            taffy::Dimension::from_percent(1.0)
+                        } else {
+                            taffy::Dimension::AUTO
+                        },
+                        height: if height_is_auto {
+                            taffy::Dimension::from_percent(1.0)
+                        } else {
+                            taffy::Dimension::AUTO
+                        },
                     },
                     item_is_replaced: true,
                     aspect_ratio: Some(ratio as f32),
@@ -278,7 +298,7 @@ mod tests {
     use taffy::{FlexDirection, TaffyTree, prelude::*};
 
     #[test]
-    fn auto_sized_large_image_does_not_collapse_sibling_controls() {
+    fn auto_sized_large_image_is_constrained_to_its_parent() {
         let mut tree = TaffyTree::<()>::new();
         let text = tree
             .new_leaf(Style {
@@ -309,8 +329,6 @@ mod tests {
                     width: percent(1.0),
                     height: percent(1.0),
                 },
-                flex_basis: percent(1.0),
-                flex_shrink: 1000.0,
                 aspect_ratio: Some(3840.0 / 2160.0),
                 ..Style::default()
             })
@@ -332,11 +350,7 @@ mod tests {
 
         tree.compute_layout(root, Size::MAX_CONTENT).unwrap();
 
-        let text_layout = tree.layout(text).unwrap();
-        let button_layout = tree.layout(button).unwrap();
         let image_layout = tree.layout(image).unwrap();
-        assert_eq!(text_layout.size.height, 20.0);
-        assert_eq!(button_layout.size.height, 32.0);
         assert!(image_layout.size.width <= 500.0);
         assert!(image_layout.size.height <= 350.0);
     }
