@@ -3,7 +3,8 @@ use std::{cell::RefCell, rc::Rc};
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
     ContentFit, Dimension, ImageSource, ImageViewProps, StyleContext, TreeContext, matched_style,
-    style_align_self, style_dimension, style_grow, style_margin,
+    style_align_self, style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink,
+    style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use objc2::{AnyThread, MainThreadMarker};
@@ -61,10 +62,20 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [tree_context, style_props, props.view.grow] || {
+        [
+            tree_context,
+            style_props,
+            props.view.flex_grow,
+            props.view.flex_basis,
+            props.view.flex_shrink,
+            window_context.scale_factor
+        ] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
-                flex_grow: style_grow(style_props.as_ref(), grow.get()),
+                flex_grow: style_flex_grow(style_props.as_ref(), flex_grow.get()),
+                flex_basis: style_flex_basis(style_props.as_ref(), flex_basis.get())
+                    .to_taffy(scale_factor.get()),
+                flex_shrink: style_flex_shrink(style_props.as_ref(), flex_shrink.get()),
                 ..prev
             });
             tree_context.refresh();

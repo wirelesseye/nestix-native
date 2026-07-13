@@ -17,7 +17,7 @@ use proc_macro::TokenStream;
 ///         width: 120px;
 ///         margin: 8px;
 ///         margin_left: 16px;
-///         grow: 1;
+///         flex_grow: 1;
 ///         align_self: center;
 ///         --accent_token: primary;
 ///     }

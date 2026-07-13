@@ -253,7 +253,11 @@ pub enum StyleProperty {
     /// Flex grow factor used when distributing free space.
     ///
     /// **Available value**: a number.
-    Grow(f32),
+    FlexGrow(f32),
+    /// Initial main size of the flex item.
+    FlexBasis(Dimension),
+    /// Flex shrink factor used when distributing negative free space.
+    FlexShrink(f32),
     /// Cross-axis alignment override for this element within its flex parent.
     ///
     /// **Available value**: `unset`, `start`, `end`, `flex-start`, `flex-end`,
@@ -305,7 +309,9 @@ impl StyleProperty {
             StyleProperty::PaddingRight(_) => "padding_right",
             StyleProperty::PaddingTop(_) => "padding_top",
             StyleProperty::PaddingBottom(_) => "padding_bottom",
-            StyleProperty::Grow(_) => "grow",
+            StyleProperty::FlexGrow(_) => "flex_grow",
+            StyleProperty::FlexBasis(_) => "flex_basis",
+            StyleProperty::FlexShrink(_) => "flex_shrink",
             StyleProperty::AlignSelf(_) => "align_self",
             StyleProperty::FlexDirection(_) => "flex_direction",
             StyleProperty::AlignItems(_) => "align_items",
@@ -343,7 +349,9 @@ impl StyleProperty {
             StyleProperty::PaddingRight(_) => &["padding_right"],
             StyleProperty::PaddingTop(_) => &["padding_top"],
             StyleProperty::PaddingBottom(_) => &["padding_bottom"],
-            StyleProperty::Grow(_) => &["grow"],
+            StyleProperty::FlexGrow(_) => &["flex_grow"],
+            StyleProperty::FlexBasis(_) => &["flex_basis"],
+            StyleProperty::FlexShrink(_) => &["flex_shrink"],
             StyleProperty::AlignSelf(_) => &["align_self"],
             StyleProperty::FlexDirection(_) => &["flex_direction"],
             StyleProperty::AlignItems(_) => &["align_items"],
@@ -390,7 +398,9 @@ pub struct ResolvedStyle {
     pub padding_right: Option<Dimension>,
     pub padding_top: Option<Dimension>,
     pub padding_bottom: Option<Dimension>,
-    pub grow: Option<f32>,
+    pub flex_grow: Option<f32>,
+    pub flex_basis: Option<Dimension>,
+    pub flex_shrink: Option<f32>,
     pub align_self: Option<AlignItems>,
     pub flex_direction: Option<FlexDirection>,
     pub align_items: Option<AlignItems>,
@@ -478,8 +488,14 @@ impl ResolvedStyle {
             StyleDeclaration::Property(StyleProperty::PaddingBottom(dimension)) => {
                 self.padding_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::Grow(grow)) => {
-                self.grow = Some(grow);
+            StyleDeclaration::Property(StyleProperty::FlexGrow(flex_grow)) => {
+                self.flex_grow = Some(flex_grow);
+            }
+            StyleDeclaration::Property(StyleProperty::FlexBasis(flex_basis)) => {
+                self.flex_basis = Some(flex_basis);
+            }
+            StyleDeclaration::Property(StyleProperty::FlexShrink(flex_shrink)) => {
+                self.flex_shrink = Some(flex_shrink);
             }
             StyleDeclaration::Property(StyleProperty::AlignSelf(align_self)) => {
                 self.align_self = Some(align_self);
@@ -600,8 +616,18 @@ pub fn style_dimension(
     inline_or_style(inline, default, style.and_then(f))
 }
 
-pub fn style_grow(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
-    inline_or_style(inline, 0.0, style.and_then(|style| style.grow))
+pub fn style_flex_grow(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
+    inline_or_style(inline, 0.0, style.and_then(|style| style.flex_grow))
+}
+
+pub fn style_flex_basis(style: Option<&ResolvedStyle>, inline: Dimension) -> Dimension {
+    style_dimension(style, inline, Dimension::Auto, |style| {
+        style.flex_basis.clone()
+    })
+}
+
+pub fn style_flex_shrink(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
+    inline_or_style(inline, 1.0, style.and_then(|style| style.flex_shrink))
 }
 
 pub fn style_align_self(style: Option<&ResolvedStyle>, inline: AlignItems) -> AlignItems {

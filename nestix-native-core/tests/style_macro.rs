@@ -291,7 +291,9 @@ fn style_macro_supports_view_props() {
             margin_right: 4px;
             margin_top: 5px;
             margin_bottom: 6px;
-            grow: 2;
+            flex_grow: 2;
+            flex_basis: 25px;
+            flex_shrink: 3;
             align_self: center;
         }
     };
@@ -306,7 +308,9 @@ fn style_macro_supports_view_props() {
     assert_eq!(props.margin_right, Some(Dimension::from(4.0)));
     assert_eq!(props.margin_top, Some(Dimension::from(5.0)));
     assert_eq!(props.margin_bottom, Some(Dimension::from(6.0)));
-    assert_eq!(props.grow, Some(2.0));
+    assert_eq!(props.flex_grow, Some(2.0));
+    assert_eq!(props.flex_basis, Some(Dimension::from(25.0)));
+    assert_eq!(props.flex_shrink, Some(3.0));
     assert_eq!(props.align_self, Some(AlignItems::Center));
 }
 

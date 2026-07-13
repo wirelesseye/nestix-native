@@ -7,7 +7,8 @@ use nestix::{
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 use nestix_native_core::{
     Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext, matched_style,
-    style_align_self, style_dimension, style_grow, style_margin,
+    style_align_self, style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink,
+    style_margin,
 };
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSScrollView, NSView};
@@ -58,10 +59,21 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
 
     scoped_effect!(
         element,
-        [tree_context, styles, props.view.grow, props.view.align_self] || {
+        [
+            tree_context,
+            styles,
+            props.view.flex_grow,
+            props.view.flex_basis,
+            props.view.flex_shrink,
+            props.view.align_self,
+            window.scale_factor
+        ] || {
             let style = styles.get();
             tree_context.update_style(node, |prev| Style {
-                flex_grow: style_grow(style.as_ref(), grow.get()),
+                flex_grow: style_flex_grow(style.as_ref(), flex_grow.get()),
+                flex_basis: style_flex_basis(style.as_ref(), flex_basis.get())
+                    .to_taffy(scale_factor.get()),
+                flex_shrink: style_flex_shrink(style.as_ref(), flex_shrink.get()),
                 align_self: style_align_self(style.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
