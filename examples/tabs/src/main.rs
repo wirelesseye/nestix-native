@@ -4,8 +4,8 @@ use nestix::{
     props,
 };
 use nestix_native::{
-    AlignItems, Button, Color, FlexDirection, FlexView, Input, RGBColor, Root, ScrollView,
-    StyleProvider, TabView, TabViewItem, Text, Window, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor,
+    Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, style,
 };
 
 fn main() {
@@ -89,6 +89,8 @@ fn Counter() -> Element {
             }
     );
 
+    const SAMPLE: &[u8] = include_bytes!("../assets/sample.jpg");
+
     layout! {
         StyleProvider(styles) {
             FlexView(.class = "counter") {
@@ -103,6 +105,7 @@ fn Counter() -> Element {
                 if count.get() % 2 == 0 {
                     Text("The count is even")
                 }
+                ImageView(.source = ImageSource::bytes(SAMPLE))
             }
         }
     }
