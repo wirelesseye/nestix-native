@@ -23,7 +23,7 @@ use windows::{
     core::{HSTRING, PCWSTR, w},
 };
 
-use crate::{AppState, contexts::ParentContext, root::shared_app_state};
+use crate::{AppState, contexts::ParentContext, font::colorref, root::shared_app_state};
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeWindow");
@@ -231,13 +231,18 @@ pub(crate) struct WindowState {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
-            WM_CTLCOLORSTATIC => {
+            WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
                 let app_state = shared_app_state();
                 let window_state = app_state.window_state(hwnd).unwrap();
 
                 let hdc = HDC(wparam.0 as _);
                 SetBkMode(hdc, TRANSPARENT);
-                SetTextColor(hdc, COLORREF(GetSysColor(COLOR_BTNTEXT)));
+                let control = HWND(lparam.0 as _);
+                let color = app_state
+                    .control_text_color(control)
+                    .map(colorref)
+                    .unwrap_or_else(|| COLORREF(GetSysColor(COLOR_BTNTEXT)));
+                SetTextColor(hdc, color);
 
                 LRESULT(window_state.bg_brush.0 as isize)
             }

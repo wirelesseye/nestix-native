@@ -2,15 +2,15 @@ use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
     ButtonProps, Dimension, StyleContext, TreeContext,
     dpi::{LogicalPosition, LogicalSize, LogicalUnit, PhysicalUnit},
-    matched_style, style_align_self, style_dimension, style_flex_basis, style_flex_grow,
-    style_flex_shrink, style_margin,
+    matched_style, resolve_font_props, style_align_self, style_dimension, style_flex_basis,
+    style_flex_grow, style_flex_shrink, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
-        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
+        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, SelectObject},
         UI::{
             Controls::WC_BUTTON,
             WindowsAndMessaging::{
@@ -23,7 +23,7 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
+use crate::{AppState, WindowContext, contexts::ParentContext, font::resolved_font, utils::hiword};
 
 const DEFAULT_PADDING_X: f32 = 10.0;
 const DEFAULT_PADDING_Y: f32 = 3.0;
@@ -94,7 +94,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     element.on_unmount(closure!(
-        [parent_context] || {
+        [parent_context, app_state] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
@@ -102,6 +102,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 remove_child(hwnd, Some(node_id));
             }
             app_state.remove_control_handler(hwnd);
+            app_state.set_control_text_color(hwnd, None);
         }
     ));
 
@@ -129,15 +130,34 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     scoped_effect!(
         element,
-        [window_context.scale_factor]
-            || unsafe {
-                SendMessageW(
-                    hwnd,
-                    WM_SETFONT,
-                    Some(WPARAM(ui_font(12.0, scale_factor.get()).0 as _)),
-                    Some(LPARAM(1)), // redraw
-                );
-            }
+        [
+            window_context.scale_factor,
+            style_props,
+            props.font.font_family,
+            props.font.font_size,
+            props.font.font_weight,
+            props.font.font_style,
+            props.font.text_color
+        ] || unsafe {
+            let font_props = resolve_font_props(
+                style_props.get().as_ref(),
+                font_family.get(),
+                font_size.get(),
+                font_weight.get(),
+                font_style.get(),
+                text_color.get(),
+            );
+            SendMessageW(
+                hwnd,
+                WM_SETFONT,
+                Some(WPARAM(
+                    resolved_font(&font_props, scale_factor.get()).0 as _,
+                )),
+                Some(LPARAM(1)), // redraw
+            );
+            app_state.set_control_text_color(hwnd, font_props.text_color);
+            InvalidateRect(Some(hwnd), None, true).unwrap();
+        }
     );
 
     scoped_effect!(
@@ -147,11 +167,24 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             tree_context,
             style_props,
             props.title,
+            props.font.font_family,
+            props.font.font_size,
+            props.font.font_weight,
+            props.font.font_style,
+            props.font.text_color,
             props.view.width,
             props.view.height,
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
+            let font_props = resolve_font_props(
+                style_props.as_ref(),
+                font_family.get(),
+                font_size.get(),
+                font_weight.get(),
+                font_style.get(),
+                text_color.get(),
+            );
 
             let hds = unsafe { GetDC(Some(hwnd)) };
             let title = title.get();
@@ -163,7 +196,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             let mesure_string = HSTRING::from(if title.is_empty() { "t" } else { &title });
             let mut size: SIZE = SIZE::default();
             unsafe {
-                let font = ui_font(12.0, scale_factor);
+                let font = resolved_font(&font_props, scale_factor);
                 SelectObject(hds, font.into());
                 GetTextExtentPoint32W(hds, &mesure_string, &mut size).unwrap();
                 DeleteObject(font.into()).unwrap();

@@ -6,7 +6,7 @@ use std::{
 };
 
 use nestix::{Element, PropValue, Shared, closure, component, components::ContextProvider, layout};
-use nestix_native_core::{RootProps, StyleScope};
+use nestix_native_core::{Color, RootProps, StyleScope};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
     UI::{
@@ -29,6 +29,7 @@ pub(crate) struct AppState {
     is_running: Cell<bool>,
     windows: RefCell<HashMap<*mut c_void, Rc<WindowState>>>,
     control_handlers: RefCell<HashMap<*mut c_void, Shared<dyn Fn(u32, WPARAM, LPARAM)>>>,
+    control_text_colors: RefCell<HashMap<*mut c_void, Color>>,
     quit_when_all_windows_closed: PropValue<bool>,
 }
 
@@ -38,6 +39,7 @@ impl AppState {
             is_running: Cell::new(false),
             windows: RefCell::new(HashMap::new()),
             control_handlers: RefCell::new(HashMap::new()),
+            control_text_colors: RefCell::new(HashMap::new()),
             quit_when_all_windows_closed: props.quit_when_all_windows_closed.clone(),
         }
     }
@@ -92,6 +94,19 @@ impl AppState {
 
     pub(crate) fn remove_control_handler(&self, control: HWND) {
         self.control_handlers.borrow_mut().remove(&control.0);
+    }
+
+    pub(crate) fn set_control_text_color(&self, control: HWND, color: Option<Color>) {
+        let mut colors = self.control_text_colors.borrow_mut();
+        if let Some(color) = color {
+            colors.insert(control.0, color);
+        } else {
+            colors.remove(&control.0);
+        }
+    }
+
+    pub(crate) fn control_text_color(&self, control: HWND) -> Option<Color> {
+        self.control_text_colors.borrow().get(&control.0).copied()
     }
 
     pub(crate) fn handle_control_event(
