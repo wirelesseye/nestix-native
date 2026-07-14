@@ -363,35 +363,62 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         });
     }
 
-    let (variant, value) = match name.as_str() {
-        "bg_color" => ("BgColor", expand_color(value)?),
-        "left" => ("Left", expand_dimension(value)?),
-        "top" => ("Top", expand_dimension(value)?),
-        "width" => ("Width", expand_dimension(value)?),
-        "height" => ("Height", expand_dimension(value)?),
-        "margin" => ("Margin", expand_dimension(value)?),
-        "margin_horizontal" => ("MarginHorizontal", expand_dimension(value)?),
-        "margin_vertical" => ("MarginVertical", expand_dimension(value)?),
-        "margin_left" => ("MarginLeft", expand_dimension(value)?),
-        "margin_right" => ("MarginRight", expand_dimension(value)?),
-        "margin_top" => ("MarginTop", expand_dimension(value)?),
-        "margin_bottom" => ("MarginBottom", expand_dimension(value)?),
-        "padding" => ("Padding", expand_dimension(value)?),
-        "padding_horizontal" => ("PaddingHorizontal", expand_dimension(value)?),
-        "padding_vertical" => ("PaddingVertical", expand_dimension(value)?),
-        "padding_left" => ("PaddingLeft", expand_dimension(value)?),
-        "padding_right" => ("PaddingRight", expand_dimension(value)?),
-        "padding_top" => ("PaddingTop", expand_dimension(value)?),
-        "padding_bottom" => ("PaddingBottom", expand_dimension(value)?),
-        "flex_grow" => ("FlexGrow", expand_f32(value)?),
-        "flex_basis" => ("FlexBasis", expand_dimension(value)?),
-        "flex_shrink" => ("FlexShrink", expand_f32(value)?),
-        "align_self" => ("AlignSelf", expand_align_items(value)?),
-        "flex_direction" => ("FlexDirection", expand_flex_direction(value)?),
-        "align_items" => ("AlignItems", expand_align_items(value)?),
-        "justify_content" => ("JustifyContent", expand_justify_content(value)?),
-        "flex_wrap" => ("FlexWrap", expand_flex_wrap(value)?),
-        "gap" => ("Gap", expand_dimension(value)?),
+    if let StyleValueInput::Literal(global) = &value
+        && matches!(global.as_str(), "inherit" | "initial" | "unset")
+    {
+        let property = expand_property_variant(&name, name_span)?;
+        let global = Ident::new(
+            match global.as_str() {
+                "inherit" => "Inherit",
+                "initial" => "Initial",
+                "unset" => "Unset",
+                _ => unreachable!(),
+            },
+            Span::call_site(),
+        );
+        return Ok(quote! {
+            #nestix_native_path::StyleDeclaration::Property(
+                #nestix_native_path::StyleProperty::#property(
+                    #nestix_native_path::StyleValue::#global
+                )
+            )
+        });
+    }
+
+    let value = match name.as_str() {
+        "bg_color" => expand_color(value)?,
+        "font_family" => expand_font_family(value)?,
+        "font_size" => expand_font_size(value)?,
+        "font_weight" => expand_font_weight(value)?,
+        "font_style" => expand_font_style(value)?,
+        "text_color" => expand_color(value)?,
+        "left" => expand_dimension(value)?,
+        "top" => expand_dimension(value)?,
+        "width" => expand_dimension(value)?,
+        "height" => expand_dimension(value)?,
+        "margin" => expand_dimension(value)?,
+        "margin_horizontal" => expand_dimension(value)?,
+        "margin_vertical" => expand_dimension(value)?,
+        "margin_left" => expand_dimension(value)?,
+        "margin_right" => expand_dimension(value)?,
+        "margin_top" => expand_dimension(value)?,
+        "margin_bottom" => expand_dimension(value)?,
+        "padding" => expand_dimension(value)?,
+        "padding_horizontal" => expand_dimension(value)?,
+        "padding_vertical" => expand_dimension(value)?,
+        "padding_left" => expand_dimension(value)?,
+        "padding_right" => expand_dimension(value)?,
+        "padding_top" => expand_dimension(value)?,
+        "padding_bottom" => expand_dimension(value)?,
+        "flex_grow" => expand_f32(value)?,
+        "flex_basis" => expand_dimension(value)?,
+        "flex_shrink" => expand_f32(value)?,
+        "align_self" => expand_align_items(value)?,
+        "flex_direction" => expand_flex_direction(value)?,
+        "align_items" => expand_align_items(value)?,
+        "justify_content" => expand_justify_content(value)?,
+        "flex_wrap" => expand_flex_wrap(value)?,
+        "gap" => expand_dimension(value)?,
         _ => Err(Error::new_spanned(
             prop.name,
             format!(
@@ -401,15 +428,67 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         ))?,
     };
 
-    Ok(expand_property(variant, value, name_span))
+    Ok(expand_property(
+        expand_property_variant(&name, name_span)?,
+        value,
+    ))
 }
 
-fn expand_property(variant: &str, value: TokenStream2, span: Span) -> TokenStream2 {
+fn expand_property_variant(name: &str, span: Span) -> Result<Ident> {
+    let variant = match name {
+        "bg_color" => "BgColor",
+        "font_family" => "FontFamily",
+        "font_size" => "FontSize",
+        "font_weight" => "FontWeight",
+        "font_style" => "FontStyle",
+        "text_color" => "TextColor",
+        "left" => "Left",
+        "top" => "Top",
+        "width" => "Width",
+        "height" => "Height",
+        "margin" => "Margin",
+        "margin_horizontal" => "MarginHorizontal",
+        "margin_vertical" => "MarginVertical",
+        "margin_left" => "MarginLeft",
+        "margin_right" => "MarginRight",
+        "margin_top" => "MarginTop",
+        "margin_bottom" => "MarginBottom",
+        "padding" => "Padding",
+        "padding_horizontal" => "PaddingHorizontal",
+        "padding_vertical" => "PaddingVertical",
+        "padding_left" => "PaddingLeft",
+        "padding_right" => "PaddingRight",
+        "padding_top" => "PaddingTop",
+        "padding_bottom" => "PaddingBottom",
+        "flex_grow" => "FlexGrow",
+        "flex_basis" => "FlexBasis",
+        "flex_shrink" => "FlexShrink",
+        "align_self" => "AlignSelf",
+        "flex_direction" => "FlexDirection",
+        "align_items" => "AlignItems",
+        "justify_content" => "JustifyContent",
+        "flex_wrap" => "FlexWrap",
+        "gap" => "Gap",
+        _ => {
+            return Err(Error::new(
+                span,
+                format!(
+                    "unknown built-in style property `{}`; use a `--` prefix for custom properties",
+                    name
+                ),
+            ));
+        }
+    };
+    Ok(Ident::new(variant, span))
+}
+
+fn expand_property(variant: Ident, value: TokenStream2) -> TokenStream2 {
     let nestix_native_path = nestix_native_path();
-    let variant = Ident::new(variant, span);
     quote! {
         #nestix_native_path::StyleDeclaration::Property(
-            #nestix_native_path::StyleProperty::#variant(#value)
+            #nestix_native_path::StyleProperty::#variant(
+                #nestix_native_path::StyleValue::Value(#value)
+            )
         )
     }
 }
@@ -495,6 +574,117 @@ fn expand_f32(value: StyleValueInput) -> Result<TokenStream2> {
     })?;
 
     Ok(quote!(#value))
+}
+
+fn expand_font_family(value: StyleValueInput) -> Result<TokenStream2> {
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    let value = match syn::parse_str::<syn::LitStr>(&value) {
+        Ok(literal) => literal.value(),
+        Err(_) if value.split_whitespace().count() == 1 => value,
+        Err(_) => {
+            return Err(Error::new(
+                proc_macro2::Span::call_site(),
+                "font-family names containing spaces must be wrapped in double quotes",
+            ));
+        }
+    };
+    if value.trim().is_empty() {
+        return Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "font-family must not be empty",
+        ));
+    }
+    Ok(quote!(#value.to_string()))
+}
+
+fn expand_font_size(value: StyleValueInput) -> Result<TokenStream2> {
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    let Some(value) = value.strip_suffix("px") else {
+        return Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "font-size must be `{number}px` or an inserted f64",
+        ));
+    };
+    let value = value.parse::<f64>().map_err(|_| {
+        Error::new(
+            proc_macro2::Span::call_site(),
+            "font-size must be `{number}px` or an inserted f64",
+        )
+    })?;
+    if !value.is_finite() || value <= 0.0 {
+        return Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "font-size must be greater than zero",
+        ));
+    }
+    Ok(quote!(#value))
+}
+
+fn expand_font_weight(value: StyleValueInput) -> Result<TokenStream2> {
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    if let Some(weight) = parse_numeric_font_weight(&value)? {
+        let nestix_native_path = nestix_native_path();
+        return Ok(quote!(#nestix_native_path::FontWeight::Numeric(#weight)));
+    }
+    let nestix_native_path = nestix_native_path();
+    let variant = match value.as_str() {
+        "thin" => "Thin",
+        "extra_light" | "extra-light" => "ExtraLight",
+        "light" => "Light",
+        "normal" => "Normal",
+        "medium" => "Medium",
+        "semi_bold" | "semi-bold" | "semibold" => "SemiBold",
+        "bold" => "Bold",
+        "extra_bold" | "extra-bold" => "ExtraBold",
+        "black" => "Black",
+        _ => {
+            return Err(Error::new(
+                proc_macro2::Span::call_site(),
+                "font-weight must be a number from 1 to 1000, thin, extra-light, light, normal, medium, semi-bold, bold, extra-bold, black, or an inserted FontWeight",
+            ));
+        }
+    };
+    let variant = Ident::new(variant, Span::call_site());
+    Ok(quote!(#nestix_native_path::FontWeight::#variant))
+}
+
+fn parse_numeric_font_weight(value: &str) -> Result<Option<u16>> {
+    let Ok(weight) = value.parse::<u16>() else {
+        return Ok(None);
+    };
+    if (1..=1000).contains(&weight) {
+        Ok(Some(weight))
+    } else {
+        Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "numeric font-weight must be between 1 and 1000 inclusive",
+        ))
+    }
+}
+
+fn expand_font_style(value: StyleValueInput) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    match value.as_str() {
+        "normal" => Ok(quote!(#nestix_native_path::FontStyle::Normal)),
+        "italic" => Ok(quote!(#nestix_native_path::FontStyle::Italic)),
+        _ => Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "font-style must be normal, italic, or an inserted FontStyle",
+        )),
+    }
 }
 
 fn expand_align_items(value: StyleValueInput) -> Result<TokenStream2> {
@@ -678,6 +868,45 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
                     sibling: ::std::boxed::Box::new(#sibling),
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{StyleValueInput, expand_font_family, parse_numeric_font_weight};
+
+    #[test]
+    fn font_family_with_spaces_requires_double_quotes() {
+        let error =
+            expand_font_family(StyleValueInput::Literal("Comic Sans MS".to_string())).unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("must be wrapped in double quotes")
+        );
+    }
+
+    #[test]
+    fn quoted_font_family_with_spaces_is_allowed() {
+        assert!(
+            expand_font_family(StyleValueInput::Literal("\"Comic Sans MS\"".to_string())).is_ok()
+        );
+    }
+
+    #[test]
+    fn numeric_font_weight_accepts_full_supported_range() {
+        assert_eq!(parse_numeric_font_weight("1").unwrap(), Some(1));
+        assert_eq!(parse_numeric_font_weight("400").unwrap(), Some(400));
+        assert_eq!(parse_numeric_font_weight("1000").unwrap(), Some(1000));
+    }
+
+    #[test]
+    fn numeric_font_weight_rejects_values_outside_supported_range() {
+        for value in ["0", "1001"] {
+            let error = parse_numeric_font_weight(value).unwrap_err();
+            assert!(error.to_string().contains("between 1 and 1000"));
         }
     }
 }

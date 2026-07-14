@@ -5,8 +5,8 @@ use nestix::{
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, StyleContext, StyleScope, matched_style, style_align_self, style_dimension,
-    style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
+    Dimension, StyleContext, StyleScope, matched_style, resolved_view_style, style_align_self,
+    style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
 };
 use nestix_native_core::{TabViewItemProps, TabViewProps, TreeContext};
 use objc2::{
@@ -43,6 +43,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
+    let effective_style = resolved_view_style(style_props.clone(), &props.view);
 
     let current_selected = create_state(None);
     let subtrees = Rc::new(RefCell::new(HashMap::new()));
@@ -234,7 +235,11 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+        StyleScope(
+            .class = props.class.clone(),
+            .default_classes = DEFAULT_CLASSES,
+            .effective_style = effective_style
+        ) {
             ContextProvider<TabViewContext>(
                 TabViewContext {
                     current_selected: current_selected.into_readonly(),

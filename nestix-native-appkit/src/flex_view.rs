@@ -5,9 +5,9 @@ use nestix::{
 };
 use nestix_native_core::{
     Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
-    style_align_items, style_align_self, style_dimension, style_flex_basis, style_flex_direction,
-    style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap, style_justify_content,
-    style_margin, style_padding,
+    resolved_flex_view_style, style_align_items, style_align_self, style_dimension,
+    style_flex_basis, style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap,
+    style_gap, style_justify_content, style_margin, style_padding,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
@@ -54,6 +54,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
+    let effective_style = resolved_flex_view_style(style_props.clone(), props);
 
     scoped_effect!(
         element,
@@ -356,7 +357,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     ));
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+        StyleScope(
+            .class = props.class.clone(),
+            .default_classes = DEFAULT_CLASSES,
+            .effective_style = effective_style
+        ) {
             ContextProvider<ParentContext>(
                 ParentContext {
                     add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {

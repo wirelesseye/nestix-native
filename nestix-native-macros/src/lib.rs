@@ -19,6 +19,11 @@ use proc_macro::TokenStream;
 ///         margin_left: 16px;
 ///         flex_grow: 1;
 ///         align_self: center;
+///         font_family: "Helvetica Neue";
+///         font_size: 14px;
+///         font_weight: semi-bold;
+///         font_style: italic;
+///         text_color: black;
 ///         --accent_token: primary;
 ///     }
 /// };
@@ -28,6 +33,18 @@ use proc_macro::TokenStream;
 /// Bare numeric dimensions such as `margin: 30;` are rejected. Built-in values
 /// are parsed as their Rust types, while custom properties must use a `--`
 /// prefix and are stored as strings.
+/// Font family, size, weight, style, and text color are inherited by nested
+/// style scopes unless overridden by the child. Font family names containing
+/// spaces must be wrapped in double quotes, such as `"Comic Sans MS"`.
+/// Font weights may also be numeric values from `1` through `1000`.
+///
+/// Every built-in property also accepts the stylesheet-only global values
+/// `inherit`, `initial`, and `unset`. `inherit` copies the parent's final
+/// effective value, including an inline prop override. `initial` restores the
+/// property's Nestix default. `unset` inherits font family, size, weight,
+/// style, and text color, and restores the initial value for all other
+/// properties. Custom properties keep these words as ordinary string values.
+/// Global values are not accepted by inline props or by `$()` insertions.
 ///
 /// Existing Rust values can be inserted with `$()`. Inserted built-in values
 /// must already have the expected Rust type. Wrap the stylesheet in

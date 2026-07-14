@@ -7,8 +7,8 @@ use nestix::{
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 use nestix_native_core::{
     Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext, matched_style,
-    style_align_self, style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink,
-    style_margin,
+    resolved_view_style, style_align_self, style_dimension, style_flex_basis, style_flex_grow,
+    style_flex_shrink, style_margin,
 };
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSScrollView, NSView};
@@ -31,6 +31,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
+    let effective_style = resolved_view_style(styles.clone(), &props.view);
     let mtm = MainThreadMarker::new().unwrap();
     let scroll = NSScrollView::new(mtm);
     scroll.setDrawsBackground(false);
@@ -145,7 +146,11 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     element.on_unmount(closure!([scroll] || scroll.removeFromSuperview()));
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+        StyleScope(
+            .class = props.class.clone(),
+            .default_classes = DEFAULT_CLASSES,
+            .effective_style = effective_style
+        ) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
                 ContextProvider<ParentContext>(ParentContext {
                     add_child: Some(callback!([scroll, subtree_context] |object: &NSObject, child_node: Option<NodeId>| {

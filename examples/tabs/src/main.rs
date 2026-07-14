@@ -28,7 +28,7 @@ fn ExampleApp() -> Element {
         }
 
         .counter {
-            padding: 10px;
+            padding: initial;
         }
 
         .counter > .__Text, .counter > .__Button {

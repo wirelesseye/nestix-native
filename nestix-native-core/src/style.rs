@@ -1,3 +1,10 @@
+mod effective;
+mod property;
+
+pub use effective::{resolved_flex_view_style, resolved_view_style};
+use property::GlobalStyleValue;
+pub use property::{StylePropertyName, StyleValue};
+
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -9,7 +16,10 @@ use nestix::{
     props,
 };
 
-use crate::{AlignItems, Color, Dimension, FlexDirection, FlexWrap, JustifyContent, Rect};
+use crate::{
+    AlignItems, Color, Dimension, FlexDirection, FlexWrap, FontStyle, FontWeight, JustifyContent,
+    Rect, ResolvedFontProps,
+};
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClassList(HashSet<String>);
@@ -177,191 +187,222 @@ pub enum StyleProperty {
     ///
     /// **Available value**: a named color (`white`, `black`, `transparent`, `red`,
     /// `green`, `blue`), or a 6/8 digit hex color (`#RRGGBB` or `#RRGGBBAA`).
-    BgColor(Color),
+    BgColor(StyleValue<Color>),
+    /// Font family name. This property is inherited.
+    ///
+    /// **Available value**: a single-word family name (`Arial`), a double-quoted
+    /// family name (`"Comic Sans"`).
+    FontFamily(StyleValue<String>),
+    /// Font size in logical pixels. This property is inherited.
+    ///
+    /// **Available value**: a pixel value such as `14px`.
+    FontSize(StyleValue<f64>),
+    /// Font weight. This property is inherited.
+    ///
+    /// **Available value**: `thin`, `extra-light`, `light`, `normal`, `medium`,
+    /// `semi-bold`, `bold`, `extra-bold`, `black`, or a numeric weight from `1`
+    /// through `1000`.
+    FontWeight(StyleValue<FontWeight>),
+    /// Font style. This property is inherited.
+    ///
+    /// **Available value**: `normal`, `italic`.
+    FontStyle(StyleValue<FontStyle>),
+    /// Foreground text color. This property is inherited.
+    ///
+    /// **Available value**: a named color (`white`, `black`, `transparent`, `red`,
+    /// `green`, `blue`), or a 6/8 digit hex color (`#RRGGBB` or `#RRGGBBAA`).
+    TextColor(StyleValue<Color>),
     /// Horizontal position offset from the left edge of the containing block.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Left(Dimension),
+    Left(StyleValue<Dimension>),
     /// Vertical position offset from the top edge of the containing block.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Top(Dimension),
+    Top(StyleValue<Dimension>),
     /// Preferred layout width.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Width(Dimension),
+    Width(StyleValue<Dimension>),
     /// Preferred layout height.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Height(Dimension),
+    Height(StyleValue<Dimension>),
     /// Margin applied to all four edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Margin(Dimension),
+    Margin(StyleValue<Dimension>),
     /// Margin applied to the left and right edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginHorizontal(Dimension),
+    MarginHorizontal(StyleValue<Dimension>),
     /// Margin applied to the top and bottom edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginVertical(Dimension),
+    MarginVertical(StyleValue<Dimension>),
     /// Margin applied to the left edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginLeft(Dimension),
+    MarginLeft(StyleValue<Dimension>),
     /// Margin applied to the right edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginRight(Dimension),
+    MarginRight(StyleValue<Dimension>),
     /// Margin applied to the top edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginTop(Dimension),
+    MarginTop(StyleValue<Dimension>),
     /// Margin applied to the bottom edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginBottom(Dimension),
+    MarginBottom(StyleValue<Dimension>),
     /// Padding applied to all four edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Padding(Dimension),
+    Padding(StyleValue<Dimension>),
     /// Padding applied to the left and right edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingHorizontal(Dimension),
+    PaddingHorizontal(StyleValue<Dimension>),
     /// Padding applied to the top and bottom edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingVertical(Dimension),
+    PaddingVertical(StyleValue<Dimension>),
     /// Padding applied to the left edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingLeft(Dimension),
+    PaddingLeft(StyleValue<Dimension>),
     /// Padding applied to the right edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingRight(Dimension),
+    PaddingRight(StyleValue<Dimension>),
     /// Padding applied to the top edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingTop(Dimension),
+    PaddingTop(StyleValue<Dimension>),
     /// Padding applied to the bottom edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingBottom(Dimension),
+    PaddingBottom(StyleValue<Dimension>),
     /// Flex grow factor used when distributing free space.
     ///
     /// **Available value**: a number.
-    FlexGrow(f32),
+    FlexGrow(StyleValue<f32>),
     /// Initial main size of the flex item.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    FlexBasis(Dimension),
+    FlexBasis(StyleValue<Dimension>),
     /// Flex shrink factor used when distributing negative free space.
     ///
     /// **Available value**: a number.
-    FlexShrink(f32),
+    FlexShrink(StyleValue<f32>),
     /// Cross-axis alignment override for this element within its flex parent.
     ///
     /// **Available value**: `normal`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `baseline`, or `stretch`.
-    AlignSelf(AlignItems),
+    AlignSelf(StyleValue<AlignItems>),
     /// Main-axis direction for this element's flex children.
     ///
     /// **Available value**: `row`, `row-reverse`, `column`, or `column-reverse`.
-    FlexDirection(FlexDirection),
+    FlexDirection(StyleValue<FlexDirection>),
     /// Cross-axis alignment for this element's flex children.
     ///
     /// **Available value**: `normal`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `baseline`, or `stretch`.
-    AlignItems(AlignItems),
+    AlignItems(StyleValue<AlignItems>),
     /// Main-axis distribution for this element's flex children.
     ///
     /// **Available value**: `normal`, `start`, `end`, `flex-start`, `flex-end`,
     /// `center`, `stretch`, `space-between`, `space-evenly`, or `space-around`.
-    JustifyContent(JustifyContent),
+    JustifyContent(StyleValue<JustifyContent>),
     /// Wrapping behavior for this element's flex children.
     ///
     /// **Available value**: `nowrap`, `no-wrap`, or `wrap`.
-    FlexWrap(FlexWrap),
+    FlexWrap(StyleValue<FlexWrap>),
     /// Spacing between this element's flex children.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Gap(Dimension),
+    Gap(StyleValue<Dimension>),
 }
 
 impl StyleProperty {
-    pub fn name(&self) -> &'static str {
+    pub fn property_name(&self) -> StylePropertyName {
         match self {
-            StyleProperty::BgColor(_) => "bg_color",
-            StyleProperty::Left(_) => "left",
-            StyleProperty::Top(_) => "top",
-            StyleProperty::Width(_) => "width",
-            StyleProperty::Height(_) => "height",
-            StyleProperty::Margin(_) => "margin",
-            StyleProperty::MarginHorizontal(_) => "margin_horizontal",
-            StyleProperty::MarginVertical(_) => "margin_vertical",
-            StyleProperty::MarginLeft(_) => "margin_left",
-            StyleProperty::MarginRight(_) => "margin_right",
-            StyleProperty::MarginTop(_) => "margin_top",
-            StyleProperty::MarginBottom(_) => "margin_bottom",
-            StyleProperty::Padding(_) => "padding",
-            StyleProperty::PaddingHorizontal(_) => "padding_horizontal",
-            StyleProperty::PaddingVertical(_) => "padding_vertical",
-            StyleProperty::PaddingLeft(_) => "padding_left",
-            StyleProperty::PaddingRight(_) => "padding_right",
-            StyleProperty::PaddingTop(_) => "padding_top",
-            StyleProperty::PaddingBottom(_) => "padding_bottom",
-            StyleProperty::FlexGrow(_) => "flex_grow",
-            StyleProperty::FlexBasis(_) => "flex_basis",
-            StyleProperty::FlexShrink(_) => "flex_shrink",
-            StyleProperty::AlignSelf(_) => "align_self",
-            StyleProperty::FlexDirection(_) => "flex_direction",
-            StyleProperty::AlignItems(_) => "align_items",
-            StyleProperty::JustifyContent(_) => "justify_content",
-            StyleProperty::FlexWrap(_) => "flex_wrap",
-            StyleProperty::Gap(_) => "gap",
+            Self::BgColor(_) => StylePropertyName::BgColor,
+            Self::FontFamily(_) => StylePropertyName::FontFamily,
+            Self::FontSize(_) => StylePropertyName::FontSize,
+            Self::FontWeight(_) => StylePropertyName::FontWeight,
+            Self::FontStyle(_) => StylePropertyName::FontStyle,
+            Self::TextColor(_) => StylePropertyName::TextColor,
+            Self::Left(_) => StylePropertyName::Left,
+            Self::Top(_) => StylePropertyName::Top,
+            Self::Width(_) => StylePropertyName::Width,
+            Self::Height(_) => StylePropertyName::Height,
+            Self::Margin(_) => StylePropertyName::Margin,
+            Self::MarginHorizontal(_) => StylePropertyName::MarginHorizontal,
+            Self::MarginVertical(_) => StylePropertyName::MarginVertical,
+            Self::MarginLeft(_) => StylePropertyName::MarginLeft,
+            Self::MarginRight(_) => StylePropertyName::MarginRight,
+            Self::MarginTop(_) => StylePropertyName::MarginTop,
+            Self::MarginBottom(_) => StylePropertyName::MarginBottom,
+            Self::Padding(_) => StylePropertyName::Padding,
+            Self::PaddingHorizontal(_) => StylePropertyName::PaddingHorizontal,
+            Self::PaddingVertical(_) => StylePropertyName::PaddingVertical,
+            Self::PaddingLeft(_) => StylePropertyName::PaddingLeft,
+            Self::PaddingRight(_) => StylePropertyName::PaddingRight,
+            Self::PaddingTop(_) => StylePropertyName::PaddingTop,
+            Self::PaddingBottom(_) => StylePropertyName::PaddingBottom,
+            Self::FlexGrow(_) => StylePropertyName::FlexGrow,
+            Self::FlexBasis(_) => StylePropertyName::FlexBasis,
+            Self::FlexShrink(_) => StylePropertyName::FlexShrink,
+            Self::AlignSelf(_) => StylePropertyName::AlignSelf,
+            Self::FlexDirection(_) => StylePropertyName::FlexDirection,
+            Self::AlignItems(_) => StylePropertyName::AlignItems,
+            Self::JustifyContent(_) => StylePropertyName::JustifyContent,
+            Self::FlexWrap(_) => StylePropertyName::FlexWrap,
+            Self::Gap(_) => StylePropertyName::Gap,
         }
     }
 
-    fn affected_names(&self) -> &'static [&'static str] {
+    pub fn name(&self) -> &'static str {
+        self.property_name().name()
+    }
+
+    fn global(&self) -> Option<GlobalStyleValue> {
         match self {
-            StyleProperty::BgColor(_) => &["bg_color"],
-            StyleProperty::Left(_) => &["left"],
-            StyleProperty::Top(_) => &["top"],
-            StyleProperty::Width(_) => &["width"],
-            StyleProperty::Height(_) => &["height"],
-            StyleProperty::Margin(_) => {
-                &["margin_left", "margin_right", "margin_top", "margin_bottom"]
-            }
-            StyleProperty::MarginHorizontal(_) => &["margin_left", "margin_right"],
-            StyleProperty::MarginVertical(_) => &["margin_top", "margin_bottom"],
-            StyleProperty::MarginLeft(_) => &["margin_left"],
-            StyleProperty::MarginRight(_) => &["margin_right"],
-            StyleProperty::MarginTop(_) => &["margin_top"],
-            StyleProperty::MarginBottom(_) => &["margin_bottom"],
-            StyleProperty::Padding(_) => &[
-                "padding_left",
-                "padding_right",
-                "padding_top",
-                "padding_bottom",
-            ],
-            StyleProperty::PaddingHorizontal(_) => &["padding_left", "padding_right"],
-            StyleProperty::PaddingVertical(_) => &["padding_top", "padding_bottom"],
-            StyleProperty::PaddingLeft(_) => &["padding_left"],
-            StyleProperty::PaddingRight(_) => &["padding_right"],
-            StyleProperty::PaddingTop(_) => &["padding_top"],
-            StyleProperty::PaddingBottom(_) => &["padding_bottom"],
-            StyleProperty::FlexGrow(_) => &["flex_grow"],
-            StyleProperty::FlexBasis(_) => &["flex_basis"],
-            StyleProperty::FlexShrink(_) => &["flex_shrink"],
-            StyleProperty::AlignSelf(_) => &["align_self"],
-            StyleProperty::FlexDirection(_) => &["flex_direction"],
-            StyleProperty::AlignItems(_) => &["align_items"],
-            StyleProperty::JustifyContent(_) => &["justify_content"],
-            StyleProperty::FlexWrap(_) => &["flex_wrap"],
-            StyleProperty::Gap(_) => &["gap"],
+            Self::BgColor(value) => value.global(),
+            Self::FontFamily(value) => value.global(),
+            Self::FontSize(value) => value.global(),
+            Self::FontWeight(value) => value.global(),
+            Self::FontStyle(value) => value.global(),
+            Self::TextColor(value) => value.global(),
+            Self::Left(value) => value.global(),
+            Self::Top(value) => value.global(),
+            Self::Width(value) => value.global(),
+            Self::Height(value) => value.global(),
+            Self::Margin(value) => value.global(),
+            Self::MarginHorizontal(value) => value.global(),
+            Self::MarginVertical(value) => value.global(),
+            Self::MarginLeft(value) => value.global(),
+            Self::MarginRight(value) => value.global(),
+            Self::MarginTop(value) => value.global(),
+            Self::MarginBottom(value) => value.global(),
+            Self::Padding(value) => value.global(),
+            Self::PaddingHorizontal(value) => value.global(),
+            Self::PaddingVertical(value) => value.global(),
+            Self::PaddingLeft(value) => value.global(),
+            Self::PaddingRight(value) => value.global(),
+            Self::PaddingTop(value) => value.global(),
+            Self::PaddingBottom(value) => value.global(),
+            Self::FlexGrow(value) => value.global(),
+            Self::FlexBasis(value) => value.global(),
+            Self::FlexShrink(value) => value.global(),
+            Self::AlignSelf(value) => value.global(),
+            Self::FlexDirection(value) => value.global(),
+            Self::AlignItems(value) => value.global(),
+            Self::JustifyContent(value) => value.global(),
+            Self::FlexWrap(value) => value.global(),
+            Self::Gap(value) => value.global(),
         }
     }
 }
@@ -375,7 +416,9 @@ pub enum StyleDeclaration {
 impl StyleDeclaration {
     fn affected_names(&self) -> Vec<&str> {
         match self {
-            StyleDeclaration::Property(property) => property.affected_names().to_vec(),
+            StyleDeclaration::Property(property) => {
+                property.property_name().affected_names().to_vec()
+            }
             StyleDeclaration::Custom { name, .. } => vec![name.as_str()],
         }
     }
@@ -390,6 +433,11 @@ pub struct StyleRule {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedStyle {
     pub bg_color: Option<Color>,
+    pub font_family: Option<String>,
+    pub font_size: Option<f64>,
+    pub font_weight: Option<FontWeight>,
+    pub font_style: Option<FontStyle>,
+    pub text_color: Option<Color>,
     pub left: Option<Dimension>,
     pub top: Option<Dimension>,
     pub width: Option<Dimension>,
@@ -415,6 +463,16 @@ pub struct ResolvedStyle {
 }
 
 impl ResolvedStyle {
+    pub fn font(&self) -> ResolvedFontProps {
+        ResolvedFontProps {
+            font_family: self.font_family.clone(),
+            font_size: self.font_size,
+            font_weight: self.font_weight,
+            font_style: self.font_style,
+            text_color: self.text_color,
+        }
+    }
+
     pub fn custom(&self, name: &str) -> Option<&str> {
         self.custom.get(name).map(String::as_str)
     }
@@ -423,104 +481,231 @@ impl ResolvedStyle {
         self.custom.get(name)
     }
 
-    fn apply(&mut self, declaration: StyleDeclaration) {
+    fn copy_named_from(&mut self, name: &str, source: &Self) {
+        match name {
+            "bg_color" => self.bg_color.clone_from(&source.bg_color),
+            "font_family" => self.font_family.clone_from(&source.font_family),
+            "font_size" => self.font_size.clone_from(&source.font_size),
+            "font_weight" => self.font_weight.clone_from(&source.font_weight),
+            "font_style" => self.font_style.clone_from(&source.font_style),
+            "text_color" => self.text_color.clone_from(&source.text_color),
+            "left" => self.left.clone_from(&source.left),
+            "top" => self.top.clone_from(&source.top),
+            "width" => self.width.clone_from(&source.width),
+            "height" => self.height.clone_from(&source.height),
+            "margin_left" => self.margin_left.clone_from(&source.margin_left),
+            "margin_right" => self.margin_right.clone_from(&source.margin_right),
+            "margin_top" => self.margin_top.clone_from(&source.margin_top),
+            "margin_bottom" => self.margin_bottom.clone_from(&source.margin_bottom),
+            "padding_left" => self.padding_left.clone_from(&source.padding_left),
+            "padding_right" => self.padding_right.clone_from(&source.padding_right),
+            "padding_top" => self.padding_top.clone_from(&source.padding_top),
+            "padding_bottom" => self.padding_bottom.clone_from(&source.padding_bottom),
+            "flex_grow" => self.flex_grow.clone_from(&source.flex_grow),
+            "flex_basis" => self.flex_basis.clone_from(&source.flex_basis),
+            "flex_shrink" => self.flex_shrink.clone_from(&source.flex_shrink),
+            "align_self" => self.align_self.clone_from(&source.align_self),
+            "flex_direction" => self.flex_direction.clone_from(&source.flex_direction),
+            "align_items" => self.align_items.clone_from(&source.align_items),
+            "justify_content" => self.justify_content.clone_from(&source.justify_content),
+            "flex_wrap" => self.flex_wrap.clone_from(&source.flex_wrap),
+            "gap" => self.gap.clone_from(&source.gap),
+            _ => {}
+        }
+    }
+
+    fn apply_global(
+        &mut self,
+        property: StylePropertyName,
+        value: GlobalStyleValue,
+        parent: Option<&Self>,
+    ) {
+        let inherit = match value {
+            GlobalStyleValue::Inherit => true,
+            GlobalStyleValue::Initial => false,
+            GlobalStyleValue::Unset => property.naturally_inherits(),
+        };
+        let initial = Self::default();
+        let source = if inherit {
+            parent.unwrap_or(&initial)
+        } else {
+            &initial
+        };
+        for name in property.affected_names() {
+            self.copy_named_from(name, source);
+        }
+    }
+
+    fn inherit_unspecified(&mut self, parent: Option<&Self>, specified: &HashSet<String>) {
+        let Some(parent) = parent else {
+            return;
+        };
+        for property in [
+            StylePropertyName::FontFamily,
+            StylePropertyName::FontSize,
+            StylePropertyName::FontWeight,
+            StylePropertyName::FontStyle,
+            StylePropertyName::TextColor,
+        ] {
+            if !specified.contains(property.name()) {
+                self.copy_named_from(property.name(), parent);
+            }
+        }
+    }
+
+    fn apply(&mut self, declaration: StyleDeclaration, parent: Option<&Self>) {
+        if let StyleDeclaration::Property(property) = &declaration
+            && let Some(value) = property.global()
+        {
+            self.apply_global(property.property_name(), value, parent);
+            return;
+        }
+
         match declaration {
-            StyleDeclaration::Property(StyleProperty::BgColor(color)) => {
+            StyleDeclaration::Property(StyleProperty::BgColor(StyleValue::Value(color))) => {
                 self.bg_color = Some(color);
             }
-            StyleDeclaration::Property(StyleProperty::Left(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::FontFamily(StyleValue::Value(
+                font_family,
+            ))) => {
+                self.font_family = Some(font_family);
+            }
+            StyleDeclaration::Property(StyleProperty::FontSize(StyleValue::Value(font_size))) => {
+                self.font_size = Some(font_size);
+            }
+            StyleDeclaration::Property(StyleProperty::FontWeight(StyleValue::Value(
+                font_weight,
+            ))) => {
+                self.font_weight = Some(font_weight);
+            }
+            StyleDeclaration::Property(StyleProperty::FontStyle(StyleValue::Value(font_style))) => {
+                self.font_style = Some(font_style);
+            }
+            StyleDeclaration::Property(StyleProperty::TextColor(StyleValue::Value(color))) => {
+                self.text_color = Some(color);
+            }
+            StyleDeclaration::Property(StyleProperty::Left(StyleValue::Value(dimension))) => {
                 self.left = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::Top(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::Top(StyleValue::Value(dimension))) => {
                 self.top = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::Width(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::Width(StyleValue::Value(dimension))) => {
                 self.width = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::Height(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::Height(StyleValue::Value(dimension))) => {
                 self.height = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::Margin(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::Margin(StyleValue::Value(dimension))) => {
                 self.margin_left = Some(dimension.clone());
                 self.margin_right = Some(dimension.clone());
                 self.margin_top = Some(dimension.clone());
                 self.margin_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::MarginHorizontal(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::MarginHorizontal(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.margin_left = Some(dimension.clone());
                 self.margin_right = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::MarginVertical(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::MarginVertical(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.margin_top = Some(dimension.clone());
                 self.margin_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::MarginLeft(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::MarginLeft(StyleValue::Value(dimension))) => {
                 self.margin_left = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::MarginRight(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::MarginRight(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.margin_right = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::MarginTop(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::MarginTop(StyleValue::Value(dimension))) => {
                 self.margin_top = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::MarginBottom(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::MarginBottom(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.margin_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::Padding(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::Padding(StyleValue::Value(dimension))) => {
                 self.padding_left = Some(dimension.clone());
                 self.padding_right = Some(dimension.clone());
                 self.padding_top = Some(dimension.clone());
                 self.padding_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingHorizontal(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::PaddingHorizontal(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.padding_left = Some(dimension.clone());
                 self.padding_right = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingVertical(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::PaddingVertical(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.padding_top = Some(dimension.clone());
                 self.padding_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingLeft(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::PaddingLeft(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.padding_left = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingRight(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::PaddingRight(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.padding_right = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingTop(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::PaddingTop(StyleValue::Value(dimension))) => {
                 self.padding_top = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingBottom(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::PaddingBottom(StyleValue::Value(
+                dimension,
+            ))) => {
                 self.padding_bottom = Some(dimension);
             }
-            StyleDeclaration::Property(StyleProperty::FlexGrow(flex_grow)) => {
+            StyleDeclaration::Property(StyleProperty::FlexGrow(StyleValue::Value(flex_grow))) => {
                 self.flex_grow = Some(flex_grow);
             }
-            StyleDeclaration::Property(StyleProperty::FlexBasis(flex_basis)) => {
+            StyleDeclaration::Property(StyleProperty::FlexBasis(StyleValue::Value(flex_basis))) => {
                 self.flex_basis = Some(flex_basis);
             }
-            StyleDeclaration::Property(StyleProperty::FlexShrink(flex_shrink)) => {
+            StyleDeclaration::Property(StyleProperty::FlexShrink(StyleValue::Value(
+                flex_shrink,
+            ))) => {
                 self.flex_shrink = Some(flex_shrink);
             }
-            StyleDeclaration::Property(StyleProperty::AlignSelf(align_self)) => {
+            StyleDeclaration::Property(StyleProperty::AlignSelf(StyleValue::Value(align_self))) => {
                 self.align_self = Some(align_self);
             }
-            StyleDeclaration::Property(StyleProperty::FlexDirection(flex_direction)) => {
+            StyleDeclaration::Property(StyleProperty::FlexDirection(StyleValue::Value(
+                flex_direction,
+            ))) => {
                 self.flex_direction = Some(flex_direction);
             }
-            StyleDeclaration::Property(StyleProperty::AlignItems(align_items)) => {
+            StyleDeclaration::Property(StyleProperty::AlignItems(StyleValue::Value(
+                align_items,
+            ))) => {
                 self.align_items = Some(align_items);
             }
-            StyleDeclaration::Property(StyleProperty::JustifyContent(justify_content)) => {
+            StyleDeclaration::Property(StyleProperty::JustifyContent(StyleValue::Value(
+                justify_content,
+            ))) => {
                 self.justify_content = Some(justify_content);
             }
-            StyleDeclaration::Property(StyleProperty::FlexWrap(flex_wrap)) => {
+            StyleDeclaration::Property(StyleProperty::FlexWrap(StyleValue::Value(flex_wrap))) => {
                 self.flex_wrap = Some(flex_wrap);
             }
-            StyleDeclaration::Property(StyleProperty::Gap(dimension)) => {
+            StyleDeclaration::Property(StyleProperty::Gap(StyleValue::Value(dimension))) => {
                 self.gap = Some(dimension);
             }
+            StyleDeclaration::Property(_) => {
+                unreachable!("global values return before application")
+            }
             StyleDeclaration::Custom { name, value } => {
-                self.custom.insert(name.clone(), value.clone());
+                self.custom.insert(name, value);
             }
         }
     }
@@ -530,16 +715,29 @@ pub fn matched_style(
     style_context: Option<Rc<StyleContext>>,
     element: &Element,
     class: PropValue<ClassList>,
-    default_classes: &'static [&'static str],
+    default_classes: &[&'static str],
 ) -> nestix::Computed<Option<ResolvedStyle>> {
+    let default_classes = default_classes.to_vec();
     let class_list = PropValue::from_signal(computed!(
-        [class] || { class.get().with_defaults(default_classes) }
+        [class, default_classes] || { class.get().with_defaults(&default_classes) }
     ));
+    matched_style_for_class_list(style_context, element, class_list)
+}
+
+fn matched_style_for_class_list(
+    style_context: Option<Rc<StyleContext>>,
+    element: &Element,
+    class_list: PropValue<ClassList>,
+) -> nestix::Computed<Option<ResolvedStyle>> {
     let placement_version: State<usize> = create_state(0);
 
     let style_sheet = style_context
         .as_ref()
         .and_then(|style_context| style_context.style_sheet.clone());
+    let inherited_style = style_context
+        .as_ref()
+        .map(|style_context| style_context.inherited_style.clone())
+        .unwrap_or_else(|| PropValue::from_plain(ResolvedStyle::default()));
     let ancestors = style_context
         .as_ref()
         .map(|style_context| style_context.ancestors.clone())
@@ -571,18 +769,36 @@ pub fn matched_style(
     }
 
     computed!(
-        [style_sheet, ancestors, class_list, placement_version] || {
-            style_sheet.as_ref().map(|style_sheet| {
-                placement_version.get();
-                style_sheet.get().matched_props(
+        [
+            style_sheet,
+            ancestors,
+            class_list,
+            placement_version,
+            inherited_style
+        ] || {
+            placement_version.get();
+            let inherited_style = inherited_style.get();
+            let style = if let Some(style_sheet) = &style_sheet {
+                style_sheet.get().matched_props_with_parent(
                     &MatchContext::new(class_list.get())
                         .with_ancestors(ancestors.get())
                         .with_previous_siblings(previous_sibling_class_lists(
                             &style_element,
                             class_registry.as_ref(),
                         )),
+                    Some(&inherited_style),
                 )
-            })
+            } else {
+                let mut style = ResolvedStyle::default();
+                style.inherit_unspecified(Some(&inherited_style), &HashSet::new());
+                style
+            };
+
+            if style_sheet.is_some() || style != ResolvedStyle::default() {
+                Some(style)
+            } else {
+                None
+            }
         }
     )
 }
@@ -701,6 +917,24 @@ pub fn style_padding(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> 
     }
 }
 
+pub fn resolve_font_props(
+    style: Option<&ResolvedStyle>,
+    font_family: Option<String>,
+    font_size: Option<f64>,
+    font_weight: Option<FontWeight>,
+    font_style: Option<FontStyle>,
+    text_color: Option<Color>,
+) -> ResolvedFontProps {
+    let inherited = style.map(ResolvedStyle::font).unwrap_or_default();
+    ResolvedFontProps {
+        font_family: font_family.or(inherited.font_family),
+        font_size: font_size.or(inherited.font_size),
+        font_weight: font_weight.or(inherited.font_weight),
+        font_style: font_style.or(inherited.font_style),
+        text_color: text_color.or(inherited.text_color),
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StyleSheet {
     rules: Vec<StyleRule>,
@@ -712,6 +946,16 @@ impl StyleSheet {
     }
 
     pub fn matched_props(&self, context: &MatchContext) -> ResolvedStyle {
+        self.matched_props_with_parent(context, None)
+    }
+
+    /// Resolves matching declarations against the parent's final effective
+    /// style, including natural inheritance and global values.
+    pub fn matched_props_with_parent(
+        &self,
+        context: &MatchContext,
+        parent: Option<&ResolvedStyle>,
+    ) -> ResolvedStyle {
         #[derive(Clone)]
         struct Candidate {
             specificity: usize,
@@ -750,12 +994,14 @@ impl StyleSheet {
             }
         }
 
+        let specified = candidates.keys().cloned().collect::<HashSet<_>>();
         let mut style = ResolvedStyle::default();
         let mut declarations = candidates.into_values().collect::<Vec<_>>();
         declarations.sort_by_key(|candidate| (candidate.specificity, candidate.order));
         for candidate in declarations {
-            style.apply(candidate.declaration);
+            style.apply(candidate.declaration, parent);
         }
+        style.inherit_unspecified(parent, &specified);
         style
     }
 
@@ -832,6 +1078,7 @@ type ClassRegistry = Rc<RefCell<HashMap<Element, PropValue<ClassList>>>>;
 pub struct StyleContext {
     pub style_sheet: Option<PropValue<StyleSheet>>,
     pub ancestors: PropValue<Vec<ClassList>>,
+    pub inherited_style: PropValue<ResolvedStyle>,
     class_registry: ClassRegistry,
 }
 
@@ -864,11 +1111,15 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
         .map(|style_context| style_context.ancestors.clone())
         .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
     let class_registry = parent_style_context
+        .as_ref()
         .map(|style_context| style_context.class_registry.clone())
         .unwrap_or_else(|| Rc::new(RefCell::new(HashMap::new())));
+    let inherited_style = parent_style_context
+        .map(|style_context| style_context.inherited_style.clone())
+        .unwrap_or_else(|| PropValue::from_plain(ResolvedStyle::default()));
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet: Some(style_sheet), ancestors, class_registry}) {
+        ContextProvider<StyleContext>(StyleContext {style_sheet: Some(style_sheet), ancestors, inherited_style, class_registry}) {
             $(props.children.clone())
         }
     }
@@ -880,6 +1131,7 @@ pub struct StyleScopeProps {
     class: ClassList,
     #[props(default)]
     default_classes: Vec<&'static str>,
+    effective_style: Option<ResolvedStyle>,
     #[props(default)]
     children: Layout,
 }
@@ -895,6 +1147,7 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
         .map(|style_context| style_context.ancestors.clone())
         .unwrap_or_else(|| PropValue::from_plain(Vec::new()));
     let class_registry = parent_style_context
+        .as_ref()
         .map(|style_context| style_context.class_registry.clone())
         .unwrap_or_else(|| Rc::new(RefCell::new(HashMap::new())));
     let ancestors = scope_ancestors(
@@ -908,19 +1161,34 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
             class.get().with_defaults(&default_classes)
         }
     ));
-    class_registry
-        .borrow_mut()
-        .insert(element.clone(), class_list.clone());
-    element.on_unmount({
-        let class_registry = class_registry.clone();
-        let element = element.clone();
-        move || {
-            class_registry.borrow_mut().remove(&element);
+    let matched = if props.effective_style.get().is_some() {
+        computed!([props.effective_style] || effective_style.get())
+    } else {
+        matched_style_for_class_list(parent_style_context.clone(), element, class_list.clone())
+    };
+    if parent_style_context.is_none() {
+        class_registry
+            .borrow_mut()
+            .insert(element.clone(), class_list.clone());
+        element.on_unmount({
+            let class_registry = class_registry.clone();
+            let element = element.clone();
+            move || {
+                class_registry.borrow_mut().remove(&element);
+            }
+        });
+    }
+    let inherited_style = PropValue::from_signal(computed!(
+        [matched, props.effective_style] || {
+            effective_style
+                .get()
+                .or_else(|| matched.get())
+                .unwrap_or_default()
         }
-    });
+    ));
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet, ancestors, class_registry}) {
+        ContextProvider<StyleContext>(StyleContext {style_sheet, ancestors, inherited_style, class_registry}) {
             $(props.children.clone())
         }
     }
@@ -972,10 +1240,10 @@ impl ResolvedStyleValue for Color {
         name: &str,
         parse: impl FnOnce(&str) -> Option<Self>,
     ) -> Option<Self> {
-        if name == "bg_color" {
-            style.bg_color
-        } else {
-            style.get(name).and_then(|value| parse(value))
+        match name {
+            "bg_color" => style.bg_color,
+            "text_color" => style.text_color,
+            _ => style.get(name).and_then(|value| parse(value)),
         }
     }
 }

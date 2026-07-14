@@ -7,8 +7,8 @@ use nestix::{
 use nestix_native_core::{
     Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
-    matched_style, style_align_self, style_dimension, style_flex_basis, style_flex_grow,
-    style_flex_shrink, style_margin,
+    matched_style, resolved_view_style, style_align_self, style_dimension, style_flex_basis,
+    style_flex_grow, style_flex_shrink, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{NodeId, Size, Style, style_helpers::FromLength};
@@ -95,6 +95,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
+    let effective_style = resolved_view_style(styles.clone(), &props.view);
     let child_nodes = Rc::new(RefCell::new(Vec::new()));
     let subtree = Rc::new(TreeContext::new());
     let subtree_root = subtree.create_node(false);
@@ -308,7 +309,11 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     );
 
     layout! {
-        StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+        StyleScope(
+            .class = props.class.clone(),
+            .default_classes = DEFAULT_CLASSES,
+            .effective_style = effective_style
+        ) {
             ContextProvider<TreeContext>(subtree.clone()) {
                 ContextProvider<ParentContext>(ParentContext {
                     parent_hwnd: content,

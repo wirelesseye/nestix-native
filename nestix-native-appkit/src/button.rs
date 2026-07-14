@@ -2,8 +2,9 @@ use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{
-    ButtonProps, Dimension, StyleContext, TreeContext, matched_style, style_align_self,
-    style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
+    ButtonProps, Dimension, StyleContext, TreeContext, matched_style, resolve_font_props,
+    style_align_self, style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink,
+    style_margin,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
@@ -12,7 +13,11 @@ use objc2_app_kit::NSButton;
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::ParentContext,
+    font::{ns_color, resolve_font},
+};
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
 thread_local! {
@@ -46,6 +51,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     let button = unsafe {
         NSButton::buttonWithTitle_target_action(&title, Some(&handler), Some(sel!(clicked)), mtm)
     };
+    let original_font = button.font().unwrap();
+    let original_color = button.contentTintColor();
     element.provide_handle(button.as_ref() as *const NSObject);
 
     let button_id = nanoid::nanoid!();
@@ -107,11 +114,33 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             props.view.width,
             props.view.height,
             props.title,
+            props.font.font_family,
+            props.font.font_size,
+            props.font.font_weight,
+            props.font.font_style,
+            props.font.text_color,
+            original_font,
+            original_color,
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
             let ns_string = NSString::from_str(&title.get());
             button.setTitle(&ns_string);
+            let font_props = resolve_font_props(
+                style_props.as_ref(),
+                font_family.get(),
+                font_size.get(),
+                font_weight.get(),
+                font_style.get(),
+                text_color.get(),
+            );
+            let font = resolve_font(&original_font, &font_props, mtm);
+            button.setFont(Some(&font));
+            if let Some(color) = font_props.text_color {
+                button.setContentTintColor(Some(&ns_color(color)));
+            } else {
+                button.setContentTintColor(original_color.as_deref());
+            }
             let width = style_dimension(
                 style_props.as_ref(),
                 width.get(),
