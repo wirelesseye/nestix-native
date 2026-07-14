@@ -1,6 +1,6 @@
 use nestix::{Shared, props};
 
-use crate::{ClassList, FontProps, ViewProps};
+use crate::{Appearance, ClassList, ContainerProps, FontProps, ViewProps};
 
 #[props(debug)]
 #[derive(Debug, Clone)]
@@ -11,8 +11,14 @@ pub struct ButtonProps {
     #[props(nested, default)]
     pub view: ViewProps,
 
+    #[props(nested, default = ContainerProps::auto_padding())]
+    pub container: ContainerProps,
+
     #[props(nested, default)]
     pub font: FontProps,
+
+    #[props(default)]
+    pub appearance: Appearance,
 
     #[props(default)]
     pub title: String,

@@ -27,6 +27,41 @@ fn style_macro_supports_gap() {
 }
 
 #[test]
+fn style_macro_supports_appearance() {
+    let inserted = Appearance::None;
+    let sheet = style! {
+        .native {
+            appearance: native;
+        }
+        .automatic {
+            appearance: auto;
+        }
+        .custom {
+            appearance: $(inserted);
+        }
+    };
+
+    assert_eq!(
+        sheet
+            .matched_props(&MatchContext::new(ClassList::from("native")))
+            .appearance,
+        Some(Appearance::Native)
+    );
+    assert_eq!(
+        sheet
+            .matched_props(&MatchContext::new(ClassList::from("automatic")))
+            .appearance,
+        Some(Appearance::Auto)
+    );
+    assert_eq!(
+        sheet
+            .matched_props(&MatchContext::new(ClassList::from("custom")))
+            .appearance,
+        Some(Appearance::None)
+    );
+}
+
+#[test]
 fn style_macro_supports_font_props() {
     let sheet = style! {
         .label {
@@ -120,6 +155,7 @@ fn global_values_resolve_against_parent_style() {
 fn every_builtin_property_accepts_a_global_value() {
     let sheet = style! {
         .all {
+            appearance: initial;
             bg_color: initial;
             font_family: initial;
             font_size: initial;
@@ -297,6 +333,65 @@ fn text_and_button_accept_nested_font_props() {
     assert_eq!(text.font.font_weight.get(), Some(FontWeight::Bold));
     assert_eq!(button.font.font_family.get().as_deref(), Some("Avenir"));
     assert_eq!(button.font.text_color.get(), Some(Color::RED));
+}
+
+#[test]
+fn button_defaults_to_native_appearance_and_auto_padding() {
+    let button = nestix::build_props!(ButtonProps());
+    let padding = button.container.padding().get();
+    let container_padding = ContainerProps::default().padding().get();
+
+    assert_eq!(button.appearance.get(), Appearance::Native);
+    assert_eq!(padding.top, Dimension::Auto);
+    assert_eq!(padding.right, Dimension::Auto);
+    assert_eq!(padding.bottom, Dimension::Auto);
+    assert_eq!(padding.left, Dimension::Auto);
+    assert_eq!(container_padding.top, Dimension::from(0));
+    assert_eq!(container_padding.right, Dimension::from(0));
+    assert_eq!(container_padding.bottom, Dimension::from(0));
+    assert_eq!(container_padding.left, Dimension::from(0));
+}
+
+#[test]
+fn button_accepts_nested_padding_and_styles_override_auto_edges() {
+    let button = nestix::build_props!(ButtonProps(
+        .appearance = Appearance::Auto,
+        .container(.padding_horizontal = Dimension::from(12))
+    ));
+    let inline = button.container.padding().get();
+    let default_button = nestix::build_props!(ButtonProps());
+    let mut style = ResolvedStyle::default();
+    style.padding_top = Some(Dimension::from(8));
+    let resolved = style_padding_with_default(
+        Some(&style),
+        default_button.container.padding().get(),
+        Dimension::Auto,
+    );
+
+    assert_eq!(button.appearance.get(), Appearance::Auto);
+    assert_eq!(inline.left, Dimension::from(12));
+    assert_eq!(inline.right, Dimension::from(12));
+    assert_eq!(resolved.top, Dimension::from(8));
+    assert_eq!(resolved.bottom, Dimension::Auto);
+}
+
+#[test]
+fn appearance_uses_inline_or_stylesheet_precedence() {
+    let mut style = ResolvedStyle::default();
+    style.appearance = Some(Appearance::Auto);
+
+    assert_eq!(
+        style_appearance(Some(&style), Appearance::Native),
+        Appearance::Auto
+    );
+    assert_eq!(
+        style_appearance(Some(&style), Appearance::None),
+        Appearance::None
+    );
+    assert_eq!(
+        style_appearance(None, Appearance::Native),
+        Appearance::Native
+    );
 }
 
 #[test]

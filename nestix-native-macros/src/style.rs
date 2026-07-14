@@ -386,6 +386,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
     }
 
     let value = match name.as_str() {
+        "appearance" => expand_appearance(value)?,
         "bg_color" => expand_color(value)?,
         "font_family" => expand_font_family(value)?,
         "font_size" => expand_font_size(value)?,
@@ -436,6 +437,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
 
 fn expand_property_variant(name: &str, span: Span) -> Result<Ident> {
     let variant = match name {
+        "appearance" => "Appearance",
         "bg_color" => "BgColor",
         "font_family" => "FontFamily",
         "font_size" => "FontSize",
@@ -491,6 +493,27 @@ fn expand_property(variant: Ident, value: TokenStream2) -> TokenStream2 {
             )
         )
     }
+}
+
+fn expand_appearance(value: StyleValueInput) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    let variant = match value.as_str() {
+        "native" => "Native",
+        "none" => "None",
+        "auto" => "Auto",
+        _ => {
+            return Err(Error::new(
+                Span::call_site(),
+                "appearance must be native, none, auto, or an inserted Appearance",
+            ));
+        }
+    };
+    let variant = Ident::new(variant, Span::call_site());
+    Ok(quote!(#nestix_native_path::Appearance::#variant))
 }
 
 fn expand_color(value: StyleValueInput) -> Result<TokenStream2> {

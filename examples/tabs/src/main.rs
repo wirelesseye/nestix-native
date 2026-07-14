@@ -4,8 +4,7 @@ use nestix::{
     props,
 };
 use nestix_native::{
-    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor,
-    Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor, Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, style,
 };
 
 fn main() {

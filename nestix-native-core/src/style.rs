@@ -2,8 +2,8 @@ mod effective;
 mod property;
 
 pub use effective::{resolved_flex_view_style, resolved_view_style};
-use property::GlobalStyleValue;
-pub use property::{StylePropertyName, StyleValue};
+pub use property::StyleValue;
+use property::{GlobalStyleValue, StylePropertyName};
 
 use std::{
     cell::RefCell,
@@ -17,8 +17,8 @@ use nestix::{
 };
 
 use crate::{
-    AlignItems, Color, Dimension, FlexDirection, FlexWrap, FontStyle, FontWeight, JustifyContent,
-    Rect, ResolvedFontProps,
+    AlignItems, Appearance, Color, Dimension, FlexDirection, FlexWrap, FontStyle, FontWeight,
+    JustifyContent, Rect, ResolvedFontProps,
 };
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -183,6 +183,10 @@ impl StyleSelector {
 
 #[derive(Debug, Clone)]
 pub enum StyleProperty {
+    /// Whether a component uses its backend-native theme.
+    ///
+    /// **Available value**: `native`, `none`, or `auto`.
+    Appearance(StyleValue<Appearance>),
     /// Background color applied to the element.
     ///
     /// **Available value**: a named color (`white`, `black`, `transparent`, `red`,
@@ -326,8 +330,9 @@ pub enum StyleProperty {
 }
 
 impl StyleProperty {
-    pub fn property_name(&self) -> StylePropertyName {
+    pub(crate) fn property_name(&self) -> StylePropertyName {
         match self {
+            Self::Appearance(_) => StylePropertyName::Appearance,
             Self::BgColor(_) => StylePropertyName::BgColor,
             Self::FontFamily(_) => StylePropertyName::FontFamily,
             Self::FontSize(_) => StylePropertyName::FontSize,
@@ -370,6 +375,7 @@ impl StyleProperty {
 
     fn global(&self) -> Option<GlobalStyleValue> {
         match self {
+            Self::Appearance(value) => value.global(),
             Self::BgColor(value) => value.global(),
             Self::FontFamily(value) => value.global(),
             Self::FontSize(value) => value.global(),
@@ -432,6 +438,7 @@ pub struct StyleRule {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedStyle {
+    pub appearance: Option<Appearance>,
     pub bg_color: Option<Color>,
     pub font_family: Option<String>,
     pub font_size: Option<f64>,
@@ -483,6 +490,7 @@ impl ResolvedStyle {
 
     fn copy_named_from(&mut self, name: &str, source: &Self) {
         match name {
+            "appearance" => self.appearance.clone_from(&source.appearance),
             "bg_color" => self.bg_color.clone_from(&source.bg_color),
             "font_family" => self.font_family.clone_from(&source.font_family),
             "font_size" => self.font_size.clone_from(&source.font_size),
@@ -562,6 +570,11 @@ impl ResolvedStyle {
         }
 
         match declaration {
+            StyleDeclaration::Property(StyleProperty::Appearance(StyleValue::Value(
+                appearance,
+            ))) => {
+                self.appearance = Some(appearance);
+            }
             StyleDeclaration::Property(StyleProperty::BgColor(StyleValue::Value(color))) => {
                 self.bg_color = Some(color);
             }
@@ -836,6 +849,14 @@ pub fn style_dimension(
     inline_or_style(inline, default, style.and_then(f))
 }
 
+pub fn style_appearance(style: Option<&ResolvedStyle>, inline: Appearance) -> Appearance {
+    inline_or_style(
+        inline,
+        Appearance::Native,
+        style.and_then(|style| style.appearance),
+    )
+}
+
 pub fn style_flex_grow(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
     inline_or_style(inline, 0.0, style.and_then(|style| style.flex_grow))
 }
@@ -908,12 +929,19 @@ pub fn style_margin(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> R
 }
 
 pub fn style_padding(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
-    let zero = Dimension::from(0);
+    style_padding_with_default(style, inline, Dimension::from(0))
+}
+
+pub fn style_padding_with_default(
+    style: Option<&ResolvedStyle>,
+    inline: Rect<Dimension>,
+    default: Dimension,
+) -> Rect<Dimension> {
     Rect {
-        top: style_dimension(style, inline.top, zero, |style| style.padding_top),
-        bottom: style_dimension(style, inline.bottom, zero, |style| style.padding_bottom),
-        left: style_dimension(style, inline.left, zero, |style| style.padding_left),
-        right: style_dimension(style, inline.right, zero, |style| style.padding_right),
+        top: style_dimension(style, inline.top, default, |style| style.padding_top),
+        bottom: style_dimension(style, inline.bottom, default, |style| style.padding_bottom),
+        left: style_dimension(style, inline.left, default, |style| style.padding_left),
+        right: style_dimension(style, inline.right, default, |style| style.padding_right),
     }
 }
 

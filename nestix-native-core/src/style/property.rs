@@ -1,6 +1,7 @@
 /// Identifies a built-in stylesheet property independently of its typed value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum StylePropertyName {
+pub(crate) enum StylePropertyName {
+    Appearance,
     BgColor,
     FontFamily,
     FontSize,
@@ -39,6 +40,7 @@ pub enum StylePropertyName {
 impl StylePropertyName {
     pub fn name(self) -> &'static str {
         match self {
+            Self::Appearance => "appearance",
             Self::BgColor => "bg_color",
             Self::FontFamily => "font_family",
             Self::FontSize => "font_size",
@@ -77,6 +79,7 @@ impl StylePropertyName {
 
     pub(super) fn affected_names(self) -> &'static [&'static str] {
         match self {
+            Self::Appearance => &["appearance"],
             Self::BgColor => &["bg_color"],
             Self::FontFamily => &["font_family"],
             Self::FontSize => &["font_size"],

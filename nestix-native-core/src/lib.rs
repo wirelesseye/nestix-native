@@ -1,3 +1,4 @@
+pub mod appearance;
 pub mod button;
 pub mod color;
 pub mod container;
@@ -16,6 +17,7 @@ pub mod utils;
 pub mod view;
 pub mod window;
 
+pub use appearance::*;
 pub use button::*;
 pub use color::*;
 pub use container::*;

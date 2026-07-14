@@ -1,5 +1,5 @@
 use dpi::LogicalUnit;
-use nestix::{Computed, computed, props};
+use nestix::{Computed, PropValue, computed, props};
 
 use crate::{Dimension, Rect};
 
@@ -23,6 +23,12 @@ pub struct ContainerProps {
 }
 
 impl ContainerProps {
+    pub(crate) fn auto_padding() -> Self {
+        Self::builder()
+            .padding(PropValue::from_plain(Dimension::Auto))
+            .build()
+    }
+
     pub fn padding(&self) -> Computed<Rect<Dimension>> {
         computed!([this: self] || {
             let top = this.padding_top.get();

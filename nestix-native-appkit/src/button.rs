@@ -2,9 +2,9 @@ use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{
-    ButtonProps, Dimension, StyleContext, TreeContext, matched_style, resolve_font_props,
-    style_align_self, style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink,
-    style_margin,
+    Appearance, ButtonProps, Dimension, Rect, StyleContext, TreeContext, matched_style,
+    resolve_font_props, style_align_self, style_appearance, style_dimension, style_flex_basis,
+    style_flex_grow, style_flex_shrink, style_margin, style_padding_with_default,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
@@ -113,6 +113,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             button,
             props.view.width,
             props.view.height,
+            props.container.padding(),
+            props.appearance,
             props.title,
             props.font.font_family,
             props.font.font_size,
@@ -124,6 +126,11 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
+            let padding =
+                style_padding_with_default(style_props.as_ref(), padding.get(), Dimension::Auto);
+            let appearance = style_appearance(style_props.as_ref(), appearance.get());
+            let native_appearance = uses_native_appearance(appearance, padding);
+            button.setBordered(native_appearance);
             let ns_string = NSString::from_str(&title.get());
             button.setTitle(&ns_string);
             let font_props = resolve_font_props(
@@ -156,12 +163,30 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
             let intrinsic_size =
                 (width.is_auto() || height.is_auto()).then(|| button.intrinsicContentSize());
+            let rendered_padding = if native_appearance {
+                Rect {
+                    top: 0.0,
+                    bottom: 0.0,
+                    left: 0.0,
+                    right: 0.0,
+                }
+            } else {
+                logical_padding(padding, scale_factor)
+            };
             let width = match width {
-                Dimension::Auto => intrinsic_size.unwrap().width as f32,
+                Dimension::Auto => {
+                    intrinsic_size.unwrap().width as f32
+                        + rendered_padding.left
+                        + rendered_padding.right
+                }
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
             let height = match height {
-                Dimension::Auto => intrinsic_size.unwrap().height as f32,
+                Dimension::Auto => {
+                    intrinsic_size.unwrap().height as f32
+                        + rendered_padding.top
+                        + rendered_padding.bottom
+                }
                 Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
@@ -259,6 +284,32 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 }
 
+fn uses_native_appearance(appearance: Appearance, padding: Rect<Dimension>) -> bool {
+    match appearance {
+        Appearance::Native => true,
+        Appearance::None => false,
+        Appearance::Auto => [padding.top, padding.bottom, padding.left, padding.right]
+            .into_iter()
+            .all(|dimension| dimension == Dimension::Auto),
+    }
+}
+
+fn logical_padding(padding: Rect<Dimension>, scale_factor: f64) -> Rect<f32> {
+    fn logical(dimension: Dimension, scale_factor: f64) -> f32 {
+        match dimension {
+            Dimension::Auto => 0.0,
+            Dimension::Length(value) => value.to_logical::<f32>(scale_factor).0,
+        }
+    }
+
+    Rect {
+        top: logical(padding.top, scale_factor),
+        bottom: logical(padding.bottom, scale_factor),
+        left: logical(padding.left, scale_factor),
+        right: logical(padding.right, scale_factor),
+    }
+}
+
 #[derive(Debug)]
 struct ButtonHandlerState {
     on_click: PropValue<Option<Shared<dyn Fn()>>>,
@@ -282,6 +333,76 @@ define_class!(
         }
     }
 );
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nestix_native_core::dpi::PhysicalUnit;
+
+    fn padding(value: Dimension) -> Rect<Dimension> {
+        Rect {
+            top: value,
+            bottom: value,
+            left: value,
+            right: value,
+        }
+    }
+
+    #[test]
+    fn native_and_none_force_their_requested_appearance() {
+        assert!(uses_native_appearance(
+            Appearance::Native,
+            padding(Dimension::from(8))
+        ));
+        assert!(!uses_native_appearance(
+            Appearance::None,
+            padding(Dimension::Auto)
+        ));
+    }
+
+    #[test]
+    fn auto_uses_native_appearance_only_for_unspecified_padding() {
+        assert!(uses_native_appearance(
+            Appearance::Auto,
+            padding(Dimension::Auto)
+        ));
+
+        for value in [
+            Dimension::from(8),
+            Dimension::from(0),
+            Dimension::from(-8),
+            Dimension::Length(PhysicalUnit::new(8).into()),
+        ] {
+            assert!(!uses_native_appearance(
+                Appearance::Auto,
+                Rect {
+                    top: Dimension::Auto,
+                    bottom: Dimension::Auto,
+                    left: value,
+                    right: Dimension::Auto,
+                }
+            ));
+        }
+    }
+
+    #[test]
+    fn logical_padding_maps_auto_to_zero_and_scales_physical_values() {
+        let padding = logical_padding(
+            Rect {
+                top: Dimension::Auto,
+                bottom: Dimension::from(-2),
+                left: Dimension::Length(PhysicalUnit::new(8).into()),
+                right: Dimension::from(3),
+            },
+            2.0,
+        );
+
+        assert_eq!(padding.top, 0.0);
+        assert_eq!(padding.bottom, -2.0);
+        assert_eq!(padding.left, 4.0);
+        assert_eq!(padding.right, 3.0);
+    }
+}
 
 impl ButtonHandler {
     fn new(mtm: MainThreadMarker, state: ButtonHandlerState) -> Retained<Self> {
