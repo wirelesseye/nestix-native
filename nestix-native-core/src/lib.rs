@@ -1,5 +1,6 @@
 pub mod button;
 pub mod color;
+pub mod container;
 pub mod contexts;
 pub mod dimension;
 pub mod flex_view;
@@ -17,6 +18,7 @@ pub mod window;
 
 pub use button::*;
 pub use color::*;
+pub use container::*;
 pub use contexts::*;
 pub use dimension::*;
 pub use flex_view::*;

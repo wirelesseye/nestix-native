@@ -103,10 +103,10 @@ pub fn resolved_flex_view_style(
             props.justify_content,
             props.flex_wrap,
             props.gap,
-            props.padding_left,
-            props.padding_right,
-            props.padding_top,
-            props.padding_bottom,
+            props.container.padding_left,
+            props.container.padding_right,
+            props.container.padding_top,
+            props.container.padding_bottom,
             props.bg_color
         ] || {
             let mut resolved = style.get().unwrap_or_default();
