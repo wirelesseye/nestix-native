@@ -231,7 +231,7 @@ pub(crate) struct WindowState {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
-            WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
+            WM_CTLCOLORSTATIC => {
                 let app_state = shared_app_state();
                 let window_state = app_state.window_state(hwnd).unwrap();
 

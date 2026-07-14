@@ -17,6 +17,7 @@ use windows::{
         Foundation::{COLORREF, HMODULE, HWND, LPARAM, LRESULT, RECT, WPARAM},
         Graphics::Gdi::{
             COLOR_BTNFACE, CreateSolidBrush, DeleteObject, FillRect, HBRUSH, InvalidateRect,
+            SetBkMode, SetTextColor, TRANSPARENT,
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::{
@@ -24,15 +25,15 @@ use windows::{
             WindowsAndMessaging::{
                 CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow,
                 GetClientRect, IDC_ARROW, LoadCursorW, RegisterClassW, SWP_NOZORDER, SetWindowPos,
-                WINDOW_EX_STYLE, WM_COMMAND, WM_ERASEBKGND, WM_NOTIFY, WNDCLASSW, WS_CHILD,
-                WS_VISIBLE,
+                WINDOW_EX_STYLE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_ERASEBKGND, WM_NOTIFY,
+                WNDCLASSW, WS_CHILD, WS_VISIBLE,
             },
         },
     },
     core::{PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext, shared_app_state};
+use crate::{WindowContext, contexts::ParentContext, font::colorref, shared_app_state};
 
 thread_local! {
     static BACKGROUND_BRUSHES: RefCell<HashMap<*mut std::ffi::c_void, HBRUSH>> =
@@ -470,6 +471,23 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
+            WM_CTLCOLORSTATIC => {
+                let app_state = shared_app_state();
+                let hdc = windows::Win32::Graphics::Gdi::HDC(wparam.0 as _);
+                let control = HWND(lparam.0 as _);
+                SetBkMode(hdc, TRANSPARENT);
+                if let Some(color) = app_state.control_text_color(control) {
+                    SetTextColor(hdc, colorref(color));
+                }
+
+                let brush = BACKGROUND_BRUSHES
+                    .with_borrow(|brushes| brushes.get(&hwnd.0).copied())
+                    .unwrap_or_else(|| {
+                        windows::Win32::Graphics::Gdi::GetSysColorBrush(COLOR_BTNFACE)
+                    });
+                LRESULT(brush.0 as isize)
+            }
+
             WM_ERASEBKGND => {
                 if let Some(brush) =
                     BACKGROUND_BRUSHES.with_borrow(|brushes| brushes.get(&hwnd.0).copied())

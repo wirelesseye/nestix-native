@@ -10,7 +10,7 @@ use taffy::{Size, Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
-        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, SelectObject},
+        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
         UI::{
             Controls::WC_BUTTON,
             WindowsAndMessaging::{
@@ -102,7 +102,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 remove_child(hwnd, Some(node_id));
             }
             app_state.remove_control_handler(hwnd);
-            app_state.set_control_text_color(hwnd, None);
         }
     ));
 
@@ -155,8 +154,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 )),
                 Some(LPARAM(1)), // redraw
             );
-            app_state.set_control_text_color(hwnd, font_props.text_color);
-            InvalidateRect(Some(hwnd), None, true).unwrap();
         }
     );
 
