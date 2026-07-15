@@ -14,8 +14,8 @@ use windows::{
         UI::{
             Controls::WC_STATIC,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos,
-                SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+                CreateWindowExW, DestroyWindow, SWP_NOCOPYBITS, SWP_NOZORDER, SendMessageW,
+                SetWindowPos, SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -169,6 +169,11 @@ pub fn Text(props: &TextProps, element: &Element) {
             let string = HSTRING::from(text.get());
             unsafe {
                 SetWindowTextW(hwnd, &string).unwrap();
+                // SetWindowTextW invalidates a static control without requesting
+                // background erasure. Text is painted transparently, so force an
+                // erased repaint to prevent pixels from the previous value from
+                // showing through.
+                InvalidateRect(Some(hwnd), None, true).unwrap();
             }
 
             let mut size: SIZE = SIZE::default();
@@ -292,9 +297,13 @@ pub fn Text(props: &TextProps, element: &Element) {
                         point.y,
                         size.width,
                         size.height,
-                        SWP_NOZORDER,
+                        // Text changes can resize and move this control in the
+                        // same layout pass. Do not copy pixels from its old client
+                        // area into the new bounds.
+                        SWP_NOZORDER | SWP_NOCOPYBITS,
                     )
                     .unwrap();
+                    InvalidateRect(Some(hwnd), None, true).unwrap();
                 }
             }
         }
