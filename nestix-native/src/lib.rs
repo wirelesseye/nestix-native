@@ -1,7 +1,36 @@
+/// Defines facade components which forward their props to a backend factory.
+///
+/// The macro accepts one or more component mappings so modules containing a
+/// family of related components can declare them together.
+macro_rules! delegate {
+    (
+        $(
+            $(#[$attribute:meta])*
+            $visibility:vis $component:ident($props:path) => $factory:ident
+        ),+ $(,)?
+    ) => {
+        $(
+            $(#[$attribute])*
+            #[nestix::component]
+            $visibility fn $component(
+                props: &$props,
+                element: &nestix::Element,
+            ) -> Option<nestix::Element> {
+                element
+                    .context::<crate::BackendContext>()
+                    .expect("native components must be mounted beneath Root")
+                    .backend
+                    .$factory(props.clone())
+            }
+        )+
+    };
+}
+
 pub mod button;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
+pub mod menu;
 pub mod root;
 pub mod scroll_view;
 pub mod tab_view;
@@ -12,6 +41,7 @@ pub use button::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
+pub use menu::*;
 pub use root::*;
 pub use scroll_view::*;
 pub use tab_view::*;

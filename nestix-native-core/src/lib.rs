@@ -8,6 +8,7 @@ pub mod flex_view;
 pub mod font;
 pub mod image_view;
 pub mod input;
+pub mod menu;
 pub mod root;
 pub mod scroll_view;
 pub mod style;
@@ -27,6 +28,7 @@ pub use flex_view::*;
 pub use font::*;
 pub use image_view::*;
 pub use input::*;
+pub use menu::*;
 pub use root::*;
 pub use scroll_view::*;
 pub use style::*;
@@ -82,5 +84,32 @@ pub trait Backend {
 
     fn create_window(&self, _props: WindowProps) -> Option<Element> {
         None
+    }
+
+    fn create_menu(&self, _props: MenuProps) -> Option<Element> {
+        None
+    }
+    fn create_menu_bar(&self, _props: MenuBarProps) -> Option<Element> {
+        None
+    }
+    fn create_submenu(&self, _props: SubmenuProps) -> Option<Element> {
+        None
+    }
+    fn create_menu_item(&self, _props: MenuItemProps) -> Option<Element> {
+        None
+    }
+    fn create_check_menu_item(&self, _props: CheckMenuItemProps) -> Option<Element> {
+        None
+    }
+    fn create_radio_menu_item(&self, _props: RadioMenuItemProps) -> Option<Element> {
+        None
+    }
+    fn create_menu_separator(&self, _props: MenuSeparatorProps) -> Option<Element> {
+        None
+    }
+
+    /// The default preserves the wrapped visual target on unsupported backends.
+    fn create_context_menu(&self, props: ContextMenuProps) -> Option<Element> {
+        Some(props.children.get())
     }
 }
