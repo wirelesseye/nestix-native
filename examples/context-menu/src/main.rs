@@ -1,8 +1,9 @@
 use env_logger::Env;
 use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
 use nestix_native::{
-    AlignItems, CheckMenuItem, Color, ContextMenu, FlexView, JustifyContent, Menu, MenuItem,
-    MenuSeparator, RGBColor, RadioMenuItem, Root, Shortcut, Submenu, Text, Window,
+    AlignItems, Button, CheckMenuItem, Color, ContextMenu, ContextMenuController,
+    ContextMenuPosition, FlexView, JustifyContent, Menu, MenuItem, MenuSeparator, RGBColor,
+    RadioMenuItem, Root, Shortcut, Submenu, Text, Window,
 };
 
 fn main() {
@@ -16,6 +17,7 @@ fn ContextMenuExample() -> Element {
     let show_details = create_state(true);
     let show_advanced = create_state(false);
     let sort_order = create_state("Name".to_string());
+    let context_menu = ContextMenuController::new();
 
     let menu = layout! {
         Menu {
@@ -96,7 +98,10 @@ fn ContextMenuExample() -> Element {
                     .bg_color = Some(Color::RGB(RGBColor::from_rgb(238, 242, 247))),
                     .view(.flex_grow = 1.0),
                 ) {
-                    ContextMenu(.menu = menu) {
+                    ContextMenu(
+                        .menu = menu,
+                        .controller = context_menu.clone(),
+                    ) {
                         FlexView(
                             .align_items = AlignItems::Center,
                             .justify_content = JustifyContent::Center,
@@ -104,7 +109,15 @@ fn ContextMenuExample() -> Element {
                             .view(.width = 360, .height = 220),
                             .container(.padding = 24),
                         ) {
-                            Text("Right-click this card")
+                            Text("Right-click this card or use the button")
+                            Button(
+                                .title = "Show context menu",
+                                .on_click = callback!([context_menu, status] || {
+                                    if let Err(error) = context_menu.show(ContextMenuPosition::Cursor) {
+                                        status.set(format!("Could not show menu: {error}"));
+                                    }
+                                }),
+                            )
                             Text("Try commands, checkboxes, radio items, and the submenu.")
                             Text(computed!([status] || format!("Status: {}", status.get())))
                             Text(computed!([show_details, sort_order] || {

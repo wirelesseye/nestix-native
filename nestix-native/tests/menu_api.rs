@@ -2,8 +2,8 @@
 
 use nestix::{Element, callback, component, layout};
 use nestix_native::{
-    CheckMenuItem, ContextMenu, FlexView, Menu, MenuBar, MenuItem, MenuSeparator, RadioMenuItem,
-    Shortcut, Submenu, Window,
+    CheckMenuItem, ContextMenu, ContextMenuController, ContextMenuPosition, FlexView, Menu,
+    MenuBar, MenuItem, MenuSeparator, RadioMenuItem, Shortcut, Submenu, Window,
 };
 
 #[component]
@@ -40,6 +40,7 @@ fn Target() -> Element {
 
 #[test]
 fn menu_bar_and_context_menu_compile_through_layout() {
+    let context_menu = ContextMenuController::new();
     let _window = layout! {
         Window {
             FlexView {
@@ -52,8 +53,13 @@ fn menu_bar_and_context_menu_compile_through_layout() {
     };
 
     let _context = layout! {
-        ContextMenu(.menu = layout! { DocumentMenu }) {
+        ContextMenu(
+            .menu = layout! { DocumentMenu },
+            .controller = context_menu.clone(),
+        ) {
             Target
         }
     };
+
+    let _ = context_menu.show(ContextMenuPosition::Anchor);
 }

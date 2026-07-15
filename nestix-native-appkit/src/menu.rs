@@ -1,20 +1,22 @@
 use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{
-    Element, Layout, PropValue, Shared, State, callback, closure, component,
-    components::ContextProvider, create_state, layout, scoped_effect,
+    Element, PropValue, Shared, State, callback, closure, component, components::ContextProvider,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    CheckMenuItemProps, ContextMenuProps, MenuItemProps, MenuProps, MenuSeparatorProps,
-    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
+    ContextMenuRegistration, MenuItemProps, MenuProps, MenuSeparatorProps, RadioMenuItemProps,
+    Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
 };
 use objc2::{
-    DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
+    DefinedClass, MainThreadMarker, MainThreadOnly, Message, define_class, msg_send, rc::Retained,
+    sel,
 };
 use objc2_app_kit::{
     NSControlStateValueOff, NSControlStateValueOn, NSEventModifierFlags, NSMenu, NSMenuItem, NSView,
 };
-use objc2_foundation::{NSObject, NSObjectProtocol, NSString};
+use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSString};
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<MenuItemHandler>>> = RefCell::new(HashMap::new());
@@ -230,33 +232,85 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         menu: create_state(None),
         target: create_state(None),
     });
-    let child = props.children.get();
-
-    child.on_last_handle_change(closure!(
-        [context] | handle | {
-            context.target.set(handle);
-        }
-    ));
+    let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
 
     scoped_effect!(
         element,
-        [context.menu, context.target] || {
+        [context, props.children] || {
+            children.get().on_last_handle_change(closure!(
+                [context] | handle | {
+                    context.target.set(handle);
+                }
+            ));
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [context.menu, context.target, props.controller, registration] || {
+            registration.borrow_mut().take();
             if let Some(handle) = target.get()
                 && let Some(pointer) = handle.downcast_ref::<*const NSObject>()
             {
                 let object = unsafe { &**pointer };
                 if let Some(view) = object.downcast_ref::<NSView>() {
                     // NSResponder's menu property is an AppKit main-thread API.
-                    unsafe { view.setMenu(menu.get().as_deref()) };
+                    let menu = menu.get();
+                    unsafe { view.setMenu(menu.as_deref()) };
+
+                    if let (Some(menu), Some(controller)) = (menu, controller.get()) {
+                        let view = view.retain();
+                        let presenter = ContextMenuPresenter {
+                            show: callback!([menu, view] |position: ContextMenuPosition| {
+                                let point = match position {
+                                    ContextMenuPosition::Cursor => {
+                                        let Some(window) = view.window() else {
+                                            return false;
+                                        };
+                                        view.convertPoint_fromView(
+                                            window.mouseLocationOutsideOfEventStream(),
+                                            None,
+                                        )
+                                    }
+                                    ContextMenuPosition::Anchor => {
+                                        NSPoint::new(0.0, view.bounds().size.height)
+                                    }
+                                    ContextMenuPosition::Point(position) => NSPoint::new(
+                                        position.x,
+                                        view.bounds().size.height - position.y,
+                                    ),
+                                };
+                                let _ = menu.popUpMenuPositioningItem_atLocation_inView(
+                                    None,
+                                    point,
+                                    Some(&view),
+                                );
+                                // The return value describes how tracking ended,
+                                // not whether the menu was presented. Cancelling
+                                // the menu is still a successful show operation.
+                                true
+                            }),
+                            dismiss: callback!([menu] || menu.cancelTracking()),
+                        };
+                        registration
+                            .borrow_mut()
+                            .replace(controller.bind(presenter));
+                    }
                 }
             }
         }
     );
 
+    element.on_unmount(closure!(
+        [registration] || {
+            registration.borrow_mut().take();
+        }
+    ));
+
     layout! {
-        ContextProvider<ContextMenuContext>(context) {
-            $(Layout::from(props.children.get()))
-            $(Layout::from(props.menu.get()))
+        ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
+            yield $(children.get())
+            yield $(menu.get())
         }
     }
 }
