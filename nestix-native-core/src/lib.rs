@@ -1,5 +1,6 @@
 pub mod appearance;
 pub mod button;
+pub mod checkbox;
 pub mod color;
 pub mod container;
 pub mod contexts;
@@ -9,9 +10,13 @@ pub mod font;
 pub mod image_view;
 pub mod input;
 pub mod menu;
+pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
+pub mod select;
+pub mod slider;
 pub mod style;
+pub mod switch;
 pub mod tab_view;
 pub mod text;
 pub mod utils;
@@ -20,6 +25,7 @@ pub mod window;
 
 pub use appearance::*;
 pub use button::*;
+pub use checkbox::*;
 pub use color::*;
 pub use container::*;
 pub use contexts::*;
@@ -29,9 +35,13 @@ pub use font::*;
 pub use image_view::*;
 pub use input::*;
 pub use menu::*;
+pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
+pub use select::*;
+pub use slider::*;
 pub use style::*;
+pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
 pub use utils::*;
@@ -55,6 +65,30 @@ pub trait Backend {
     }
 
     fn create_button(&self, _props: ButtonProps) -> Option<Element> {
+        None
+    }
+
+    fn create_checkbox(&self, _props: CheckboxProps) -> Option<Element> {
+        None
+    }
+
+    fn create_radio_button(&self, _props: RadioButtonProps) -> Option<Element> {
+        None
+    }
+
+    fn create_switch(&self, _props: SwitchProps) -> Option<Element> {
+        None
+    }
+
+    fn create_select(&self, _props: SelectProps) -> Option<Element> {
+        None
+    }
+
+    fn create_select_option(&self, _props: SelectOptionProps) -> Option<Element> {
+        None
+    }
+
+    fn create_slider(&self, _props: SliderProps) -> Option<Element> {
         None
     }
 

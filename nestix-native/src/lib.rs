@@ -27,23 +27,33 @@ macro_rules! delegate {
 }
 
 pub mod button;
+pub mod checkbox;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
 pub mod menu;
+pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
+pub mod select;
+pub mod slider;
+pub mod switch;
 pub mod tab_view;
 pub mod text;
 pub mod window;
 
 pub use button::*;
+pub use checkbox::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
 pub use menu::*;
+pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
+pub use select::*;
+pub use slider::*;
+pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
 pub use window::*;
