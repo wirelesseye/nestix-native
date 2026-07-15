@@ -1,13 +1,13 @@
 use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{
-    Element, PropValue, Shared, State, callback, closure, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Shared, State, callback, closure, component,
+    components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
-    ContextMenuRegistration, MenuItemProps, MenuProps, MenuSeparatorProps, RadioMenuItemProps,
-    Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    ContextMenuRegistration, MenuBarProps, MenuItemProps, MenuProps, MenuSeparatorProps,
+    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, Message, define_class, msg_send, rc::Retained,
@@ -17,6 +17,8 @@ use objc2_app_kit::{
     NSControlStateValueOff, NSControlStateValueOn, NSEventModifierFlags, NSMenu, NSMenuItem, NSView,
 };
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSString};
+
+use crate::{root::RootContext, window::WindowContext};
 
 thread_local! {
     static HANDLERS: RefCell<HashMap<String, Retained<MenuItemHandler>>> = RefCell::new(HashMap::new());
@@ -33,6 +35,11 @@ struct MenuContext {
 pub(crate) struct ContextMenuContext {
     menu: State<Option<Retained<NSMenu>>>,
     target: State<Option<Shared<dyn Any>>>,
+}
+
+#[derive(Clone)]
+struct MenuBarContext {
+    menu: State<Option<Retained<NSMenu>>>,
 }
 
 fn menu_context(menu: &Retained<NSMenu>) -> MenuContext {
@@ -60,7 +67,16 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let menu = new_menu(mtm);
 
-    if let Some(context) = element.context::<ContextMenuContext>() {
+    if let Some(context) = element.context::<MenuBarContext>() {
+        context.menu.set(Some(menu.clone()));
+        element.on_unmount(closure!(
+            [context, menu] || {
+                if contains_menu(&context.menu.get(), &menu) {
+                    context.menu.set(None);
+                }
+            }
+        ));
+    } else if let Some(context) = element.context::<ContextMenuContext>() {
         context.menu.set(Some(menu.clone()));
         scoped_effect!(
             element,
@@ -91,6 +107,66 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
         ContextProvider<MenuContext>(menu_context(&menu)) {
             $(props.children.clone())
         }
+    }
+}
+
+#[component]
+pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
+    let root = element.context::<RootContext>().unwrap();
+    let window = element.context::<WindowContext>();
+    let menu = create_state(None::<Retained<NSMenu>>);
+    let registered = Rc::new(RefCell::new(None::<Retained<NSMenu>>));
+
+    scoped_effect!(
+        element,
+        [root, window, menu, registered] || {
+            let current = menu.get();
+            if let Some(current) = current {
+                registered.replace(Some(current.clone()));
+                if let Some(window) = &window {
+                    window.menu.set(Some(current.clone()));
+                    if window.ns_window.isKeyWindow() {
+                        root.active_window_menu.set(Some(current));
+                    }
+                } else {
+                    root.app_menu.set(Some(current));
+                }
+            } else if let Some(previous) = registered.take() {
+                unregister_menu(&root, window.as_deref(), &previous);
+            }
+        }
+    );
+
+    element.on_unmount(closure!(
+        [root, window, registered] || {
+            if let Some(previous) = registered.take() {
+                unregister_menu(&root, window.as_deref(), &previous);
+            }
+        }
+    ));
+
+    layout! {
+        ContextProvider<MenuBarContext>(MenuBarContext { menu }) {
+            $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
+        }
+    }
+}
+
+fn contains_menu(slot: &Option<Retained<NSMenu>>, menu: &NSMenu) -> bool {
+    slot.as_ref()
+        .is_some_and(|current| std::ptr::eq(current.as_ref(), menu))
+}
+
+fn unregister_menu(root: &RootContext, window: Option<&WindowContext>, menu: &NSMenu) {
+    if let Some(window) = window {
+        if contains_menu(&window.menu.get(), menu) {
+            window.menu.set(None);
+        }
+        if contains_menu(&root.active_window_menu.get(), menu) {
+            root.active_window_menu.set(None);
+        }
+    } else if contains_menu(&root.app_menu.get(), menu) {
+        root.app_menu.set(None);
     }
 }
 

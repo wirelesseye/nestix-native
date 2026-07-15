@@ -15,7 +15,10 @@ use taffy::{
     prelude::{FromLength, FromPercent, TaffyAuto},
 };
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_child_index},
+};
 
 #[component]
 pub fn ImageView(props: &ImageViewProps, element: &Element) {
@@ -44,11 +47,11 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [image_view, parent_context] | placement | {
-            if let Some(index) = placement.index
+        [element, image_view, parent_context] | placement | {
+            if placement.index.is_some()
                 && let Some(insert_child) = &parent_context.insert_child
             {
-                insert_child(&image_view, Some(node_id), index);
+                insert_child(&image_view, Some(node_id), native_child_index(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&image_view, Some(node_id));
             }

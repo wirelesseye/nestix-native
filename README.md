@@ -41,10 +41,14 @@ backend in this repository.
 
 ## Examples
 
-The workspace includes two examples:
+The workspace includes these examples:
 
 - `examples/basic` shows a counter window with text, buttons, callbacks, state,
   and simple layout.
+- `examples/context-menu` demonstrates context menu commands, checkboxes, radio
+  items, submenus, and programmatic presentation.
+- `examples/menu-bar` demonstrates application-wide and window-specific menu
+  bars through the backend-neutral API.
 - `examples/tabs` shows tabs, editable input, dynamic lists, conditional
   rendering, and reactive styles.
 

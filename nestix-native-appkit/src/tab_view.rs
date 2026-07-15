@@ -17,7 +17,10 @@ use objc2_app_kit::{NSTabView, NSTabViewDelegate, NSTabViewItem, NSView};
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_child_index},
+};
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
 thread_local! {
@@ -74,11 +77,11 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [view, parent_context] | placement | {
-            if let Some(index) = placement.index
+        [element, view, parent_context] | placement | {
+            if placement.index.is_some()
                 && let Some(insert_child) = &parent_context.insert_child
             {
-                insert_child(&view, Some(node_id), index);
+                insert_child(&view, Some(node_id), native_child_index(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&view, Some(node_id));
             }
@@ -386,11 +389,11 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     element.provide_handle(item.as_ref() as *const NSObject);
 
     element.on_place(closure!(
-        [item, parent_context] | placement | {
-            if let Some(index) = placement.index
+        [element, item, parent_context] | placement | {
+            if placement.index.is_some()
                 && let Some(insert_child) = &parent_context.insert_child
             {
-                insert_child(&item, None, index);
+                insert_child(&item, None, native_child_index(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&item, None);
             }

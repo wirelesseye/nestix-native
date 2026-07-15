@@ -14,7 +14,10 @@ use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_child_index},
+};
 use nestix_native_core::utils::{gap_to_taffy, inset_to_taffy, margin_to_taffy, padding_to_taffy};
 
 #[component]
@@ -37,11 +40,11 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(false);
     element.on_place(closure!(
-        [view, parent_context] | placement | {
-            if let Some(index) = placement.index
+        [element, view, parent_context] | placement | {
+            if placement.index.is_some()
                 && let Some(insert_child) = &parent_context.insert_child
             {
-                insert_child(&view, Some(node_id), index);
+                insert_child(&view, Some(node_id), native_child_index(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&view, Some(node_id));
             }

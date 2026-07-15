@@ -16,7 +16,10 @@ use objc2_foundation::{NSObject, NSPoint, NSRect, NSSize};
 use taffy::style_helpers::FromLength;
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_child_index},
+};
 
 #[component]
 pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
@@ -39,11 +42,11 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     let node = tree_context.create_node(false);
 
     element.on_place(closure!(
-        [scroll, parent] | placement | {
-            if let Some(index) = placement.index
+        [element, scroll, parent] | placement | {
+            if placement.index.is_some()
                 && let Some(insert) = &parent.insert_child
             {
-                insert(&scroll, Some(node), index);
+                insert(&scroll, Some(node), native_child_index(&element));
             } else if let Some(add) = &parent.add_child {
                 add(&scroll, Some(node));
             }

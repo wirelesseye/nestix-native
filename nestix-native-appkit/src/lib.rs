@@ -91,6 +91,10 @@ impl Backend for AppkitBackend {
         Some(create_element::<Menu>(props))
     }
 
+    fn create_menu_bar(&self, props: nestix_native_core::MenuBarProps) -> Option<nestix::Element> {
+        Some(create_element::<MenuBar>(props))
+    }
+
     fn create_submenu(&self, props: nestix_native_core::SubmenuProps) -> Option<nestix::Element> {
         Some(create_element::<Submenu>(props))
     }
