@@ -43,7 +43,10 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
         [ns_application, app_menu, active_window_menu] || {
             let active_window_menu = active_window_menu.get();
             let app_menu = app_menu.get();
-            ns_application.setMainMenu(active_window_menu.as_deref().or(app_menu.as_deref()));
+            replace_main_menu(
+                &ns_application,
+                active_window_menu.as_deref().or(app_menu.as_deref()),
+            );
         }
     );
 
@@ -65,6 +68,22 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
                 $(props.children.clone())
             }
         }
+    }
+}
+
+fn replace_main_menu(application: &NSApplication, menu: Option<&NSMenu>) {
+    // Fully detach the previous menu before installing the next one. Reusing a
+    // detached NSMenu directly can leave AppKit's key-equivalent lookup in the
+    // tracking state produced by the previously focused window (including a
+    // failed shortcut lookup).
+    if let Some(current) = application.mainMenu() {
+        current.cancelTracking();
+    }
+    application.setMainMenu(None);
+
+    if let Some(menu) = menu {
+        menu.update();
+        application.setMainMenu(Some(menu));
     }
 }
 
