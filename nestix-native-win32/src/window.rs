@@ -1,8 +1,8 @@
 use std::{cell::Cell, rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Readonly, Shared, WeakElement, callback, component,
+    components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     StyleScope, TreeContext, WindowProps,
@@ -92,6 +92,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         tree_context: tree_context.clone(),
         root_view: Cell::new(None),
         on_resize: props.on_resize.clone(),
+        element: element.downgrade(),
     });
     app_state.add_window(hwnd, window_state.clone());
 
@@ -228,6 +229,7 @@ pub(crate) struct WindowState {
     tree_context: Rc<TreeContext>,
     root_view: Cell<Option<HWND>>,
     on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
+    element: WeakElement,
 }
 
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -325,6 +327,14 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 
             WM_DESTROY => {
                 let app_state = shared_app_state();
+                if let Some(window_state) = app_state.window_state(hwnd) {
+                    // Native closure owns the lifetime of this Window too. Unmount
+                    // its subtree so scoped effects cannot later touch destroyed
+                    // child HWNDs when shared application state changes.
+                    if let Some(element) = window_state.element.upgrade() {
+                        element.unmount();
+                    }
+                }
                 app_state.remove_window(hwnd);
 
                 if app_state.quit_when_all_windows_closed() && !app_state.has_windows() {
