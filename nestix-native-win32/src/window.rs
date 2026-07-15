@@ -49,6 +49,7 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
 #[derive(Clone)]
 pub struct WindowContext {
     pub scale_factor: Readonly<f64>,
+    pub(crate) hwnd: HWND,
 }
 
 #[component]
@@ -59,9 +60,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     let scale_factor = create_state(1.0);
 
-    let window_context = Rc::new(WindowContext {
-        scale_factor: scale_factor.clone().into_readonly(),
-    });
     let tree_context = Rc::new(TreeContext::new());
 
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
@@ -84,6 +82,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         )
         .unwrap()
     };
+    let window_context = Rc::new(WindowContext {
+        scale_factor: scale_factor.clone().into_readonly(),
+        hwnd,
+    });
 
     let window_state = Rc::new(WindowState {
         bg_brush: unsafe { GetSysColorBrush(COLOR_BTNFACE) },
@@ -231,6 +233,13 @@ pub(crate) struct WindowState {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
+            WM_KEYDOWN | WM_SYSKEYDOWN => {
+                if crate::menu::handle_menu_shortcut(hwnd, wparam.0) {
+                    return LRESULT(0);
+                }
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
             WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
                 let app_state = shared_app_state();
                 let window_state = app_state.window_state(hwnd).unwrap();
@@ -297,8 +306,12 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 
             WM_COMMAND => {
                 let app_state = shared_app_state();
-                let hwnd = HWND(lparam.0 as _);
-                app_state.handle_control_event(hwnd, msg, wparam, lparam);
+                let control = HWND(lparam.0 as _);
+                if control.0.is_null() {
+                    crate::menu::handle_menu_command(hwnd, wparam.0 & 0xffff);
+                } else {
+                    app_state.handle_control_event(control, msg, wparam, lparam);
+                }
 
                 DefWindowProcW(hwnd, msg, wparam, lparam)
             }

@@ -12,19 +12,24 @@ use nestix::{
 };
 use nestix_native_core::{
     CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
-    ContextMenuRegistration, MenuItemProps, MenuProps, MenuSeparatorProps, RadioMenuItemProps,
-    Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    ContextMenuRegistration, MenuBarProps, MenuItemProps, MenuProps, MenuSeparatorProps,
+    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
 };
 use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
         UI::{
+            Input::KeyboardAndMouse::{
+                GetKeyState, VK_BACK, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1,
+                VK_HOME, VK_INSERT, VK_LEFT, VK_MENU, VK_NEXT, VK_PRIOR, VK_RETURN, VK_RIGHT,
+                VK_SHIFT, VK_TAB, VK_UP,
+            },
             Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
             WindowsAndMessaging::{
-                AppendMenuW, CreatePopupMenu, DestroyMenu, EndMenu, GetCursorPos, GetWindowRect,
-                HMENU, MF_BYPOSITION, MF_CHECKED, MF_DISABLED, MF_GRAYED, MF_POPUP, MF_SEPARATOR,
-                MF_STRING, MF_UNCHECKED, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_TOPALIGN,
-                TrackPopupMenu, WM_CONTEXTMENU,
+                AppendMenuW, CreateMenu, CreatePopupMenu, DestroyMenu, DrawMenuBar, EndMenu,
+                GetCursorPos, GetWindowRect, HMENU, MF_BYPOSITION, MF_CHECKED, MF_DISABLED,
+                MF_GRAYED, MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, SetMenu, TPM_LEFTALIGN,
+                TPM_RETURNCMD, TPM_TOPALIGN, TrackPopupMenu, WM_CONTEXTMENU,
             },
         },
     },
@@ -36,6 +41,7 @@ const SUBCLASS_ID: usize = 0x4e_65_73_74_69_78;
 
 thread_local! {
     static TARGETS: RefCell<HashMap<*mut std::ffi::c_void, Weak<MenuData>>> = RefCell::new(HashMap::new());
+    static MENU_BARS: RefCell<HashMap<*mut std::ffi::c_void, Weak<MenuData>>> = RefCell::new(HashMap::new());
 }
 
 struct NativeMenu(HMENU);
@@ -88,9 +94,21 @@ struct ContextMenuContext {
     target: State<Option<Shared<dyn Any>>>,
 }
 
-fn new_menu() -> Rc<MenuData> {
+#[derive(Clone)]
+struct MenuBarContext {
+    menu: State<Option<Rc<MenuData>>>,
+}
+
+fn new_menu(popup: bool) -> Rc<MenuData> {
     Rc::new(MenuData {
-        native: NativeMenu(unsafe { CreatePopupMenu().unwrap() }),
+        native: NativeMenu(unsafe {
+            if popup {
+                CreatePopupMenu()
+            } else {
+                CreateMenu()
+            }
+            .unwrap()
+        }),
         entries: RefCell::new(Vec::new()),
     })
 }
@@ -146,6 +164,17 @@ impl MenuData {
                     }
                 }
             }
+            MENU_BARS.with_borrow(|bars| {
+                for (hwnd, menu) in bars {
+                    if menu
+                        .upgrade()
+                        .as_deref()
+                        .is_some_and(|menu| std::ptr::eq(menu, self))
+                    {
+                        let _ = DrawMenuBar(HWND(*hwnd));
+                    }
+                }
+            });
         }
     }
 
@@ -165,6 +194,52 @@ impl MenuData {
         }
         false
     }
+
+    fn activate_shortcut(&self, key: usize, modifiers: ShortcutModifiers) -> bool {
+        for entry in self.entries.borrow().iter() {
+            if !entry.visible.get() || !entry.enabled.get() {
+                continue;
+            }
+            match &entry.kind {
+                EntryKind::Item { action, .. }
+                    if entry.shortcut.get().is_some_and(|shortcut| {
+                        shortcut.modifiers() == modifiers
+                            && shortcut_key_code(shortcut.key()) == Some(key)
+                    }) =>
+                {
+                    action();
+                    return true;
+                }
+                EntryKind::Submenu(menu) if menu.activate_shortcut(key, modifiers) => return true,
+                _ => {}
+            }
+        }
+        false
+    }
+}
+
+fn shortcut_key_code(key: ShortcutKey) -> Option<usize> {
+    Some(match key {
+        ShortcutKey::Character(value) if value.is_ascii_alphanumeric() => {
+            value.to_ascii_uppercase() as usize
+        }
+        ShortcutKey::Character(_) => return None,
+        ShortcutKey::Backspace => VK_BACK.0 as usize,
+        ShortcutKey::Delete => VK_DELETE.0 as usize,
+        ShortcutKey::Down => VK_DOWN.0 as usize,
+        ShortcutKey::End => VK_END.0 as usize,
+        ShortcutKey::Enter => VK_RETURN.0 as usize,
+        ShortcutKey::Escape => VK_ESCAPE.0 as usize,
+        ShortcutKey::Home => VK_HOME.0 as usize,
+        ShortcutKey::Insert => VK_INSERT.0 as usize,
+        ShortcutKey::Left => VK_LEFT.0 as usize,
+        ShortcutKey::PageDown => VK_NEXT.0 as usize,
+        ShortcutKey::PageUp => VK_PRIOR.0 as usize,
+        ShortcutKey::Right => VK_RIGHT.0 as usize,
+        ShortcutKey::Tab => VK_TAB.0 as usize,
+        ShortcutKey::Up => VK_UP.0 as usize,
+        ShortcutKey::Function(number) => VK_F1.0 as usize + number as usize - 1,
+    })
 }
 
 fn display_label(label: &str, shortcut: Option<Shortcut>) -> String {
@@ -209,8 +284,23 @@ fn shortcut_text(shortcut: Shortcut) -> String {
 
 #[component]
 pub fn Menu(props: &MenuProps, element: &Element) -> Element {
-    let menu = new_menu();
-    if let Some(context) = element.context::<ContextMenuContext>() {
+    let menu_bar = element.context::<MenuBarContext>();
+    let menu = new_menu(menu_bar.is_none());
+    if let Some(context) = menu_bar {
+        context.menu.set(Some(menu.clone()));
+        element.on_unmount(closure!(
+            [context, menu] || {
+                if context
+                    .menu
+                    .get()
+                    .as_ref()
+                    .is_some_and(|value| Rc::ptr_eq(value, &menu))
+                {
+                    context.menu.set(None);
+                }
+            }
+        ));
+    } else if let Some(context) = element.context::<ContextMenuContext>() {
         context.menu.set(Some(menu.clone()));
         element.on_unmount(closure!(
             [context, menu] || {
@@ -226,6 +316,94 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
         ));
     }
     layout! { ContextProvider<MenuContext>(MenuContext(menu)) { $(props.children.clone()) } }
+}
+
+#[component]
+pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
+    let window = element.context::<crate::WindowContext>();
+    let menu = create_state(None::<Rc<MenuData>>);
+    let attached = Rc::new(RefCell::new(None::<Rc<MenuData>>));
+
+    scoped_effect!(
+        element,
+        [window, menu, attached] || {
+            let Some(window) = &window else { return };
+            if let Some(previous) = attached.take() {
+                detach_menu_bar(window.hwnd, &previous);
+            }
+            if let Some(current) = menu.get() {
+                current.rebuild();
+                MENU_BARS.with_borrow_mut(|bars| {
+                    bars.insert(window.hwnd.0, Rc::downgrade(&current));
+                });
+                unsafe {
+                    let _ = SetMenu(window.hwnd, Some(current.native.0));
+                    let _ = DrawMenuBar(window.hwnd);
+                }
+                attached.replace(Some(current));
+            }
+        }
+    );
+
+    element.on_unmount(closure!(
+        [window, attached] || {
+            if let Some(window) = &window
+                && let Some(previous) = attached.take()
+            {
+                detach_menu_bar(window.hwnd, &previous);
+            }
+        }
+    ));
+
+    layout! {
+        ContextProvider<MenuBarContext>(MenuBarContext { menu }) {
+            $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
+        }
+    }
+}
+
+pub(crate) fn handle_menu_command(hwnd: HWND, id: usize) {
+    let menu = MENU_BARS.with_borrow(|bars| bars.get(&hwnd.0).and_then(Weak::upgrade));
+    if let Some(menu) = menu {
+        menu.activate(id);
+    }
+}
+
+pub(crate) fn handle_menu_shortcut(hwnd: HWND, key: usize) -> bool {
+    let Some(menu) = MENU_BARS.with_borrow(|bars| bars.get(&hwnd.0).and_then(Weak::upgrade)) else {
+        return false;
+    };
+    let mut modifiers = ShortcutModifiers::NONE;
+    unsafe {
+        if GetKeyState(VK_CONTROL.0 as i32) < 0 {
+            modifiers |= ShortcutModifiers::PRIMARY;
+        }
+        if GetKeyState(VK_SHIFT.0 as i32) < 0 {
+            modifiers |= ShortcutModifiers::SHIFT;
+        }
+        if GetKeyState(VK_MENU.0 as i32) < 0 {
+            modifiers |= ShortcutModifiers::ALT;
+        }
+    }
+    menu.activate_shortcut(key, modifiers)
+}
+
+fn detach_menu_bar(hwnd: HWND, menu: &Rc<MenuData>) {
+    let owns_slot = MENU_BARS.with_borrow(|bars| {
+        bars.get(&hwnd.0)
+            .and_then(Weak::upgrade)
+            .as_ref()
+            .is_some_and(|current| Rc::ptr_eq(current, menu))
+    });
+    if owns_slot {
+        MENU_BARS.with_borrow_mut(|bars| {
+            bars.remove(&hwnd.0);
+        });
+        unsafe {
+            let _ = SetMenu(hwnd, None);
+            let _ = DrawMenuBar(hwnd);
+        }
+    }
 }
 
 fn place_entry(element: &Element, menu: Rc<MenuData>, entry: Rc<Entry>) {
@@ -273,7 +451,7 @@ fn common_effects(
 #[component]
 pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
     let parent = element.context::<MenuContext>().unwrap().0.clone();
-    let submenu = new_menu();
+    let submenu = new_menu(true);
     let entry = Rc::new(Entry {
         kind: EntryKind::Submenu(submenu.clone()),
         label: RefCell::new(props.label.get()),
