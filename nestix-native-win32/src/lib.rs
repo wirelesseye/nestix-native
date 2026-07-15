@@ -2,6 +2,7 @@ pub mod button;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
+pub mod menu;
 pub mod root;
 pub mod scroll_view;
 pub mod tab_view;
@@ -16,6 +17,7 @@ pub use button::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
+pub use menu::*;
 pub use root::*;
 pub use scroll_view::*;
 pub use tab_view::*;
@@ -84,5 +86,48 @@ impl Backend for Win32Backend {
 
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<nestix::Element> {
         Some(create_element::<Window>(props))
+    }
+
+    fn create_menu(&self, props: nestix_native_core::MenuProps) -> Option<nestix::Element> {
+        Some(create_element::<Menu>(props))
+    }
+
+    fn create_submenu(&self, props: nestix_native_core::SubmenuProps) -> Option<nestix::Element> {
+        Some(create_element::<Submenu>(props))
+    }
+
+    fn create_menu_item(
+        &self,
+        props: nestix_native_core::MenuItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<MenuItem>(props))
+    }
+
+    fn create_check_menu_item(
+        &self,
+        props: nestix_native_core::CheckMenuItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<CheckMenuItem>(props))
+    }
+
+    fn create_radio_menu_item(
+        &self,
+        props: nestix_native_core::RadioMenuItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<RadioMenuItem>(props))
+    }
+
+    fn create_menu_separator(
+        &self,
+        props: nestix_native_core::MenuSeparatorProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<MenuSeparator>(props))
+    }
+
+    fn create_context_menu(
+        &self,
+        props: nestix_native_core::ContextMenuProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<ContextMenu>(props))
     }
 }
