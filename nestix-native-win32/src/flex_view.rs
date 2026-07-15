@@ -26,7 +26,7 @@ use windows::{
                 CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow,
                 GetClientRect, IDC_ARROW, LoadCursorW, RegisterClassW, SWP_NOZORDER, SetWindowPos,
                 WINDOW_EX_STYLE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORSTATIC, WM_DRAWITEM,
-                WM_ERASEBKGND, WM_NOTIFY, WNDCLASSW, WS_CHILD, WS_VISIBLE,
+                WM_ERASEBKGND, WM_HSCROLL, WM_NOTIFY, WM_VSCROLL, WNDCLASSW, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -513,9 +513,18 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 
             WM_COMMAND => {
                 let app_state = shared_app_state();
-                let hwnd = HWND(lparam.0 as _);
-                app_state.handle_control_event(hwnd, msg, wparam, lparam);
+                let control = HWND(lparam.0 as _);
+                app_state.handle_control_event(control, msg, wparam, lparam);
 
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            WM_HSCROLL | WM_VSCROLL => {
+                let app_state = shared_app_state();
+                let control = HWND(lparam.0 as _);
+                if !control.0.is_null() {
+                    app_state.handle_control_event(control, msg, wparam, lparam);
+                }
                 DefWindowProcW(hwnd, msg, wparam, lparam)
             }
 

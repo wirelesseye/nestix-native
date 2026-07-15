@@ -67,7 +67,7 @@ fn FormControlsApp() -> Element {
                     FlexView(.class = "content", .view(.flex_grow = 1.0)) {
                         Text("Form controls", .class = "heading")
                         Text(
-                            "Controlled AppKit components exposed through nestix-native.",
+                            "Controlled native components exposed through nestix-native.",
                             .class = "description",
                         )
 
@@ -150,13 +150,23 @@ fn FormControlsApp() -> Element {
                             .flex_direction = FlexDirection::Row,
                             .align_items = AlignItems::Center,
                         ) {
-                            Text("Enable notifications", .class = "choice")
-                            Switch(
-                                .checked = notifications.clone(),
-                                .on_checked_change = callback!([notifications] |checked| {
-                                    notifications.set(checked);
-                                }),
-                            )
+                            if cfg!(target_os = "windows") {
+                                Checkbox(
+                                    "Enable notifications",
+                                    .checked = notifications.clone(),
+                                    .on_checked_change = callback!([notifications] |checked| {
+                                        notifications.set(checked);
+                                    }),
+                                )
+                            } else {
+                                Text("Enable notifications", .class = "choice")
+                                Switch(
+                                    .checked = notifications.clone(),
+                                    .on_checked_change = callback!([notifications] |checked| {
+                                        notifications.set(checked);
+                                    }),
+                                )
+                            }
                         }
 
                         FlexView(

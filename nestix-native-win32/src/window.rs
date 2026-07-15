@@ -318,6 +318,15 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                 DefWindowProcW(hwnd, msg, wparam, lparam)
             }
 
+            WM_HSCROLL | WM_VSCROLL => {
+                let app_state = shared_app_state();
+                let control = HWND(lparam.0 as _);
+                if !control.0.is_null() {
+                    app_state.handle_control_event(control, msg, wparam, lparam);
+                }
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
             WM_DRAWITEM => {
                 let app_state = shared_app_state();
                 let item = &*(lparam.0 as *const DRAWITEMSTRUCT);
