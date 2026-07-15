@@ -15,7 +15,7 @@ use windows::{
         Graphics::Gdi::*,
         System::LibraryLoader::GetModuleHandleW,
         UI::{
-            Controls::NMHDR,
+            Controls::{DRAWITEMSTRUCT, NMHDR},
             HiDpi::{GetDpiForMonitor, MDT_EFFECTIVE_DPI},
             WindowsAndMessaging::*,
         },
@@ -231,7 +231,7 @@ pub(crate) struct WindowState {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
-            WM_CTLCOLORSTATIC => {
+            WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
                 let app_state = shared_app_state();
                 let window_state = app_state.window_state(hwnd).unwrap();
 
@@ -301,6 +301,13 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                 app_state.handle_control_event(hwnd, msg, wparam, lparam);
 
                 DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            WM_DRAWITEM => {
+                let app_state = shared_app_state();
+                let item = &*(lparam.0 as *const DRAWITEMSTRUCT);
+                app_state.handle_control_event(item.hwndItem, msg, wparam, lparam);
+                LRESULT(1)
             }
 
             WM_DESTROY => {

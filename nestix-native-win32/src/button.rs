@@ -1,26 +1,36 @@
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
-    ButtonProps, Dimension, StyleContext, TreeContext,
+    Appearance, ButtonProps, Dimension, Rect, StyleContext, TreeContext,
     dpi::{LogicalPosition, LogicalSize, LogicalUnit, PhysicalUnit},
-    matched_style, resolve_font_props, style_align_self, style_dimension, style_flex_basis,
-    style_flex_grow, style_flex_shrink, style_margin,
+    matched_style, resolve_font_props, style_align_self, style_appearance, style_dimension,
+    style_flex_basis, style_flex_grow, style_flex_shrink, style_margin, style_padding_with_default,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{Size, Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
-        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
+        Graphics::Gdi::{
+            COLOR_BTNFACE, COLOR_BTNTEXT, COLOR_GRAYTEXT, DFC_BUTTON, DFCS_BUTTONPUSH,
+            DFCS_INACTIVE, DFCS_PUSHED, DT_CENTER, DT_SINGLELINE, DT_VCENTER, DeleteObject,
+            DrawFocusRect, DrawFrameControl, DrawTextW, FillRect, GetDC, GetSysColor,
+            GetSysColorBrush, GetTextExtentPoint32W, HFONT, InflateRect, InvalidateRect,
+            OffsetRect, SelectObject, SetBkMode, SetTextColor, TRANSPARENT,
+        },
         UI::{
-            Controls::WC_BUTTON,
+            Controls::{
+                DRAWITEMSTRUCT, ODS_DISABLED, ODS_FOCUS, ODS_SELECTED, SetWindowTheme, WC_BUTTON,
+            },
             WindowsAndMessaging::{
-                BN_CLICKED, CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW,
-                SetWindowPos, SetWindowTextW, WINDOW_EX_STYLE, WM_COMMAND, WM_SETFONT, WS_CHILD,
-                WS_VISIBLE,
+                BN_CLICKED, BS_OWNERDRAW, BS_PUSHBUTTON, BS_TYPEMASK, CreateWindowExW,
+                DestroyWindow, GWL_STYLE, GetWindowLongPtrW, SWP_FRAMECHANGED, SWP_NOMOVE,
+                SWP_NOSIZE, SWP_NOZORDER, SendMessageW, SetWindowLongPtrW, SetWindowPos,
+                SetWindowTextW, WINDOW_EX_STYLE, WM_COMMAND, WM_DRAWITEM, WM_GETFONT, WM_SETFONT,
+                WS_CHILD, WS_VISIBLE,
             },
         },
     },
-    core::HSTRING,
+    core::{HSTRING, PCWSTR, w},
 };
 
 use crate::{AppState, WindowContext, contexts::ParentContext, font::resolved_font, utils::hiword};
@@ -79,7 +89,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     app_state.add_control_handler(
         hwnd,
-        callback!([props.on_click] |msg: u32, wparam: WPARAM, _: LPARAM| {
+        callback!([app_state, props.on_click, props.title] |msg: u32, wparam: WPARAM, lparam: LPARAM| {
             match msg {
                 WM_COMMAND => {
                     if let Some(on_click) = on_click.get() {
@@ -87,6 +97,14 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                             on_click();
                         }
                     }
+                },
+                WM_DRAWITEM => unsafe {
+                    let item = &*(lparam.0 as *const DRAWITEMSTRUCT);
+                    draw_button(
+                        item,
+                        &title.get(),
+                        app_state.control_text_color(hwnd),
+                    );
                 },
                 _ => (),
             }
@@ -102,6 +120,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 remove_child(hwnd, Some(node_id));
             }
             app_state.remove_control_handler(hwnd);
+            app_state.set_control_text_color(hwnd, None);
         }
     ));
 
@@ -136,16 +155,29 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             props.font.font_size,
             props.font.font_weight,
             props.font.font_style,
-            props.font.text_color
+            props.font.text_color,
+            props.appearance
         ] || unsafe {
+            let style_props = style_props.get();
             let font_props = resolve_font_props(
-                style_props.get().as_ref(),
+                style_props.as_ref(),
                 font_family.get(),
                 font_size.get(),
                 font_weight.get(),
                 font_style.get(),
                 text_color.get(),
             );
+            let native_appearance = uses_native_appearance(
+                style_appearance(style_props.as_ref(), appearance.get()),
+                font_props.text_color,
+            );
+            let owner_draw = !native_appearance && font_props.text_color.is_some();
+            if native_appearance {
+                SetWindowTheme(hwnd, PCWSTR::null(), PCWSTR::null()).unwrap();
+            } else {
+                SetWindowTheme(hwnd, w!(""), w!("")).unwrap();
+            }
+            set_owner_draw(hwnd, owner_draw);
             SendMessageW(
                 hwnd,
                 WM_SETFONT,
@@ -154,6 +186,11 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 )),
                 Some(LPARAM(1)), // redraw
             );
+            app_state.set_control_text_color(
+                hwnd,
+                owner_draw.then_some(font_props.text_color).flatten(),
+            );
+            InvalidateRect(Some(hwnd), None, true).unwrap();
         }
     );
 
@@ -169,6 +206,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             props.font.font_weight,
             props.font.font_style,
             props.font.text_color,
+            props.container.padding(),
             props.view.width,
             props.view.height,
         ] || {
@@ -181,6 +219,10 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 font_weight.get(),
                 font_style.get(),
                 text_color.get(),
+            );
+            let padding = logical_padding(
+                style_padding_with_default(style_props.as_ref(), padding.get(), Dimension::Auto),
+                scale_factor,
             );
 
             let hds = unsafe { GetDC(Some(hwnd)) };
@@ -215,14 +257,16 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             let width = match width {
                 Dimension::Auto => LogicalUnit::new(
                     PhysicalUnit::new(size.cx).to_logical::<f32>(scale_factor).0
-                        + DEFAULT_PADDING_X * 2.0,
+                        + padding.left
+                        + padding.right,
                 ),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor),
             };
             let height = match height {
                 Dimension::Auto => LogicalUnit::new(
                     PhysicalUnit::new(size.cy).to_logical::<f32>(scale_factor).0
-                        + DEFAULT_PADDING_Y * 2.0,
+                        + padding.top
+                        + padding.bottom,
                 ),
                 Dimension::Length(length) => length.to_logical::<f32>(scale_factor).into(),
             };
@@ -325,4 +369,140 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             }
         }
     );
+}
+
+fn uses_native_appearance(
+    appearance: Appearance,
+    text_color: Option<nestix_native_core::Color>,
+) -> bool {
+    match appearance {
+        Appearance::Native => true,
+        Appearance::None => false,
+        Appearance::Auto => text_color.is_none(),
+    }
+}
+
+fn logical_padding(padding: Rect<Dimension>, scale_factor: f64) -> Rect<f32> {
+    fn logical(dimension: Dimension, scale_factor: f64, default: f32) -> f32 {
+        match dimension {
+            Dimension::Auto => default,
+            Dimension::Length(value) => value.to_logical::<f32>(scale_factor).0,
+        }
+    }
+
+    Rect {
+        top: logical(padding.top, scale_factor, DEFAULT_PADDING_Y),
+        bottom: logical(padding.bottom, scale_factor, DEFAULT_PADDING_Y),
+        left: logical(padding.left, scale_factor, DEFAULT_PADDING_X),
+        right: logical(padding.right, scale_factor, DEFAULT_PADDING_X),
+    }
+}
+
+unsafe fn set_owner_draw(hwnd: windows::Win32::Foundation::HWND, owner_draw: bool) {
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        let button_type = if owner_draw {
+            BS_OWNERDRAW
+        } else {
+            BS_PUSHBUTTON
+        } as isize;
+        let next = (style & !(BS_TYPEMASK as isize)) | button_type;
+        if next != style {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, next);
+            SetWindowPos(
+                hwnd,
+                None,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            )
+            .unwrap();
+        }
+    }
+}
+
+unsafe fn draw_button(
+    item: &DRAWITEMSTRUCT,
+    title: &str,
+    text_color: Option<nestix_native_core::Color>,
+) {
+    unsafe {
+        let mut rect = item.rcItem;
+        FillRect(item.hDC, &rect, GetSysColorBrush(COLOR_BTNFACE));
+
+        let mut frame_state = DFCS_BUTTONPUSH;
+        if item.itemState.0 & ODS_SELECTED.0 != 0 {
+            frame_state |= DFCS_PUSHED;
+        }
+        if item.itemState.0 & ODS_DISABLED.0 != 0 {
+            frame_state |= DFCS_INACTIVE;
+        }
+        let _ = DrawFrameControl(item.hDC, &mut rect, DFC_BUTTON, frame_state);
+
+        if item.itemState.0 & ODS_SELECTED.0 != 0 {
+            let _ = OffsetRect(&mut rect, 1, 1);
+        }
+        SetBkMode(item.hDC, TRANSPARENT);
+        let color = if item.itemState.0 & ODS_DISABLED.0 != 0 {
+            windows::Win32::Foundation::COLORREF(GetSysColor(COLOR_GRAYTEXT))
+        } else {
+            text_color
+                .map(crate::font::colorref)
+                .unwrap_or_else(|| windows::Win32::Foundation::COLORREF(GetSysColor(COLOR_BTNTEXT)))
+        };
+        SetTextColor(item.hDC, color);
+
+        let font = SendMessageW(item.hwndItem, WM_GETFONT, None, None);
+        let original_font =
+            (font.0 != 0).then(|| SelectObject(item.hDC, HFONT(font.0 as _).into()));
+        let mut text: Vec<u16> = title.encode_utf16().collect();
+        DrawTextW(
+            item.hDC,
+            &mut text,
+            &mut rect,
+            DT_CENTER | DT_VCENTER | DT_SINGLELINE,
+        );
+        if let Some(original_font) = original_font {
+            SelectObject(item.hDC, original_font);
+        }
+
+        if item.itemState.0 & ODS_FOCUS.0 != 0 {
+            let _ = InflateRect(&mut rect, -3, -3);
+            let _ = DrawFocusRect(item.hDC, &rect);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nestix_native_core::{Color, dpi::PhysicalUnit};
+
+    #[test]
+    fn appearance_controls_native_theme() {
+        assert!(uses_native_appearance(Appearance::Native, Some(Color::RED)));
+        assert!(!uses_native_appearance(Appearance::None, None));
+        assert!(uses_native_appearance(Appearance::Auto, None));
+        assert!(!uses_native_appearance(Appearance::Auto, Some(Color::RED)));
+    }
+
+    #[test]
+    fn padding_uses_defaults_and_scales_physical_values() {
+        let padding = logical_padding(
+            Rect {
+                top: Dimension::Auto,
+                bottom: Dimension::from(4),
+                left: Dimension::Length(PhysicalUnit::new(8).into()),
+                right: Dimension::Auto,
+            },
+            2.0,
+        );
+
+        assert_eq!(padding.top, DEFAULT_PADDING_Y);
+        assert_eq!(padding.bottom, 4.0);
+        assert_eq!(padding.left, 4.0);
+        assert_eq!(padding.right, DEFAULT_PADDING_X);
+    }
 }

@@ -21,12 +21,12 @@ use windows::{
         },
         System::LibraryLoader::GetModuleHandleW,
         UI::{
-            Controls::NMHDR,
+            Controls::{DRAWITEMSTRUCT, NMHDR},
             WindowsAndMessaging::{
                 CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow,
                 GetClientRect, IDC_ARROW, LoadCursorW, RegisterClassW, SWP_NOZORDER, SetWindowPos,
-                WINDOW_EX_STYLE, WM_COMMAND, WM_CTLCOLORSTATIC, WM_ERASEBKGND, WM_NOTIFY,
-                WNDCLASSW, WS_CHILD, WS_VISIBLE,
+                WINDOW_EX_STYLE, WM_COMMAND, WM_CTLCOLORBTN, WM_CTLCOLORSTATIC, WM_DRAWITEM,
+                WM_ERASEBKGND, WM_NOTIFY, WNDCLASSW, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -471,7 +471,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     unsafe {
         match msg {
-            WM_CTLCOLORSTATIC => {
+            WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
                 let app_state = shared_app_state();
                 let hdc = windows::Win32::Graphics::Gdi::HDC(wparam.0 as _);
                 let control = HWND(lparam.0 as _);
@@ -517,6 +517,13 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                 app_state.handle_control_event(hwnd, msg, wparam, lparam);
 
                 DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            WM_DRAWITEM => {
+                let app_state = shared_app_state();
+                let item = &*(lparam.0 as *const DRAWITEMSTRUCT);
+                app_state.handle_control_event(item.hwndItem, msg, wparam, lparam);
+                LRESULT(1)
             }
 
             _ => DefWindowProcW(hwnd, msg, wparam, lparam),
