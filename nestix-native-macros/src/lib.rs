@@ -29,8 +29,8 @@ use proc_macro::TokenStream;
 /// };
 /// ```
 ///
-/// Selectors support `:not()`, `:first-child`, `:last-child`, and CSS-style
-/// `:nth-child(An+B)` expressions such as `2`, `odd`, `even`, `2n+1`, and
+/// Selectors support `:not()`, `:first_child`, `:last_child`, and CSS-style
+/// `:nth_child(An+B)` expressions such as `2`, `odd`, `even`, `2n+1`, and
 /// `-n+3`. Child positions are one-based and are evaluated among logical
 /// style-participating siblings; transparent component wrappers do not add a
 /// position.

@@ -199,39 +199,32 @@ fn parse_class(input: ParseStream<'_>) -> Result<String> {
 
 fn parse_pseudo_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
     input.parse::<Token![:]>()?;
-    let first_name: Ident = input.parse()?;
-    let mut name = first_name.to_string();
-    if input.peek(Token![-]) {
-        input.parse::<Token![-]>()?;
-        let second_name: Ident = input.parse()?;
-        name.push('-');
-        name.push_str(&second_name.to_string());
-    }
+    let name: Ident = input.parse()?;
 
-    match name.as_str() {
+    match name.to_string().as_str() {
         "not" => {
             let content;
             parenthesized!(content in input);
             Ok(SelectorAst::Not(content.parse()?))
         }
-        "first-child" => Ok(SelectorAst::FirstChild),
-        "last-child" => Ok(SelectorAst::LastChild),
-        "nth-child" => {
+        "first_child" => Ok(SelectorAst::FirstChild),
+        "last_child" => Ok(SelectorAst::LastChild),
+        "nth_child" => {
             let content;
             parenthesized!(content in input);
             let (a, b) = parse_nth_child_formula(&content)?;
             Ok(SelectorAst::NthChild { a, b })
         }
         _ => Err(Error::new_spanned(
-            first_name,
-            "unsupported pseudo selector; expected `not`, `first-child`, `last-child`, or `nth-child`",
+            name,
+            "unsupported pseudo selector; expected `not`, `first_child`, `last_child`, or `nth_child`",
         )),
     }
 }
 
 fn parse_nth_child_formula(input: ParseStream<'_>) -> Result<(isize, isize)> {
     if input.is_empty() {
-        return Err(input.error("expected an `An+B` expression in `nth-child()`"));
+        return Err(input.error("expected an `An+B` expression in `nth_child()`"));
     }
 
     let tokens: TokenStream2 = input.parse()?;
@@ -245,7 +238,7 @@ fn parse_nth_child_formula(input: ParseStream<'_>) -> Result<(isize, isize)> {
     let invalid = || {
         Error::new_spanned(
             tokens.clone(),
-            "invalid `nth-child()` expression; expected an integer, `odd`, `even`, or `An+B`",
+            "invalid `nth_child()` expression; expected an integer, `odd`, `even`, or `An+B`",
         )
     };
 
@@ -1198,12 +1191,12 @@ mod tests {
     #[test]
     fn nth_child_formulas_are_normalized() {
         for (selector, expected) in [
-            (":nth-child(odd)", (2, 1)),
-            (":nth-child(even)", (2, 0)),
-            (":nth-child(4)", (0, 4)),
-            (":nth-child(n)", (1, 0)),
-            (":nth-child(2n + 1)", (2, 1)),
-            (":nth-child(-n + 3)", (-1, 3)),
+            (":nth_child(odd)", (2, 1)),
+            (":nth_child(even)", (2, 0)),
+            (":nth_child(4)", (0, 4)),
+            (":nth_child(n)", (1, 0)),
+            (":nth_child(2n + 1)", (2, 1)),
+            (":nth_child(-n + 3)", (-1, 3)),
         ] {
             let parsed = syn::parse_str::<SelectorInput>(selector).unwrap();
             assert!(matches!(
@@ -1215,10 +1208,10 @@ mod tests {
 
     #[test]
     fn nth_child_rejects_invalid_formulas() {
-        for selector in [":nth-child()", ":nth-child(2n+)", ":nth-child(nonsense)"] {
+        for selector in [":nth_child()", ":nth_child(2n+)", ":nth_child(nonsense)"] {
             let error = syn::parse_str::<SelectorInput>(selector).err().unwrap();
             assert!(
-                error.to_string().contains("nth-child"),
+                error.to_string().contains("nth_child"),
                 "unexpected error for {selector}: {error}"
             );
         }

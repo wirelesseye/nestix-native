@@ -434,10 +434,10 @@ fn style_macro_supports_not_selectors() {
 #[test]
 fn style_macro_supports_first_and_last_child_selectors() {
     let sheet = style! {
-        .item:first-child {
+        .item:first_child {
             --first: yes;
         }
-        .item:last-child {
+        .item:last_child {
             --last: yes;
         }
     };
@@ -465,13 +465,13 @@ fn style_macro_supports_first_and_last_child_selectors() {
 #[test]
 fn style_macro_supports_full_nth_child_formulas() {
     let sheet = style! {
-        .item:nth-child(2) { --exact: yes; }
-        .item:nth-child(odd) { --odd: yes; }
-        .item:nth-child(even) { --even: yes; }
-        .item:nth-child(3n) { --multiple: yes; }
-        .item:nth-child(2n + 1) { --spaced: yes; }
-        .item:nth-child(-n + 3) { --first_three: yes; }
-        .item:nth-child(0) { --zero: yes; }
+        .item:nth_child(2) { --exact: yes; }
+        .item:nth_child(odd) { --odd: yes; }
+        .item:nth_child(even) { --even: yes; }
+        .item:nth_child(3n) { --multiple: yes; }
+        .item:nth_child(2n + 1) { --spaced: yes; }
+        .item:nth_child(-n + 3) { --first_three: yes; }
+        .item:nth_child(0) { --zero: yes; }
     };
 
     let second =
@@ -498,10 +498,10 @@ fn style_macro_supports_full_nth_child_formulas() {
 #[test]
 fn structural_pseudo_classes_work_inside_combinators() {
     let sheet = style! {
-        .panel:first-child > .button {
+        .panel:first_child > .button {
             --parent_first: yes;
         }
-        .item:first-child + .item {
+        .item:first_child + .item {
             --after_first: yes;
         }
     };
@@ -524,7 +524,7 @@ fn structural_pseudo_classes_work_inside_combinators() {
 #[test]
 fn structural_pseudo_classes_contribute_class_specificity() {
     let sheet = style! {
-        .item:first-child {
+        .item:first_child {
             bg_color: red;
         }
         .item {
@@ -943,7 +943,7 @@ fn style_macro_supports_nested_parent_compounds_and_pseudo_classes() {
                 bg_color: blue;
             }
 
-            &:first-child {
+            &:first_child {
                 text_color: red;
             }
         }
