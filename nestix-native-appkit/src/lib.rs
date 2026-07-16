@@ -1,5 +1,6 @@
 pub mod button;
 pub mod checkbox;
+pub mod file_picker;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
@@ -20,6 +21,7 @@ mod native_control;
 
 pub use button::*;
 pub use checkbox::*;
+pub use file_picker::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
@@ -96,6 +98,13 @@ impl Backend for AppkitBackend {
         props: nestix_native_core::FlexViewProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<FlexView>(props))
+    }
+
+    fn create_file_picker(
+        &self,
+        props: nestix_native_core::FilePickerProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<FilePicker>(props))
     }
 
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {

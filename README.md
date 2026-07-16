@@ -47,6 +47,8 @@ The workspace includes these examples:
   and simple layout.
 - `examples/context-menu` demonstrates context menu commands, checkboxes, radio
   items, submenus, and programmatic presentation.
+- `examples/file-picker` demonstrates open, multi-file, save, and folder picker
+  requests through a window-bound controller.
 - `examples/menu-bar` demonstrates application-wide and window-specific menu
   bars through the backend-neutral API.
 - `examples/tabs` shows tabs, editable input, dynamic lists, conditional

@@ -5,6 +5,7 @@ pub mod color;
 pub mod container;
 pub mod contexts;
 pub mod dimension;
+pub mod file_picker;
 pub mod flex_view;
 pub mod font;
 pub mod image_view;
@@ -30,6 +31,7 @@ pub use color::*;
 pub use container::*;
 pub use contexts::*;
 pub use dimension::*;
+pub use file_picker::*;
 pub use flex_view::*;
 pub use font::*;
 pub use image_view::*;
@@ -93,6 +95,10 @@ pub trait Backend {
     }
 
     fn create_flex_view(&self, _props: FlexViewProps) -> Option<Element> {
+        None
+    }
+
+    fn create_file_picker(&self, _props: FilePickerProps) -> Option<Element> {
         None
     }
 

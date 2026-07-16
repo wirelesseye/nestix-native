@@ -28,6 +28,7 @@ macro_rules! delegate {
 
 pub mod button;
 pub mod checkbox;
+pub mod file_picker;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
@@ -44,6 +45,7 @@ pub mod window;
 
 pub use button::*;
 pub use checkbox::*;
+pub use file_picker::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
