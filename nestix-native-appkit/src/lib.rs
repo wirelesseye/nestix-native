@@ -41,11 +41,11 @@ pub use window::*;
 use nestix::create_element;
 use nestix_native_core::Backend;
 
-pub const APPKIT_BACKEND: AppkitBackend = AppkitBackend;
+pub const APPKIT_BACKEND: AppKitBackend = AppKitBackend;
 
-pub struct AppkitBackend;
+pub struct AppKitBackend;
 
-impl Backend for AppkitBackend {
+impl Backend for AppKitBackend {
     fn backend_id(&self) -> &'static str {
         "nestix-native-appkit"
     }
