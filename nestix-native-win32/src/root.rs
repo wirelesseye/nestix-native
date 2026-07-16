@@ -9,6 +9,7 @@ use nestix::{Element, PropValue, Shared, closure, component, components::Context
 use nestix_native_core::{Color, RootProps, StyleScope};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
+    System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx},
     UI::{
         HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
         WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
@@ -23,6 +24,22 @@ thread_local! {
 
 pub(crate) fn shared_app_state() -> Rc<AppState> {
     APP_STATE.with(|app| app.get().unwrap().clone())
+}
+
+pub(crate) fn ensure_com_apartment() -> Result<(), String> {
+    thread_local! {
+        static COM_RESULT: OnceCell<Result<(), String>> = OnceCell::new();
+    }
+    COM_RESULT.with(|result| {
+        result
+            .get_or_init(|| {
+                let hr = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
+                hr.ok().map_err(|_| {
+                    format!("failed to initialize the Win32 UI COM apartment ({hr:?})")
+                })
+            })
+            .clone()
+    })
 }
 
 pub(crate) struct AppState {
@@ -128,6 +145,10 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Root", "__win32_Root"];
 
     let app_state = APP_STATE.with(|app| app.get_or_init(|| Rc::new(AppState::new(props))).clone());
+
+    // Common item dialogs require an STA. Keep this apartment initialized for
+    // the lifetime of the UI thread (which owns the thread-local app state).
+    let _ = ensure_com_apartment();
 
     unsafe {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
