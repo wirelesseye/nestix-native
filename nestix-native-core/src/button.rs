@@ -23,5 +23,8 @@ pub struct ButtonProps {
     #[props(default)]
     pub title: String,
 
+    #[props(default)]
+    pub disabled: bool,
+
     pub on_click: Option<Shared<dyn Fn()>>,
 }

@@ -82,6 +82,13 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     scoped_effect!(
         element,
+        [button, props.disabled] || {
+            button.setEnabled(!disabled.get());
+        }
+    );
+
+    scoped_effect!(
+        element,
         [
             tree_context,
             style_props,

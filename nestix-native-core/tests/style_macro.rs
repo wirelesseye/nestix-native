@@ -338,10 +338,13 @@ fn text_and_button_accept_nested_font_props() {
 #[test]
 fn button_defaults_to_native_appearance_and_auto_padding() {
     let button = nestix::build_props!(ButtonProps());
+    let disabled_button = nestix::build_props!(ButtonProps(.disabled = true));
     let padding = button.container.padding().get();
     let container_padding = ContainerProps::default().padding().get();
 
     assert_eq!(button.appearance.get(), Appearance::Native);
+    assert!(!button.disabled.get());
+    assert!(disabled_button.disabled.get());
     assert_eq!(padding.top, Dimension::Auto);
     assert_eq!(padding.right, Dimension::Auto);
     assert_eq!(padding.bottom, Dimension::Auto);
