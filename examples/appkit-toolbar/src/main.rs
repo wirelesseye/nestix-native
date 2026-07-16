@@ -2,7 +2,7 @@ use env_logger::Env;
 use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
 use nestix_native_appkit::{
     AppKitToolbar, AppKitToolbarDisplayMode, AppKitToolbarFlexibleSpace, AppKitToolbarItem,
-    AppKitToolbarSpace, Button, FlexView, Root, Text, Window,
+    AppKitToolbarSpace, AppKitToolbarStyle, Button, FlexView, Root, Text, Window,
 };
 
 fn main() {
@@ -15,6 +15,7 @@ fn AppKitToolbarExample() -> Element {
     let count = create_state(0_i32);
     let reset_hidden = create_state(false);
     let display_mode = create_state(AppKitToolbarDisplayMode::IconAndLabel);
+    let toolbar_style = create_state(AppKitToolbarStyle::Unified);
 
     layout! {
         Root {
@@ -29,6 +30,7 @@ fn AppKitToolbarExample() -> Element {
                     AppKitToolbar(
                         .identifier = "dev.nestix.example.appkit-toolbar",
                         .display_mode = display_mode.clone(),
+                        .style = toolbar_style.clone(),
                     ) {
                         AppKitToolbarItem(
                             .identifier = "decrement",
@@ -95,6 +97,18 @@ fn AppKitToolbarExample() -> Element {
                                 AppKitToolbarDisplayMode::LabelOnly => {
                                     AppKitToolbarDisplayMode::Default
                                 }
+                            });
+                        }),
+                    )
+                    Button(
+                        .title = "Cycle toolbar style",
+                        .on_click = callback!([toolbar_style] || {
+                            toolbar_style.set(match toolbar_style.get() {
+                                AppKitToolbarStyle::Automatic => AppKitToolbarStyle::Expanded,
+                                AppKitToolbarStyle::Expanded => AppKitToolbarStyle::Preference,
+                                AppKitToolbarStyle::Preference => AppKitToolbarStyle::Unified,
+                                AppKitToolbarStyle::Unified => AppKitToolbarStyle::UnifiedCompact,
+                                AppKitToolbarStyle::UnifiedCompact => AppKitToolbarStyle::Automatic,
                             });
                         }),
                     )

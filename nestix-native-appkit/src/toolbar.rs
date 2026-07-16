@@ -11,7 +11,7 @@ use objc2::{
 use objc2_app_kit::{
     NSImage, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode,
     NSToolbarFlexibleSpaceItemIdentifier, NSToolbarItem, NSToolbarItemIdentifier,
-    NSToolbarSpaceItemIdentifier,
+    NSToolbarSpaceItemIdentifier, NSWindowToolbarStyle,
 };
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSString};
 
@@ -38,6 +38,29 @@ impl AppKitToolbarDisplayMode {
     }
 }
 
+/// Controls how AppKit integrates the toolbar with its window title bar.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum AppKitToolbarStyle {
+    #[default]
+    Automatic,
+    Expanded,
+    Preference,
+    Unified,
+    UnifiedCompact,
+}
+
+impl AppKitToolbarStyle {
+    fn to_native(self) -> NSWindowToolbarStyle {
+        match self {
+            Self::Automatic => NSWindowToolbarStyle::Automatic,
+            Self::Expanded => NSWindowToolbarStyle::Expanded,
+            Self::Preference => NSWindowToolbarStyle::Preference,
+            Self::Unified => NSWindowToolbarStyle::Unified,
+            Self::UnifiedCompact => NSWindowToolbarStyle::UnifiedCompact,
+        }
+    }
+}
+
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct AppKitToolbarProps {
@@ -49,6 +72,9 @@ pub struct AppKitToolbarProps {
 
     #[props(default)]
     pub display_mode: AppKitToolbarDisplayMode,
+
+    #[props(default)]
+    pub style: AppKitToolbarStyle,
 
     #[props(default)]
     pub children: Layout,
@@ -210,6 +236,7 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().expect("AppKitToolbar must be mounted on the main thread");
     let toolbar =
         NSToolbar::initWithIdentifier(NSToolbar::alloc(mtm), &NSString::from_str(&identifier));
+    let original_style = window.ns_window.toolbarStyle();
     let items = Rc::new(RefCell::new(HashMap::new()));
     let registrations = Rc::new(RefCell::new(Vec::new()));
     let delegate = AppKitToolbarDelegate::new(
@@ -242,9 +269,15 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
             toolbar.setDisplayMode(display_mode.get().to_native());
         }
     );
+    scoped_effect!(
+        element,
+        [window, props.style] || {
+            window.ns_window.setToolbarStyle(style.get().to_native());
+        }
+    );
 
     element.on_unmount(closure!(
-        [window, toolbar, delegate] || {
+        [window, toolbar, delegate, original_style] || {
             toolbar.setDelegate(None);
             if contains_toolbar(&window.toolbar.get(), &toolbar) {
                 window.toolbar.set(None);
@@ -253,6 +286,7 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
                 std::ptr::eq::<NSToolbar>(current.as_ref(), toolbar.as_ref())
             }) {
                 window.ns_window.setToolbar(None);
+                window.ns_window.setToolbarStyle(original_style);
             }
             let _ = &delegate;
         }
