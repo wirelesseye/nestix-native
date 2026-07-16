@@ -14,6 +14,7 @@ pub mod slider;
 pub mod switch;
 pub mod tab_view;
 pub mod text;
+pub mod toolbar;
 pub mod window;
 
 mod contexts;
@@ -36,6 +37,7 @@ pub use slider::*;
 pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
+pub use toolbar::*;
 pub use window::*;
 
 use nestix::create_element;

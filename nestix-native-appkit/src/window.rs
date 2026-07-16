@@ -12,7 +12,7 @@ use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
 };
-use objc2_app_kit::{NSMenu, NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask};
+use objc2_app_kit::{NSMenu, NSToolbar, NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
@@ -22,6 +22,7 @@ pub struct WindowContext {
     pub ns_window: Retained<NSWindow>,
     pub scale_factor: Readonly<f64>,
     pub(crate) menu: State<Option<Retained<NSMenu>>>,
+    pub(crate) toolbar: State<Option<Retained<NSToolbar>>>,
 }
 
 #[component]
@@ -31,6 +32,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let scale_factor = create_state(1.0);
     let menu = create_state(None::<Retained<NSMenu>>);
+    let toolbar = create_state(None::<Retained<NSToolbar>>);
     let root_context = element.context::<RootContext>().unwrap();
 
     let ns_window = unsafe { NSWindow::new(mtm) };
@@ -39,6 +41,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         ns_window: ns_window.clone(),
         scale_factor: scale_factor.clone().into_readonly(),
         menu: menu.clone(),
+        toolbar,
     });
     let tree_context = Rc::new(TreeContext::new());
 
