@@ -910,3 +910,171 @@ fn class_list_can_include_renderer_default_classes() {
     assert!(class_list.contains("__Button"));
     assert!(class_list.contains("__appkit_Button"));
 }
+
+#[test]
+fn style_macro_supports_recursive_implicit_nesting() {
+    let sheet = style! {
+        .panel {
+            .section {
+                .button {
+                    bg_color: red;
+                }
+            }
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button"))
+            .with_ancestors([ClassList::from("section"), ClassList::from("panel")]),
+    );
+    assert_eq!(props.bg_color, Some(Color::RED));
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button")).with_ancestors([ClassList::from("section")]),
+    );
+    assert_eq!(props.bg_color, None);
+}
+
+#[test]
+fn style_macro_supports_nested_parent_compounds_and_pseudo_classes() {
+    let sheet = style! {
+        .item {
+            &.selected {
+                bg_color: blue;
+            }
+
+            &:first-child {
+                text_color: red;
+            }
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("item selected")).with_child_position(1, 3),
+    );
+    assert_eq!(props.bg_color, Some(Color::BLUE));
+    assert_eq!(props.text_color, Some(Color::RED));
+
+    let props = sheet
+        .matched_props(&MatchContext::new(ClassList::from("selected")).with_child_position(1, 3));
+    assert_eq!(props.bg_color, None);
+    assert_eq!(props.text_color, None);
+}
+
+#[test]
+fn style_macro_substitutes_parent_references_elsewhere_in_nested_selectors() {
+    let sheet = style! {
+        .button {
+            .theme >> & {
+                bg_color: blue;
+            }
+        }
+    };
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button"))
+            .with_ancestors([ClassList::from("section"), ClassList::from("theme")]),
+    );
+    assert_eq!(props.bg_color, Some(Color::BLUE));
+
+    let props = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button")).with_ancestors([ClassList::from("section")]),
+    );
+    assert_eq!(props.bg_color, None);
+}
+
+#[test]
+fn style_macro_supports_nested_relative_combinators() {
+    let sheet = style! {
+        .panel {
+            > .button {
+                bg_color: red;
+            }
+
+            >> .label {
+                text_color: blue;
+            }
+        }
+
+        .label {
+            + .input {
+                --adjacent: yes;
+            }
+
+            ~ .help {
+                --subsequent: yes;
+            }
+        }
+    };
+
+    let button = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button")).with_ancestors([ClassList::from("panel")]),
+    );
+    assert_eq!(button.bg_color, Some(Color::RED));
+
+    let label = sheet.matched_props(
+        &MatchContext::new(ClassList::from("label"))
+            .with_ancestors([ClassList::from("section"), ClassList::from("panel")]),
+    );
+    assert_eq!(label.text_color, Some(Color::BLUE));
+
+    let input = sheet.matched_props(
+        &MatchContext::new(ClassList::from("input"))
+            .with_previous_siblings([ClassList::from("label")]),
+    );
+    assert_eq!(input.custom("--adjacent"), Some("yes"));
+
+    let help = sheet.matched_props(
+        &MatchContext::new(ClassList::from("help"))
+            .with_previous_siblings([ClassList::from("spacer"), ClassList::from("label")]),
+    );
+    assert_eq!(help.custom("--subsequent"), Some("yes"));
+}
+
+#[test]
+fn nested_selector_lists_expand_and_preserve_cascade_behavior() {
+    let sheet = style! {
+        .panel, .dialog {
+            bg_color: red;
+
+            .title, .subtitle {
+                text_color: blue;
+            }
+
+            &.selected {
+                bg_color: blue;
+            }
+        }
+
+        .dialog.selected {
+            bg_color: red;
+        }
+    };
+
+    let title = sheet.matched_props(
+        &MatchContext::new(ClassList::from("subtitle")).with_ancestors([ClassList::from("dialog")]),
+    );
+    assert_eq!(title.text_color, Some(Color::BLUE));
+
+    let selected = sheet.matched_props(&MatchContext::new(ClassList::from("dialog selected")));
+    assert_eq!(selected.bg_color, Some(Color::RED));
+}
+
+#[test]
+fn declarations_after_nested_rules_stay_on_the_parent_rule() {
+    let sheet = style! {
+        .panel {
+            bg_color: red;
+
+            .child {
+                bg_color: blue;
+            }
+
+            text_color: blue;
+        }
+    };
+
+    let panel = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
+    assert_eq!(panel.bg_color, Some(Color::RED));
+    assert_eq!(panel.text_color, Some(Color::BLUE));
+}

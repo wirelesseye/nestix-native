@@ -52,6 +52,7 @@ impl Parse for StyleItemInput {
 struct StyleRuleInput {
     selector: SelectorInput,
     props: Vec<StylePropInput>,
+    nested_rules: Vec<StyleRuleInput>,
 }
 
 impl Parse for StyleRuleInput {
@@ -62,18 +63,29 @@ impl Parse for StyleRuleInput {
         braced!(content in input);
 
         let mut props = Vec::new();
+        let mut nested_rules = Vec::new();
         while !content.is_empty() {
-            props.push(content.parse()?);
+            if content.peek(Ident) || content.peek(Token![-]) {
+                props.push(content.parse()?);
+            } else {
+                nested_rules.push(content.parse()?);
+            }
         }
 
-        Ok(Self { selector, props })
+        Ok(Self {
+            selector,
+            props,
+            nested_rules,
+        })
     }
 }
 
+#[derive(Clone)]
 struct SelectorInput {
     selectors: Vec<SelectorAst>,
 }
 
+#[derive(Clone)]
 enum SelectorAst {
     Class(String),
     Not(SelectorInput),
@@ -85,6 +97,13 @@ enum SelectorAst {
     Descendant(Box<SelectorAst>, Box<SelectorAst>),
     AdjacentSibling(Box<SelectorAst>, Box<SelectorAst>),
     SubsequentSibling(Box<SelectorAst>, Box<SelectorAst>),
+    Parent(ParentSelectorInput),
+}
+
+#[derive(Clone, Copy)]
+enum ParentSelectorInput {
+    Explicit(Span),
+    Relative(Span),
 }
 
 impl Parse for SelectorInput {
@@ -106,7 +125,11 @@ impl Parse for SelectorInput {
 }
 
 fn parse_selector_chain(input: ParseStream<'_>) -> Result<SelectorAst> {
-    let mut selector = parse_compound_selector(input)?;
+    let mut selector = if input.peek(Token![>]) || input.peek(Token![+]) || input.peek(Token![~]) {
+        SelectorAst::Parent(ParentSelectorInput::Relative(input.span()))
+    } else {
+        parse_compound_selector(input)?
+    };
 
     loop {
         let next_selector = if input.peek(Token![>]) {
@@ -145,6 +168,17 @@ fn parse_compound_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
             selectors.push(SelectorAst::Class(parse_class(input)?));
         } else if input.peek(Token![:]) {
             selectors.push(parse_pseudo_selector(input)?);
+        } else if input.peek(Token![&]) {
+            let parent: Token![&] = input.parse()?;
+            if input.peek(Token![-]) {
+                return Err(Error::new(
+                    parent.span,
+                    "SCSS parent-selector interpolation such as `&-suffix` is not supported",
+                ));
+            }
+            selectors.push(SelectorAst::Parent(ParentSelectorInput::Explicit(
+                parent.span,
+            )));
         } else {
             break;
         }
@@ -385,16 +419,146 @@ fn expand_item(item: StyleItemInput) -> Result<TokenStream2> {
 
     match item {
         StyleItemInput::Rule(rule) => {
-            let rule = expand_rule(rule)?;
+            let rules = flatten_rule(rule, None)?
+                .into_iter()
+                .map(expand_rule)
+                .collect::<Result<Vec<_>>>()?;
             Ok(quote! {
                 __nestix_style_sheet.extend(&#nestix_native_path::StyleSheet::new(::std::vec![
-                    #rule
+                    #(#rules),*
                 ]));
             })
         }
         StyleItemInput::Inserted(style_sheet) => Ok(quote! {
             __nestix_style_sheet.extend(&(#style_sheet));
         }),
+    }
+}
+
+fn flatten_rule(
+    rule: StyleRuleInput,
+    parent: Option<&SelectorInput>,
+) -> Result<Vec<StyleRuleInput>> {
+    let selector = resolve_nested_selector(rule.selector, parent)?;
+    let mut flattened = vec![StyleRuleInput {
+        selector: selector.clone(),
+        props: rule.props,
+        nested_rules: Vec::new(),
+    }];
+
+    for nested_rule in rule.nested_rules {
+        flattened.extend(flatten_rule(nested_rule, Some(&selector))?);
+    }
+
+    Ok(flattened)
+}
+
+fn resolve_nested_selector(
+    selector: SelectorInput,
+    parent: Option<&SelectorInput>,
+) -> Result<SelectorInput> {
+    let Some(parent) = parent else {
+        if let Some(parent_selector) = selector.parent_selector() {
+            return Err(parent_selector.top_level_error());
+        }
+        return Ok(selector);
+    };
+
+    let mut selectors = Vec::new();
+    for parent_selector in &parent.selectors {
+        for nested_selector in &selector.selectors {
+            selectors.push(if nested_selector.contains_parent() {
+                nested_selector.replace_parent(parent_selector)
+            } else {
+                SelectorAst::Descendant(
+                    Box::new(parent_selector.clone()),
+                    Box::new(nested_selector.clone()),
+                )
+            });
+        }
+    }
+
+    Ok(SelectorInput { selectors })
+}
+
+impl SelectorInput {
+    fn parent_selector(&self) -> Option<ParentSelectorInput> {
+        self.selectors.iter().find_map(SelectorAst::parent_selector)
+    }
+}
+
+impl SelectorAst {
+    fn parent_selector(&self) -> Option<ParentSelectorInput> {
+        match self {
+            Self::Parent(parent) => Some(*parent),
+            Self::Not(selector) => selector.parent_selector(),
+            Self::All(selectors) => selectors.iter().find_map(Self::parent_selector),
+            Self::Child(left, right)
+            | Self::Descendant(left, right)
+            | Self::AdjacentSibling(left, right)
+            | Self::SubsequentSibling(left, right) => {
+                left.parent_selector().or_else(|| right.parent_selector())
+            }
+            Self::Class(_) | Self::FirstChild | Self::LastChild | Self::NthChild { .. } => None,
+        }
+    }
+
+    fn contains_parent(&self) -> bool {
+        self.parent_selector().is_some()
+    }
+
+    fn replace_parent(&self, parent: &Self) -> Self {
+        match self {
+            Self::Parent(_) => parent.clone(),
+            Self::Class(class) => Self::Class(class.clone()),
+            Self::Not(selector) => Self::Not(SelectorInput {
+                selectors: selector
+                    .selectors
+                    .iter()
+                    .map(|selector| selector.replace_parent(parent))
+                    .collect(),
+            }),
+            Self::FirstChild => Self::FirstChild,
+            Self::LastChild => Self::LastChild,
+            Self::NthChild { a, b } => Self::NthChild { a: *a, b: *b },
+            Self::All(selectors) => Self::All(
+                selectors
+                    .iter()
+                    .map(|selector| selector.replace_parent(parent))
+                    .collect(),
+            ),
+            Self::Child(left, right) => Self::Child(
+                Box::new(left.replace_parent(parent)),
+                Box::new(right.replace_parent(parent)),
+            ),
+            Self::Descendant(left, right) => Self::Descendant(
+                Box::new(left.replace_parent(parent)),
+                Box::new(right.replace_parent(parent)),
+            ),
+            Self::AdjacentSibling(left, right) => Self::AdjacentSibling(
+                Box::new(left.replace_parent(parent)),
+                Box::new(right.replace_parent(parent)),
+            ),
+            Self::SubsequentSibling(left, right) => Self::SubsequentSibling(
+                Box::new(left.replace_parent(parent)),
+                Box::new(right.replace_parent(parent)),
+            ),
+        }
+    }
+}
+
+impl ParentSelectorInput {
+    fn top_level_error(self) -> Error {
+        match self {
+            Self::Explicit(span) => Error::new(
+                span,
+                "the `&` parent selector is only allowed inside a nested style rule",
+            ),
+            Self::Relative(span) => Error::new(
+                span,
+                "a leading selector combinator is only allowed inside a nested style rule",
+            ),
+        }
     }
 }
 
@@ -975,14 +1139,27 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
                 }
             }
         }
+        SelectorAst::Parent(_) => {
+            unreachable!("parent selectors must be resolved before macro expansion")
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        SelectorAst, SelectorInput, StyleValueInput, expand_font_family, parse_numeric_font_weight,
+        SelectorAst, SelectorInput, StyleItemInput, StyleSheetInput, StyleValueInput,
+        expand_font_family, flatten_rule, parse_numeric_font_weight,
     };
+
+    fn parse_rule(source: &str) -> super::StyleRuleInput {
+        let mut input = syn::parse_str::<StyleSheetInput>(source).unwrap();
+        assert_eq!(input.items.len(), 1);
+        match input.items.pop().unwrap() {
+            StyleItemInput::Rule(rule) => rule,
+            StyleItemInput::Inserted(_) => panic!("expected a style rule"),
+        }
+    }
 
     #[test]
     fn font_family_with_spaces_requires_double_quotes() {
@@ -1045,5 +1222,78 @@ mod tests {
                 "unexpected error for {selector}: {error}"
             );
         }
+    }
+
+    #[test]
+    fn nested_selector_lists_expand_as_a_cartesian_product() {
+        let rules = flatten_rule(
+            parse_rule(".panel, .dialog { .title, .subtitle { bg_color: blue; } }"),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(rules.len(), 2);
+        assert_eq!(rules[0].selector.selectors.len(), 2);
+        assert_eq!(rules[1].selector.selectors.len(), 4);
+        assert!(
+            rules[1]
+                .selector
+                .selectors
+                .iter()
+                .all(|selector| matches!(selector, SelectorAst::Descendant(_, _)))
+        );
+    }
+
+    #[test]
+    fn nested_parent_references_and_relative_combinators_are_resolved() {
+        let rules = flatten_rule(
+            parse_rule(".panel { &.selected { > .button { + .icon { bg_color: blue; } } } }"),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(rules.len(), 4);
+        assert!(matches!(
+            &rules[1].selector.selectors[0],
+            SelectorAst::All(_)
+        ));
+        assert!(matches!(
+            &rules[2].selector.selectors[0],
+            SelectorAst::Child(_, _)
+        ));
+        assert!(matches!(
+            &rules[3].selector.selectors[0],
+            SelectorAst::AdjacentSibling(_, _)
+        ));
+        assert!(
+            rules
+                .iter()
+                .all(|rule| rule.selector.parent_selector().is_none())
+        );
+    }
+
+    #[test]
+    fn top_level_parent_references_and_relative_combinators_are_rejected() {
+        for (source, expected) in [
+            ("&.selected { bg_color: blue; }", "parent selector"),
+            (
+                "> .button { bg_color: blue; }",
+                "leading selector combinator",
+            ),
+        ] {
+            let error = flatten_rule(parse_rule(source), None).err().unwrap();
+            assert!(
+                error.to_string().contains(expected),
+                "unexpected error for {source}: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn parent_selector_interpolation_is_rejected() {
+        let error = syn::parse_str::<StyleSheetInput>(".panel { &-selected { bg_color: blue; } }")
+            .err()
+            .unwrap();
+        assert!(error.to_string().contains("interpolation"));
     }
 }

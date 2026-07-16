@@ -88,6 +88,40 @@ use proc_macro::TokenStream;
 ///     $(base)
 /// };
 /// ```
+///
+/// Rules may be nested. A plain nested selector is a descendant of its parent,
+/// `&` refers to the parent selector, and a leading combinator relates the
+/// nested selector directly to its parent. Nesting is recursive, and
+/// comma-separated parent and child selectors are expanded as a Cartesian
+/// product.
+///
+/// ```rust,ignore
+/// # use nestix_native_core::*;
+/// let styles = style! {
+///     .panel, .dialog {
+///         padding: 12px;
+///
+///         &.selected {
+///             bg_color: blue;
+///         }
+///
+///         > .title {
+///             font_weight: bold;
+///         }
+///
+///         .actions {
+///             > .button {
+///                 margin_left: 8px;
+///             }
+///         }
+///     }
+/// };
+/// ```
+///
+/// Nested selectors support `&`, implicit descendants, and leading `>`,
+/// `>>`, `+`, and `~` combinators. Because Rust token streams do not preserve
+/// whitespace, use `>>` when an explicit descendant combinator is needed
+/// inside a selector.
 #[proc_macro]
 pub fn style(input: TokenStream) -> TokenStream {
     style::style(input)
