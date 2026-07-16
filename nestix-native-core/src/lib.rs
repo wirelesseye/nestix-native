@@ -5,6 +5,7 @@ pub mod color;
 pub mod container;
 pub mod contexts;
 pub mod dimension;
+pub mod drag_drop;
 pub mod file_picker;
 pub mod flex_view;
 pub mod font;
@@ -31,6 +32,7 @@ pub use color::*;
 pub use container::*;
 pub use contexts::*;
 pub use dimension::*;
+pub use drag_drop::*;
 pub use file_picker::*;
 pub use flex_view::*;
 pub use font::*;
@@ -96,6 +98,16 @@ pub trait Backend {
 
     fn create_flex_view(&self, _props: FlexViewProps) -> Option<Element> {
         None
+    }
+
+    /// The default preserves the wrapped visual target on unsupported backends.
+    fn create_drag_source(&self, props: DragSourceProps) -> Option<Element> {
+        Some(props.children.get())
+    }
+
+    /// The default preserves the wrapped visual target on unsupported backends.
+    fn create_drop_target(&self, props: DropTargetProps) -> Option<Element> {
+        Some(props.children.get())
     }
 
     fn create_file_picker(&self, _props: FilePickerProps) -> Option<Element> {

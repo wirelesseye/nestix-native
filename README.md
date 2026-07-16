@@ -47,10 +47,12 @@ The workspace includes these examples:
   and simple layout.
 - `examples/context-menu` demonstrates context menu commands, checkboxes, radio
   items, submenus, and programmatic presentation.
+- `examples/drag-drop` demonstrates a drag source and lazy drop
+  target for files, encoded images, and UTF-8 text.
 - `examples/file-picker` demonstrates open, multi-file, save, and folder picker
   requests through a window-bound controller.
 - `examples/menu-bar` demonstrates application-wide and window-specific menu
-  bars through the backend-neutral API.
+  bars.
 - `examples/tabs` shows tabs, editable input, dynamic lists, conditional
   rendering, and reactive styles.
 
