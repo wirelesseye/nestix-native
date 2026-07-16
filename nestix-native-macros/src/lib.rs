@@ -29,6 +29,12 @@ use proc_macro::TokenStream;
 /// };
 /// ```
 ///
+/// Selectors support `:not()`, `:first-child`, `:last-child`, and CSS-style
+/// `:nth-child(An+B)` expressions such as `2`, `odd`, `even`, `2n+1`, and
+/// `-n+3`. Child positions are one-based and are evaluated among logical
+/// style-participating siblings; transparent component wrappers do not add a
+/// position.
+///
 /// Dimension literals must be `auto` or a pixel value such as `30px`.
 /// Bare numeric dimensions such as `margin: 30;` are rejected. Built-in values
 /// are parsed as their Rust types, while custom properties must use a `--`

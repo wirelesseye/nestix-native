@@ -77,6 +77,9 @@ struct SelectorInput {
 enum SelectorAst {
     Class(String),
     Not(SelectorInput),
+    FirstChild,
+    LastChild,
+    NthChild { a: isize, b: isize },
     All(Vec<SelectorAst>),
     Child(Box<SelectorAst>, Box<SelectorAst>),
     Descendant(Box<SelectorAst>, Box<SelectorAst>),
@@ -162,18 +165,89 @@ fn parse_class(input: ParseStream<'_>) -> Result<String> {
 
 fn parse_pseudo_selector(input: ParseStream<'_>) -> Result<SelectorAst> {
     input.parse::<Token![:]>()?;
-    let name: Ident = input.parse()?;
-
-    if name != "not" {
-        return Err(Error::new_spanned(
-            name,
-            "unsupported pseudo selector; expected `not`",
-        ));
+    let first_name: Ident = input.parse()?;
+    let mut name = first_name.to_string();
+    if input.peek(Token![-]) {
+        input.parse::<Token![-]>()?;
+        let second_name: Ident = input.parse()?;
+        name.push('-');
+        name.push_str(&second_name.to_string());
     }
 
-    let content;
-    parenthesized!(content in input);
-    Ok(SelectorAst::Not(content.parse()?))
+    match name.as_str() {
+        "not" => {
+            let content;
+            parenthesized!(content in input);
+            Ok(SelectorAst::Not(content.parse()?))
+        }
+        "first-child" => Ok(SelectorAst::FirstChild),
+        "last-child" => Ok(SelectorAst::LastChild),
+        "nth-child" => {
+            let content;
+            parenthesized!(content in input);
+            let (a, b) = parse_nth_child_formula(&content)?;
+            Ok(SelectorAst::NthChild { a, b })
+        }
+        _ => Err(Error::new_spanned(
+            first_name,
+            "unsupported pseudo selector; expected `not`, `first-child`, `last-child`, or `nth-child`",
+        )),
+    }
+}
+
+fn parse_nth_child_formula(input: ParseStream<'_>) -> Result<(isize, isize)> {
+    if input.is_empty() {
+        return Err(input.error("expected an `An+B` expression in `nth-child()`"));
+    }
+
+    let tokens: TokenStream2 = input.parse()?;
+    let formula = tokens
+        .to_string()
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect::<String>()
+        .to_ascii_lowercase();
+
+    let invalid = || {
+        Error::new_spanned(
+            tokens.clone(),
+            "invalid `nth-child()` expression; expected an integer, `odd`, `even`, or `An+B`",
+        )
+    };
+
+    match formula.as_str() {
+        "odd" => return Ok((2, 1)),
+        "even" => return Ok((2, 0)),
+        _ => {}
+    }
+
+    if let Some(n_index) = formula.find('n') {
+        if formula[n_index + 1..].contains('n') {
+            return Err(invalid());
+        }
+
+        let coefficient = match &formula[..n_index] {
+            "" | "+" => 1,
+            "-" => -1,
+            value => value.parse::<isize>().map_err(|_| invalid())?,
+        };
+        let remainder = &formula[n_index + 1..];
+        let offset = if remainder.is_empty() {
+            0
+        } else if let Some(value) = remainder.strip_prefix('+') {
+            value.parse::<isize>().map_err(|_| invalid())?
+        } else if remainder.starts_with('-') {
+            remainder.parse::<isize>().map_err(|_| invalid())?
+        } else {
+            return Err(invalid());
+        };
+        Ok((coefficient, offset))
+    } else {
+        formula
+            .parse::<isize>()
+            .map(|position| (0, position))
+            .map_err(|_| invalid())
+    }
 }
 
 struct StylePropInput {
@@ -844,6 +918,15 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
                 #nestix_native_path::StyleSelector::Not(::std::boxed::Box::new(#selector))
             }
         }
+        SelectorAst::FirstChild => {
+            quote! { #nestix_native_path::StyleSelector::FirstChild }
+        }
+        SelectorAst::LastChild => {
+            quote! { #nestix_native_path::StyleSelector::LastChild }
+        }
+        SelectorAst::NthChild { a, b } => {
+            quote! { #nestix_native_path::StyleSelector::NthChild { a: #a, b: #b } }
+        }
         SelectorAst::All(selectors) => {
             let selectors = selectors.into_iter().map(expand_selector_ast);
             quote! {
@@ -897,7 +980,9 @@ fn expand_selector_ast(selector: SelectorAst) -> TokenStream2 {
 
 #[cfg(test)]
 mod tests {
-    use super::{StyleValueInput, expand_font_family, parse_numeric_font_weight};
+    use super::{
+        SelectorAst, SelectorInput, StyleValueInput, expand_font_family, parse_numeric_font_weight,
+    };
 
     #[test]
     fn font_family_with_spaces_requires_double_quotes() {
@@ -930,6 +1015,35 @@ mod tests {
         for value in ["0", "1001"] {
             let error = parse_numeric_font_weight(value).unwrap_err();
             assert!(error.to_string().contains("between 1 and 1000"));
+        }
+    }
+
+    #[test]
+    fn nth_child_formulas_are_normalized() {
+        for (selector, expected) in [
+            (":nth-child(odd)", (2, 1)),
+            (":nth-child(even)", (2, 0)),
+            (":nth-child(4)", (0, 4)),
+            (":nth-child(n)", (1, 0)),
+            (":nth-child(2n + 1)", (2, 1)),
+            (":nth-child(-n + 3)", (-1, 3)),
+        ] {
+            let parsed = syn::parse_str::<SelectorInput>(selector).unwrap();
+            assert!(matches!(
+                parsed.selectors.as_slice(),
+                [SelectorAst::NthChild { a, b }] if (*a, *b) == expected
+            ));
+        }
+    }
+
+    #[test]
+    fn nth_child_rejects_invalid_formulas() {
+        for selector in [":nth-child()", ":nth-child(2n+)", ":nth-child(nonsense)"] {
+            let error = syn::parse_str::<SelectorInput>(selector).err().unwrap();
+            assert!(
+                error.to_string().contains("nth-child"),
+                "unexpected error for {selector}: {error}"
+            );
         }
     }
 }

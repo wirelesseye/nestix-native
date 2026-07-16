@@ -432,6 +432,112 @@ fn style_macro_supports_not_selectors() {
 }
 
 #[test]
+fn style_macro_supports_first_and_last_child_selectors() {
+    let sheet = style! {
+        .item:first-child {
+            --first: yes;
+        }
+        .item:last-child {
+            --last: yes;
+        }
+    };
+
+    let first =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(1, 3));
+    assert_eq!(first.custom("--first"), Some("yes"));
+    assert_eq!(first.custom("--last"), None);
+
+    let middle =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(2, 3));
+    assert_eq!(middle.custom("--first"), None);
+    assert_eq!(middle.custom("--last"), None);
+
+    let last =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(3, 3));
+    assert_eq!(last.custom("--first"), None);
+    assert_eq!(last.custom("--last"), Some("yes"));
+
+    let unparented = sheet.matched_props(&MatchContext::new(ClassList::from("item")));
+    assert_eq!(unparented.custom("--first"), None);
+    assert_eq!(unparented.custom("--last"), None);
+}
+
+#[test]
+fn style_macro_supports_full_nth_child_formulas() {
+    let sheet = style! {
+        .item:nth-child(2) { --exact: yes; }
+        .item:nth-child(odd) { --odd: yes; }
+        .item:nth-child(even) { --even: yes; }
+        .item:nth-child(3n) { --multiple: yes; }
+        .item:nth-child(2n + 1) { --spaced: yes; }
+        .item:nth-child(-n + 3) { --first_three: yes; }
+        .item:nth-child(0) { --zero: yes; }
+    };
+
+    let second =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(2, 8));
+    assert_eq!(second.custom("--exact"), Some("yes"));
+    assert_eq!(second.custom("--odd"), None);
+    assert_eq!(second.custom("--even"), Some("yes"));
+    assert_eq!(second.custom("--first_three"), Some("yes"));
+    assert_eq!(second.custom("--zero"), None);
+
+    let third =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(3, 8));
+    assert_eq!(third.custom("--odd"), Some("yes"));
+    assert_eq!(third.custom("--multiple"), Some("yes"));
+    assert_eq!(third.custom("--spaced"), Some("yes"));
+    assert_eq!(third.custom("--first_three"), Some("yes"));
+
+    let fifth =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(5, 8));
+    assert_eq!(fifth.custom("--spaced"), Some("yes"));
+    assert_eq!(fifth.custom("--first_three"), None);
+}
+
+#[test]
+fn structural_pseudo_classes_work_inside_combinators() {
+    let sheet = style! {
+        .panel:first-child > .button {
+            --parent_first: yes;
+        }
+        .item:first-child + .item {
+            --after_first: yes;
+        }
+    };
+
+    let child = sheet.matched_props(
+        &MatchContext::new(ClassList::from("button"))
+            .with_ancestors([ClassList::from("panel")])
+            .with_ancestor_positions([Some((1, 2))]),
+    );
+    assert_eq!(child.custom("--parent_first"), Some("yes"));
+
+    let sibling = sheet.matched_props(
+        &MatchContext::new(ClassList::from("item"))
+            .with_previous_siblings([ClassList::from("item")])
+            .with_child_position(2, 3),
+    );
+    assert_eq!(sibling.custom("--after_first"), Some("yes"));
+}
+
+#[test]
+fn structural_pseudo_classes_contribute_class_specificity() {
+    let sheet = style! {
+        .item:first-child {
+            bg_color: red;
+        }
+        .item {
+            bg_color: blue;
+        }
+    };
+
+    let props =
+        sheet.matched_props(&MatchContext::new(ClassList::from("item")).with_child_position(1, 2));
+    assert_eq!(props.bg_color, Some(Color::RED));
+}
+
+#[test]
 fn style_macro_supports_child_selectors() {
     let sheet = style! {
         .panel > .button {
