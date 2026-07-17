@@ -9,7 +9,7 @@ use nestix::{Element, PropValue, Shared, closure, component, components::Context
 use nestix_native_core::{Color, RootProps, StyleScope};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
-    System::Com::{COINIT_APARTMENTTHREADED, CoInitializeEx},
+    System::Ole::OleInitialize,
     UI::{
         HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
         WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
@@ -33,9 +33,8 @@ pub(crate) fn ensure_com_apartment() -> Result<(), String> {
     COM_RESULT.with(|result| {
         result
             .get_or_init(|| {
-                let hr = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED) };
-                hr.ok().map_err(|_| {
-                    format!("failed to initialize the Win32 UI COM apartment ({hr:?})")
+                unsafe { OleInitialize(None) }.map_err(|error| {
+                    format!("failed to initialize the Win32 UI OLE apartment ({error})")
                 })
             })
             .clone()
@@ -146,8 +145,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     let app_state = APP_STATE.with(|app| app.get_or_init(|| Rc::new(AppState::new(props))).clone());
 
-    // Common item dialogs require an STA. Keep this apartment initialized for
-    // the lifetime of the UI thread (which owns the thread-local app state).
+    // OLE drag/drop and common item dialogs share this UI-thread STA.
     let _ = ensure_com_apartment();
 
     unsafe {

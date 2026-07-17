@@ -395,6 +395,7 @@ dependencies = [
  "nestix-native-core",
  "taffy",
  "windows",
+ "windows-core",
 ]
 
 [[package]]

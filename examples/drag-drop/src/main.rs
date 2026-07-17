@@ -89,16 +89,10 @@ fn DragDropExample() -> Element {
 
 fn read_preferred_drop(event: DropEvent, status: nestix::State<String>) {
     let available = event.data.available_types();
-    if available.contains(DragDataTypes::TEXT) {
-        event
-            .data
-            .read_text(callback!([status] |result: Result<String, DragReadError>| {
-                status.set(match result {
-                    Ok(text) => format!("Dropped text: {text}"),
-                    Err(error) => format!("Could not read text: {error}"),
-                });
-            }));
-    } else if available.contains(DragDataTypes::FILES) {
+    // Shell file drags may also advertise an auxiliary text representation.
+    // Prefer CF_HDROP so filesystem entries remain files rather than being
+    // interpreted as text containing their paths.
+    if available.contains(DragDataTypes::FILES) {
         event.data.read_files(
             callback!([status] |result: Result<Vec<std::path::PathBuf>, DragReadError>| {
                 status.set(match result {
@@ -107,6 +101,15 @@ fn read_preferred_drop(event: DropEvent, status: nestix::State<String>) {
                 });
             }),
         );
+    } else if available.contains(DragDataTypes::TEXT) {
+        event
+            .data
+            .read_text(callback!([status] |result: Result<String, DragReadError>| {
+                status.set(match result {
+                    Ok(text) => format!("Dropped text: {text}"),
+                    Err(error) => format!("Could not read text: {error}"),
+                });
+            }));
     } else if available.contains(DragDataTypes::IMAGE) {
         event.data.read_image(
             callback!([status] |result: Result<DragImage, DragReadError>| {
