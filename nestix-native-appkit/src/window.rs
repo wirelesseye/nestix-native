@@ -5,14 +5,17 @@ use nestix::{
     components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleScope, TreeContext, WindowProps,
+    StyleScope, TitleBarMode, TreeContext, WindowProps,
     dpi::{self, LogicalSize},
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject,
 };
-use objc2_app_kit::{NSMenu, NSToolbar, NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask};
+use objc2_app_kit::{
+    NSMenu, NSToolbar, NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask,
+    NSWindowTitleVisibility,
+};
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
@@ -59,6 +62,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         | NSWindowStyleMask::Resizable
         | NSWindowStyleMask::Titled;
     ns_window.setStyleMask(style_mask);
+    apply_title_bar_mode(&ns_window, props.title_bar_mode.get());
     ns_window.makeKeyAndOrderFront(None);
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
 
@@ -79,6 +83,13 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         [ns_window, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             ns_window.setTitle(&ns_string);
+        }
+    );
+
+    scoped_effect!(
+        element,
+        [ns_window, props.title_bar_mode] || {
+            apply_title_bar_mode(&ns_window, title_bar_mode.get());
         }
     );
 
@@ -126,6 +137,31 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             }
         }
     }
+}
+
+fn apply_title_bar_mode(window: &NSWindow, mode: TitleBarMode) {
+    let mut style_mask = window.styleMask();
+
+    match mode {
+        TitleBarMode::System => {
+            style_mask.insert(NSWindowStyleMask::Titled);
+            style_mask.remove(NSWindowStyleMask::FullSizeContentView);
+            window.setTitleVisibility(NSWindowTitleVisibility::Visible);
+            window.setTitlebarAppearsTransparent(false);
+        }
+        TitleBarMode::Hidden => {
+            style_mask.remove(NSWindowStyleMask::Titled | NSWindowStyleMask::FullSizeContentView);
+            window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
+            window.setTitlebarAppearsTransparent(false);
+        }
+        TitleBarMode::Overlay => {
+            style_mask.insert(NSWindowStyleMask::Titled | NSWindowStyleMask::FullSizeContentView);
+            window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
+            window.setTitlebarAppearsTransparent(true);
+        }
+    }
+
+    window.setStyleMask(style_mask);
 }
 
 struct WindowState {
