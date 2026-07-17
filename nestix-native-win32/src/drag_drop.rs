@@ -5,7 +5,10 @@ use std::{
     mem::{ManuallyDrop, size_of},
     path::PathBuf,
     rc::Rc,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicU64, Ordering},
+    },
 };
 
 use nestix::{Element, PropValue, Shared, callback, closure, component, layout, scoped_effect};
@@ -57,6 +60,68 @@ const SOURCE_SUBCLASS_ID: usize = 0x4e65737444726167;
 const FD_ATTRIBUTES: u32 = 0x0000_0004;
 const FD_FILESIZE: u32 = 0x0000_0040;
 const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
+const TEMP_FILE_GRACE_PERIOD: std::time::Duration = std::time::Duration::from_secs(300);
+static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(1);
+
+fn schedule_temp_cleanup(path: PathBuf) {
+    std::thread::spawn(move || {
+        // Shell targets can defer opening CF_HDROP entries until after
+        // DoDragDrop returns, so retain this drag's isolated backing files.
+        std::thread::sleep(TEMP_FILE_GRACE_PERIOD);
+        let _ = std::fs::remove_dir_all(path);
+    });
+}
+
+fn materialize_shell_files(
+    content: DragContent,
+) -> Result<(DragContent, Option<PathBuf>), DragSourceError> {
+    if content.image().is_none() && content.text().is_none() {
+        return Ok((content, None));
+    }
+    let id = NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed);
+    let directory = std::env::temp_dir().join(format!("nestix-drag-{}-{id}", std::process::id()));
+    std::fs::create_dir_all(&directory).map_err(|error| {
+        DragSourceError::Backend(format!(
+            "failed to create drag temporary directory: {error}"
+        ))
+    })?;
+    let result = (|| {
+        let mut paths = content.files().unwrap_or_default().to_vec();
+        let mut image_name = None;
+        if let Some(image) = content.image() {
+            let name = std::path::Path::new(&image.suggested_name)
+                .file_name()
+                .filter(|name| !name.is_empty())
+                .unwrap_or_else(|| std::ffi::OsStr::new("image.bin"));
+            let path = directory.join(name);
+            std::fs::write(&path, &image.bytes).map_err(|error| {
+                DragSourceError::Backend(format!("failed to create temporary image file: {error}"))
+            })?;
+            image_name = path.file_name().map(|name| name.to_owned());
+            paths.push(path);
+        }
+        if let Some(text) = content.text() {
+            let name = if image_name.as_deref() == Some(std::ffi::OsStr::new("nestix.txt")) {
+                "nestix-text.txt"
+            } else {
+                "nestix.txt"
+            };
+            let path = directory.join(name);
+            std::fs::write(&path, text.as_bytes()).map_err(|error| {
+                DragSourceError::Backend(format!("failed to create temporary text file: {error}"))
+            })?;
+            paths.push(path);
+        }
+        Ok(content.clone().with_files(paths))
+    })();
+    match result {
+        Ok(content) => Ok((content, Some(directory))),
+        Err(error) => {
+            let _ = std::fs::remove_dir_all(&directory);
+            Err(error)
+        }
+    }
+}
 
 thread_local! {
     static TARGETS: RefCell<HashMap<*mut c_void, Vec<Rc<TargetState>>>> = RefCell::new(HashMap::new());
@@ -836,6 +901,15 @@ fn begin_drag(state: &SourceState) {
         }
         return;
     }
+    let (content, temporary_directory) = match materialize_shell_files(content) {
+        Ok(value) => value,
+        Err(error) => {
+            if let Some(f) = state.on_error.get() {
+                f(error);
+            }
+            return;
+        }
+    };
     if let Some(f) = state.on_started.get() {
         f()
     }
@@ -850,6 +924,9 @@ fn begin_drag(state: &SourceState) {
             &mut effect,
         )
     };
+    if let Some(directory) = temporary_directory {
+        schedule_temp_cleanup(directory);
+    }
     if hr == DRAGDROP_S_DROP {
         if let Some(f) = state.on_completed.get() {
             f(operation(effect)
@@ -987,5 +1064,28 @@ mod tests {
     fn hdrop_is_double_nul_terminated() {
         let bytes = hdrop_bytes(&[PathBuf::from(r"C:\a.txt")]);
         assert_eq!(&bytes[bytes.len() - 4..], &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn shell_file_materialization_combines_all_representations() {
+        let original = PathBuf::from(r"C:\app.exe");
+        let (content, directory) = materialize_shell_files(
+            DragContent::new()
+                .with_files([original.clone()])
+                .with_image(DragImage::new(
+                    [1, 2, 3].as_slice(),
+                    "image/jpeg",
+                    "sample.jpg",
+                ))
+                .with_text("hello"),
+        )
+        .unwrap();
+        let directory = directory.unwrap();
+        let files = content.files().unwrap();
+        assert_eq!(files.len(), 3);
+        assert_eq!(files[0], original);
+        assert_eq!(std::fs::read(&files[1]).unwrap(), [1, 2, 3]);
+        assert_eq!(std::fs::read_to_string(&files[2]).unwrap(), "hello");
+        std::fs::remove_dir_all(directory).unwrap();
     }
 }
