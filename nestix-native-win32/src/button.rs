@@ -21,6 +21,7 @@ use windows::{
             Controls::{
                 DRAWITEMSTRUCT, ODS_DISABLED, ODS_FOCUS, ODS_SELECTED, SetWindowTheme, WC_BUTTON,
             },
+            Input::KeyboardAndMouse::EnableWindow,
             WindowsAndMessaging::{
                 BN_CLICKED, BS_OWNERDRAW, BS_PUSHBUTTON, BS_TYPEMASK, CreateWindowExW,
                 DestroyWindow, GWL_STYLE, GetWindowLongPtrW, SWP_FRAMECHANGED, SWP_NOMOVE,
@@ -109,6 +110,14 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 _ => (),
             }
         }),
+    );
+
+    scoped_effect!(
+        element,
+        [props.disabled]
+            || unsafe {
+                let _ = EnableWindow(hwnd, !disabled.get());
+            }
     );
 
     element.on_unmount(closure!(

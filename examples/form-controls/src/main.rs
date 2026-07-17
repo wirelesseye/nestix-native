@@ -176,6 +176,7 @@ fn FormControlsApp() -> Element {
                         ) {
                             Button(
                                 .title = "Save",
+                                .disabled = computed!([name] || name.get().trim().is_empty()),
                                 .on_click = callback!([
                                     name,
                                     newsletter,
@@ -201,6 +202,21 @@ fn FormControlsApp() -> Element {
                             )
                             Button(
                                 .title = "Reset",
+                                .disabled = computed!([
+                                    name,
+                                    newsletter,
+                                    notifications,
+                                    density,
+                                    country,
+                                    volume
+                                ] || {
+                                    name.get().is_empty()
+                                        && !newsletter.get()
+                                        && notifications.get()
+                                        && density.get() == "comfortable"
+                                        && country.get().is_none()
+                                        && volume.get() == 50.0
+                                }),
                                 .on_click = callback!([
                                     name,
                                     newsletter,
