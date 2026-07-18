@@ -212,6 +212,28 @@ impl StyleSelector {
             }
         }
     }
+
+    fn uses_structural_position(&self) -> bool {
+        match self {
+            Self::FirstChild | Self::LastChild | Self::NthChild { .. } => true,
+            Self::Not(selector) => selector.uses_structural_position(),
+            Self::All(selectors) | Self::List(selectors) => {
+                selectors.iter().any(Self::uses_structural_position)
+            }
+            Self::Child { parent, child } => {
+                parent.uses_structural_position() || child.uses_structural_position()
+            }
+            Self::Descendant {
+                ancestor,
+                descendant,
+            } => ancestor.uses_structural_position() || descendant.uses_structural_position(),
+            Self::AdjacentSibling { previous, sibling }
+            | Self::SubsequentSibling { previous, sibling } => {
+                previous.uses_structural_position() || sibling.uses_structural_position()
+            }
+            Self::Class(_) => false,
+        }
+    }
 }
 
 fn nth_child_matches(index: usize, a: isize, b: isize) -> bool {
@@ -787,6 +809,7 @@ fn matched_style_for_class_list(
     element: &Element,
     class_list: PropValue<ClassList>,
 ) -> nestix::Computed<Option<ResolvedStyle>> {
+    let placement_version = create_state(0);
     let style_sheet = style_context
         .as_ref()
         .and_then(|style_context| style_context.style_sheet.clone());
@@ -818,6 +841,10 @@ fn matched_style_for_class_list(
             class_registry,
             &structure_version,
         );
+        element.on_place({
+            let placement_version = placement_version.clone();
+            move |_| placement_version.update(|version| version + 1)
+        });
     }
 
     computed!(
@@ -826,27 +853,33 @@ fn matched_style_for_class_list(
             ancestors,
             ancestor_positions,
             class_list,
+            placement_version,
             structure_version,
             inherited_style
         ] || {
-            structure_version.get();
             let inherited_style = inherited_style.get();
             let style = if let Some(style_sheet) = &style_sheet {
+                placement_version.get();
+                let style_sheet = style_sheet.get();
+                let uses_structural_position = style_sheet.uses_structural_position();
+                if uses_structural_position {
+                    structure_version.get();
+                }
                 let mut context = MatchContext::new(class_list.get())
                     .with_ancestors(ancestors.get())
-                    .with_ancestor_positions(ancestor_positions.get())
                     .with_previous_siblings(previous_sibling_class_lists(
                         &style_element,
                         class_registry.as_ref(),
                     ));
-                if let Some((index, count)) =
-                    logical_child_position(&style_element, class_registry.as_ref())
-                {
-                    context = context.with_child_position(index, count);
+                if uses_structural_position {
+                    context = context.with_ancestor_positions(ancestor_positions.get());
+                    if let Some((index, count)) =
+                        logical_child_position(&style_element, class_registry.as_ref())
+                    {
+                        context = context.with_child_position(index, count);
+                    }
                 }
-                style_sheet
-                    .get()
-                    .matched_props_with_parent(&context, Some(&inherited_style))
+                style_sheet.matched_props_with_parent(&context, Some(&inherited_style))
             } else {
                 let mut style = ResolvedStyle::default();
                 style.inherit_unspecified(Some(&inherited_style), &HashSet::new());
@@ -880,13 +913,20 @@ fn scope_ancestors(
 
 fn scope_ancestor_positions(
     parent_positions: PropValue<Vec<Option<(usize, usize)>>>,
+    style_sheet: Option<PropValue<StyleSheet>>,
     element: &Element,
     class_registry: ClassRegistry,
     structure_version: State<usize>,
 ) -> PropValue<Vec<Option<(usize, usize)>>> {
     let element = element.clone();
     PropValue::from_signal(computed!(
-        [parent_positions, structure_version] || {
+        [parent_positions, style_sheet, structure_version] || {
+            let uses_structural_position = style_sheet
+                .as_ref()
+                .is_some_and(|style_sheet| style_sheet.get().uses_structural_position());
+            if !uses_structural_position {
+                return Vec::new();
+            }
             structure_version.get();
             let mut positions = vec![logical_child_position(&element, Some(&class_registry))];
             positions.extend(parent_positions.get());
@@ -1034,6 +1074,12 @@ pub struct StyleSheet {
 impl StyleSheet {
     pub fn new(rules: Vec<StyleRule>) -> Self {
         Self { rules }
+    }
+
+    fn uses_structural_position(&self) -> bool {
+        self.rules
+            .iter()
+            .any(|rule| rule.selector.uses_structural_position())
     }
 
     pub fn matched_props(&self, context: &MatchContext) -> ResolvedStyle {
@@ -1311,6 +1357,7 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
     ));
     let ancestor_positions = scope_ancestor_positions(
         parent_ancestor_positions,
+        style_sheet.clone(),
         element,
         class_registry.clone(),
         structure_version.clone(),
@@ -1469,6 +1516,7 @@ pub fn compute_style<T: ResolvedStyleValue>(
 mod tests {
     use super::*;
     use nestix::{Component, Fragment, FragmentProps, Layout, create_element, mount_root};
+    use std::cell::Cell;
 
     struct Empty;
 
@@ -1476,6 +1524,54 @@ mod tests {
         type Props = ();
 
         fn on_mount(_: &Element) {}
+    }
+
+    fn ancestor_position_recomputation_count(
+        selector: StyleSelector,
+    ) -> (State<usize>, Rc<Cell<usize>>) {
+        let element = create_element::<Empty>(());
+        let class_registry: ClassRegistry = Rc::new(RefCell::new(HashMap::new()));
+        let structure_version = create_state(0);
+        let positions = scope_ancestor_positions(
+            PropValue::from_plain(Vec::new()),
+            Some(PropValue::from_plain(StyleSheet::new(vec![StyleRule {
+                selector,
+                declarations: Vec::new(),
+            }]))),
+            &element,
+            class_registry,
+            structure_version.clone(),
+        );
+        let recomputations = Rc::new(Cell::new(0));
+        nestix::effect({
+            let recomputations = recomputations.clone();
+            move || {
+                positions.get();
+                recomputations.set(recomputations.get() + 1);
+            }
+        });
+        (structure_version, recomputations)
+    }
+
+    #[test]
+    fn ordinary_styles_ignore_unrelated_structure_changes() {
+        let (structure_version, recomputations) =
+            ancestor_position_recomputation_count(StyleSelector::Class("item".to_string()));
+
+        structure_version.update(|version| version + 1);
+
+        assert_eq!(recomputations.get(), 1);
+    }
+
+    #[test]
+    fn structural_styles_track_structure_changes() {
+        let (structure_version, recomputations) = ancestor_position_recomputation_count(
+            StyleSelector::Not(Box::new(StyleSelector::FirstChild)),
+        );
+
+        structure_version.update(|version| version + 1);
+
+        assert_eq!(recomputations.get(), 2);
     }
 
     #[test]
