@@ -19,7 +19,7 @@ use taffy::{NodeId, Size, Style, prelude::FromLength};
 
 use crate::{
     WindowContext,
-    contexts::{ParentContext, native_child_index},
+    contexts::{ParentContext, native_predecessor},
 };
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
@@ -77,11 +77,9 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [element, view, parent_context] | placement | {
-            if placement.index.is_some()
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(&view, Some(node_id), native_child_index(&element));
+        [element, view, parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(&view, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&view, Some(node_id));
             }
@@ -257,11 +255,15 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                         }
                         view.addTabViewItem(item);
                     })),
-                    insert_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>, index: usize| {
+                    insert_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>, predecessor: Option<*const NSObject>| {
                         let item = child.downcast_ref::<NSTabViewItem>().unwrap();
                         if view.tabViewItems().containsObject(item) {
                             view.removeTabViewItem(item);
                         }
+                        let items = view.tabViewItems();
+                        let index = predecessor
+                            .and_then(|predecessor| items.iter().position(|item| std::ptr::from_ref::<NSTabViewItem>(&*item).cast::<NSObject>() == predecessor))
+                            .map_or(0, |index| index + 1);
                         view.insertTabViewItem_atIndex(item, index as _);
                     })),
                     remove_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
@@ -389,11 +391,9 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     element.provide_handle(item.as_ref() as *const NSObject);
 
     element.on_place(closure!(
-        [element, item, parent_context] | placement | {
-            if placement.index.is_some()
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(&item, None, native_child_index(&element));
+        [element, item, parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(&item, None, native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&item, None);
             }

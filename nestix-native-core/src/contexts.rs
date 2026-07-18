@@ -14,6 +14,50 @@ mod taffy {
         node_layouts: RefCell<HashMap<NodeId, State<taffy::Layout>>>,
     }
 
+    /// Parent-local native child order and its Taffy projection.
+    pub struct ChildOrder<K> {
+        entries: Vec<(K, Option<NodeId>)>,
+    }
+
+    impl<K: Clone + Eq> ChildOrder<K> {
+        pub fn new() -> Self {
+            Self {
+                entries: Vec::new(),
+            }
+        }
+
+        pub fn place(&mut self, key: K, node: Option<NodeId>, predecessor: Option<K>) {
+            let previous_index = self.entries.iter().position(|(entry, _)| entry == &key);
+            self.entries.retain(|(entry, _)| entry != &key);
+            let index = match predecessor {
+                None => 0,
+                Some(predecessor) => self
+                    .entries
+                    .iter()
+                    .position(|(entry, _)| entry == &predecessor)
+                    .map(|index| index + 1)
+                    .unwrap_or_else(|| {
+                        previous_index
+                            .unwrap_or(self.entries.len())
+                            .min(self.entries.len())
+                    }),
+            };
+            self.entries.insert(index, (key, node));
+        }
+
+        pub fn remove(&mut self, key: K) {
+            self.entries.retain(|(entry, _)| entry != &key);
+        }
+
+        pub fn last_key(&self) -> Option<K> {
+            self.entries.last().map(|(key, _)| key.clone())
+        }
+
+        pub fn taffy_nodes(&self) -> Vec<NodeId> {
+            self.entries.iter().filter_map(|(_, node)| *node).collect()
+        }
+    }
+
     impl TreeContext {
         pub fn new() -> Self {
             Self {
@@ -50,10 +94,10 @@ mod taffy {
             self.tree.borrow_mut().add_child(parent, child).unwrap();
         }
 
-        pub fn insert_child(&self, parent: NodeId, child: NodeId, index: usize) {
+        pub fn set_children(&self, parent: NodeId, children: &[NodeId]) {
             self.tree
                 .borrow_mut()
-                .insert_child_at_index(parent, index, child)
+                .set_children(parent, children)
                 .unwrap();
         }
 
@@ -112,6 +156,31 @@ mod taffy {
             for child in children {
                 self.update_node_recursive(child);
             }
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn child_order_projects_only_layout_nodes() {
+            let context = TreeContext::new();
+            let first = context.create_node(true);
+            let second = context.create_node(true);
+            let mut order = ChildOrder::new();
+
+            order.place("menu", None, None);
+            order.place("first", Some(first), Some("menu"));
+            order.place("second", Some(second), Some("first"));
+            assert_eq!(order.taffy_nodes(), vec![first, second]);
+
+            order.place("second", Some(second), None);
+            assert_eq!(order.taffy_nodes(), vec![second, first]);
+            order.place("first", Some(first), Some("outside-parent"));
+            assert_eq!(order.taffy_nodes(), vec![second, first]);
+            order.remove("second");
+            assert_eq!(order.taffy_nodes(), vec![first]);
         }
     }
 }

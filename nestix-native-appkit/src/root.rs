@@ -1,14 +1,11 @@
 use nestix::{
-    Element, PropValue, State, closure, component, components::ContextProvider, create_state,
-    layout, scoped_effect,
+    Element, State, closure, component, components::ContextProvider, create_state, layout,
+    scoped_effect,
 };
 use nestix_native_core::{RootProps, StyleScope};
-use objc2::{
-    DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
-    runtime::ProtocolObject,
-};
-use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSApplicationDelegate, NSMenu};
-use objc2_foundation::{NSObject, NSObjectProtocol};
+use objc2::{MainThreadMarker, rc::Retained};
+use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSMenu};
+use objc2_foundation::NSObject;
 
 #[derive(Clone)]
 pub struct RootContext {
@@ -28,15 +25,8 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     ns_application.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
-    let app_delegate = AppDelegate::new(
-        mtm,
-        AppState {
-            should_terminate_after_last_window_closed: props.quit_when_all_windows_closed.clone(),
-        },
-    );
-    ns_application.setDelegate(Some(ProtocolObject::from_ref(&*app_delegate)));
-
     element.provide_handle(ns_application.as_ref() as *const NSObject);
+    element.on_unmount(closure!([ns_application] || ns_application.stop(None)));
 
     scoped_effect!(
         element,
@@ -84,33 +74,5 @@ fn replace_main_menu(application: &NSApplication, menu: Option<&NSMenu>) {
     if let Some(menu) = menu {
         menu.update();
         application.setMainMenu(Some(menu));
-    }
-}
-
-struct AppState {
-    should_terminate_after_last_window_closed: PropValue<bool>,
-}
-
-define_class!(
-    #[unsafe(super(NSObject))]
-    #[thread_kind = MainThreadOnly]
-    #[name = "AppDelegate"]
-    #[ivars = AppState]
-    struct AppDelegate;
-
-    unsafe impl NSObjectProtocol for AppDelegate {}
-
-    unsafe impl NSApplicationDelegate for AppDelegate {
-        #[unsafe(method(applicationShouldTerminateAfterLastWindowClosed:))]
-        fn application_should_terminate_after_last_window_closed(&self, _: &NSApplication) -> bool {
-            self.ivars().should_terminate_after_last_window_closed.get()
-        }
-    }
-);
-
-impl AppDelegate {
-    fn new(mtm: MainThreadMarker, state: AppState) -> Retained<Self> {
-        let this = Self::alloc(mtm).set_ivars(state);
-        unsafe { msg_send![super(this), init] }
     }
 }

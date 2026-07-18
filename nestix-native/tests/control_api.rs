@@ -49,7 +49,7 @@ fn FormControls() -> Element {
 #[test]
 fn form_controls_compile_through_layout() {
     let _window = layout! {
-        Window {
+        Window(.on_close_requested = callback!(|| {})) {
             FormControls
         }
     };

@@ -12,7 +12,7 @@ fn main() {
 }
 
 #[component]
-fn ContextMenuExample() -> Element {
+fn ContextMenuExample(_: &(), element: &Element) -> Element {
     let status = create_state("No command selected".to_string());
     let show_details = create_state(true);
     let show_advanced = create_state(false);
@@ -91,6 +91,7 @@ fn ContextMenuExample() -> Element {
                 .title = "Nestix Context Menu",
                 .width = 520,
                 .height = 360,
+                .on_close_requested = callback!([element] || element.unmount()),
             ) {
                 FlexView(
                     .align_items = AlignItems::Center,

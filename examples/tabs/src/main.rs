@@ -4,7 +4,8 @@ use nestix::{
     props,
 };
 use nestix_native::{
-    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor, Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor,
+    Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, style,
 };
 
 const SAMPLE_IMAGE: &[u8] = include_bytes!("../../assets/sample.jpg");
@@ -22,7 +23,7 @@ fn random_color() -> Color {
 }
 
 #[component]
-fn ExampleApp() -> Element {
+fn ExampleApp(_: &(), element: &Element) -> Element {
     let styles = style! {
         .app {
             // bg_color: #F4F6F8;
@@ -58,6 +59,7 @@ fn ExampleApp() -> Element {
                     .title = "Nestix Tabs",
                     .width = 520,
                     .height = 420,
+                    .on_close_requested = callback!([element] || element.unmount()),
                 ) {
                     FlexView(.class = "app", .view(.flex_grow = 1.0)) {
                         TabView(.view(.flex_grow = 1.0)) {

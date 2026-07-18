@@ -10,7 +10,7 @@ use taffy::{NodeId, Size, Style, prelude::FromLength};
 
 use crate::{
     WindowContext,
-    contexts::{ParentContext, native_child_index},
+    contexts::{ParentContext, native_predecessor},
 };
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
@@ -29,11 +29,9 @@ pub(crate) fn mount(
     let node_id = tree_context.create_node(true);
 
     element.on_place(closure!(
-        [element, view, parent_context] | placement | {
-            if placement.index.is_some()
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(&view, Some(node_id), native_child_index(&element));
+        [element, view, parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(&view, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&view, Some(node_id));
             }

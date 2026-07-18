@@ -5,7 +5,7 @@ use nestix::{
     scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext,
+    ChildOrder, Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
     matched_style, resolved_view_style, style_align_self, style_dimension, style_flex_basis,
     style_flex_grow, style_flex_shrink, style_margin,
@@ -28,7 +28,10 @@ use windows::{
     core::{BOOL, PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_predecessor},
+};
 
 #[link(name = "user32")]
 unsafe extern "system" {
@@ -96,7 +99,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
         &DEFAULT_CLASSES,
     );
     let effective_style = resolved_view_style(styles.clone(), &props.view);
-    let child_nodes = Rc::new(RefCell::new(Vec::new()));
+    let child_order = Rc::new(RefCell::new(ChildOrder::<HWND>::new()));
     let subtree = Rc::new(TreeContext::new());
     let subtree_root = subtree.create_node(false);
     subtree.set_root_node(Some(subtree_root));
@@ -166,11 +169,9 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     let node = tree_context.create_node(false);
 
     element.on_place(closure!(
-        [parent] | placement | {
-            if let Some(index) = placement.index
-                && let Some(insert) = &parent.insert_child
-            {
-                insert(hwnd, Some(node), index);
+        [element, parent] | _ | {
+            if let Some(insert) = &parent.insert_child {
+                insert(hwnd, Some(node), native_predecessor(&element));
             } else if let Some(add) = &parent.add_child {
                 add(hwnd, Some(node));
             }
@@ -317,35 +318,24 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             ContextProvider<TreeContext>(subtree.clone()) {
                 ContextProvider<ParentContext>(ParentContext {
                     parent_hwnd: content,
-                    add_child: Some(callback!([subtree, child_nodes] |_: HWND, child_node: Option<NodeId>| {
-                        if let Some(child_node) = child_node {
-                            if child_nodes.borrow().contains(&child_node) {
-                                subtree.remove_child(subtree_root, child_node);
-                                child_nodes.borrow_mut().retain(|node| *node != child_node);
-                            }
-                            subtree.add_child(subtree_root, child_node);
-                            child_nodes.borrow_mut().push(child_node);
-                            subtree.refresh();
-                        }
+                    add_child: Some(callback!([subtree, child_order] |child: HWND, child_node: Option<NodeId>| {
+                        let predecessor = child_order.borrow().last_key();
+                        child_order.borrow_mut().place(child, child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        subtree.set_children(subtree_root, &nodes);
+                        subtree.refresh();
                     })),
-                    insert_child: Some(callback!([subtree, child_nodes] |_: HWND, child_node: Option<NodeId>, index: usize| {
-                        if let Some(child_node) = child_node {
-                            if child_nodes.borrow().contains(&child_node) {
-                                subtree.remove_child(subtree_root, child_node);
-                                child_nodes.borrow_mut().retain(|node| *node != child_node);
-                            }
-                            let index = index.min(child_nodes.borrow().len());
-                            subtree.insert_child(subtree_root, child_node, index);
-                            child_nodes.borrow_mut().insert(index, child_node);
-                            subtree.refresh();
-                        }
+                    insert_child: Some(callback!([subtree, child_order] |child: HWND, child_node: Option<NodeId>, predecessor: Option<HWND>| {
+                        child_order.borrow_mut().place(child, child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        subtree.set_children(subtree_root, &nodes);
+                        subtree.refresh();
                     })),
-                    remove_child: Some(callback!([subtree, child_nodes] |_: HWND, child_node: Option<NodeId>| {
-                        if let Some(child_node) = child_node {
-                            child_nodes.borrow_mut().retain(|node| *node != child_node);
-                            subtree.remove_child(subtree_root, child_node);
-                            subtree.refresh();
-                        }
+                    remove_child: Some(callback!([subtree, child_order] |child: HWND, _: Option<NodeId>| {
+                        child_order.borrow_mut().remove(child);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        subtree.set_children(subtree_root, &nodes);
+                        subtree.refresh();
                     })),
                     parent_node: Some(subtree_root),
                 }) {

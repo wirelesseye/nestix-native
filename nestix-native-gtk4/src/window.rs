@@ -11,7 +11,7 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::{contexts::ParentContext, root::RootContext};
+use crate::contexts::ParentContext;
 
 #[derive(Clone)]
 pub struct WindowContext {
@@ -23,7 +23,6 @@ pub struct WindowContext {
 pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__gtk4_Window"];
 
-    let root_context = element.context::<RootContext>().unwrap();
     let tree_context = Rc::new(TreeContext::new());
     let scale_factor = create_state(1.0);
     let window = gtk4::Window::new();
@@ -35,11 +34,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     header_bar.set_valign(gtk4::Align::Start);
     overlay.add_overlay(&header_bar);
     window.set_child(Some(&overlay));
-    let closed = Rc::new(Cell::new(false));
-
-    root_context
-        .window_count
-        .set(root_context.window_count.get() + 1);
+    let unmounting = Rc::new(Cell::new(false));
     scale_factor.set(window.scale_factor() as f64);
     element.provide_handle(window.clone());
 
@@ -49,14 +44,20 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     ));
     window.connect_close_request(closure!(
-        [root_context, closed] | _ | {
-            window_closed(&root_context, &closed);
-            glib::Propagation::Proceed
+        [unmounting, props.on_close_requested] | _ | {
+            if unmounting.get() {
+                glib::Propagation::Proceed
+            } else {
+                if let Some(on_close_requested) = on_close_requested.get() {
+                    on_close_requested();
+                }
+                glib::Propagation::Stop
+            }
         }
     ));
     element.on_unmount(closure!(
-        [window, root_context, closed] || {
-            window_closed(&root_context, &closed);
+        [window, unmounting] || {
+            unmounting.set(true);
             window.close();
         }
     ));
@@ -153,17 +154,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 }
             }
         }
-    }
-}
-
-fn window_closed(context: &RootContext, closed: &Cell<bool>) {
-    if closed.replace(true) {
-        return;
-    }
-    let remaining = context.window_count.get().saturating_sub(1);
-    context.window_count.set(remaining);
-    if remaining == 0 && context.quit_when_all_windows_closed.get() {
-        context.main_loop.quit();
     }
 }
 

@@ -4,7 +4,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext,
+    ChildOrder, Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext,
     dpi::{LogicalPosition, LogicalSize},
     matched_style, resolved_flex_view_style, style_align_items, style_align_self, style_dimension,
     style_flex_basis, style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap,
@@ -33,7 +33,12 @@ use windows::{
     core::{PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext, font::colorref, shared_app_state};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_predecessor},
+    font::colorref,
+    shared_app_state,
+};
 
 thread_local! {
     static BACKGROUND_BRUSHES: RefCell<HashMap<*mut std::ffi::c_void, HBRUSH>> =
@@ -76,7 +81,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         &DEFAULT_CLASSES,
     );
     let effective_style = resolved_flex_view_style(style_props.clone(), props);
-    let child_nodes = Rc::new(RefCell::new(Vec::new()));
+    let child_order = Rc::new(RefCell::new(ChildOrder::<HWND>::new()));
 
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
     let hwnd = unsafe {
@@ -100,11 +105,9 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(false);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            if let Some(index) = placement.index
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(hwnd, Some(node_id), index);
+        [parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(hwnd, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(hwnd, Some(node_id));
             }
@@ -430,34 +433,24 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             ContextProvider<ParentContext>(
                 ParentContext {
                     parent_hwnd: hwnd,
-                    add_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
-                        if let Some(child_node) = child_node {
-                            if child_nodes.borrow().contains(&child_node) {
-                                tree_context.remove_child(node_id, child_node);
-                                child_nodes.borrow_mut().retain(|node| *node != child_node);
-                            }
-                            tree_context.add_child(node_id, child_node);
-                            child_nodes.borrow_mut().push(child_node);
-                            tree_context.refresh();
-                        }
+                    add_child: Some(callback!([tree_context, child_order] |child: HWND, child_node: Option<NodeId>| {
+                        let predecessor = child_order.borrow().last_key();
+                        child_order.borrow_mut().place(child, child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        tree_context.refresh();
                     })),
-                    insert_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>, index: usize| {
-                        if let Some(child_node) = child_node {
-                            if child_nodes.borrow().contains(&child_node) {
-                                tree_context.remove_child(node_id, child_node);
-                                child_nodes.borrow_mut().retain(|node| *node != child_node);
-                            }
-                            let index = index.min(child_nodes.borrow().len());
-                            tree_context.insert_child(node_id, child_node, index);
-                            child_nodes.borrow_mut().insert(index, child_node);
-                            tree_context.refresh();
-                        }
+                    insert_child: Some(callback!([tree_context, child_order] |child: HWND, child_node: Option<NodeId>, predecessor: Option<HWND>| {
+                        child_order.borrow_mut().place(child, child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        tree_context.refresh();
                     })),
-                    remove_child: Some(callback!([tree_context, child_nodes] |_: HWND, child_node: Option<NodeId>| {
-                        if let Some(child_node) = child_node {
-                            child_nodes.borrow_mut().retain(|node| *node != child_node);
-                            tree_context.remove_child(node_id, child_node);
-                        }
+                    remove_child: Some(callback!([tree_context, child_order] |child: HWND, _: Option<NodeId>| {
+                        child_order.borrow_mut().remove(child);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        tree_context.refresh();
                     })),
                     parent_node: Some(node_id),
                 },

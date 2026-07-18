@@ -22,7 +22,11 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::resolved_font};
+use crate::{
+    AppState, WindowContext,
+    contexts::{ParentContext, native_predecessor},
+    font::resolved_font,
+};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
@@ -62,11 +66,9 @@ pub fn Text(props: &TextProps, element: &Element) {
 
     let node_id = tree_context.create_node(false);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            if let Some(index) = placement.index
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(hwnd, Some(node_id), index);
+        [parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(hwnd, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(hwnd, Some(node_id));
             }

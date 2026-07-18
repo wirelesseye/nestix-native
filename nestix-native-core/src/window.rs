@@ -37,4 +37,8 @@ pub struct WindowProps {
     pub height: f64,
 
     pub on_resize: Option<Shared<dyn Fn(dpi::Size)>>,
+
+    /// Called when the user asks to close the window. The native window stays
+    /// open until this component is unmounted.
+    pub on_close_requested: Option<Shared<dyn Fn()>>,
 }

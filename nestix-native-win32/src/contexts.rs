@@ -1,9 +1,9 @@
-use nestix::Shared;
+use nestix::{Element, Shared};
 use taffy::NodeId;
 use windows::Win32::Foundation::HWND;
 
 type AddChild = Shared<dyn Fn(HWND, Option<NodeId>)>;
-type InsertChild = Shared<dyn Fn(HWND, Option<NodeId>, usize)>;
+type InsertChild = Shared<dyn Fn(HWND, Option<NodeId>, Option<HWND>)>;
 type RemoveChild = Shared<dyn Fn(HWND, Option<NodeId>)>;
 
 /// Connects a component to its native parent and to the parent's Taffy node.
@@ -14,4 +14,12 @@ pub(crate) struct ParentContext {
     pub insert_child: Option<InsertChild>,
     pub remove_child: Option<RemoveChild>,
     pub parent_node: Option<NodeId>,
+}
+
+pub(crate) fn native_predecessor(element: &Element) -> Option<HWND> {
+    element
+        .previous_siblings()
+        .into_iter()
+        .find_map(|sibling| sibling.last_handle())
+        .and_then(|handle| handle.downcast_ref::<HWND>().copied())
 }

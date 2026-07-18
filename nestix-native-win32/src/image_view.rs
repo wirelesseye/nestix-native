@@ -34,7 +34,10 @@ use windows::{
     core::{HSTRING, PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_predecessor},
+};
 
 struct ImageState {
     image: *mut GpImage,
@@ -250,11 +253,9 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
     let node_id = tree_context.create_node(true);
 
     element.on_place(closure!(
-        [parent_context] | placement | {
-            if let Some(index) = placement.index
-                && let Some(insert) = &parent_context.insert_child
-            {
-                insert(hwnd, Some(node_id), index);
+        [element, parent_context] | _ | {
+            if let Some(insert) = &parent_context.insert_child {
+                insert(hwnd, Some(node_id), native_predecessor(&element));
             } else if let Some(add) = &parent_context.add_child {
                 add(hwnd, Some(node_id));
             }

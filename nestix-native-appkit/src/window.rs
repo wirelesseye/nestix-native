@@ -53,6 +53,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         WindowState {
             tree_context: tree_context.clone(),
             on_resize: props.on_resize.clone(),
+            on_close_requested: props.on_close_requested.clone(),
             menu,
             active_window_menu: root_context.active_window_menu.clone(),
         },
@@ -70,6 +71,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     element.on_unmount(closure!(
         [ns_window, window_delegate] || {
             ns_window.setDelegate(None);
+            ns_window.close();
             let _ = &window_delegate;
         }
     ));
@@ -167,6 +169,7 @@ fn apply_title_bar_mode(window: &NSWindow, mode: TitleBarMode) {
 struct WindowState {
     tree_context: Rc<TreeContext>,
     on_resize: PropValue<Option<Shared<dyn Fn(dpi::Size)>>>,
+    on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
     menu: State<Option<Retained<NSMenu>>>,
     active_window_menu: State<Option<Retained<NSMenu>>>,
 }
@@ -181,6 +184,20 @@ define_class!(
     unsafe impl NSObjectProtocol for WindowDelegate {}
 
     unsafe impl NSWindowDelegate for WindowDelegate {
+        #[unsafe(method(windowShouldClose:))]
+        fn window_should_close(&self, _: &NSWindow) -> bool {
+            // The callback may synchronously unmount the Window and release the
+            // delegate retained by its lifecycle closure.
+            let _delegate = unsafe {
+                Retained::retain(std::ptr::from_ref(self).cast_mut())
+                    .expect("window delegate must remain valid during close handling")
+            };
+            if let Some(on_close_requested) = self.ivars().on_close_requested.get() {
+                on_close_requested();
+            }
+            false
+        }
+
         #[unsafe(method(windowDidBecomeKey:))]
         fn window_did_become_key(&self, _: &NSNotification) {
             self.ivars().active_window_menu.set(self.ivars().menu.get());

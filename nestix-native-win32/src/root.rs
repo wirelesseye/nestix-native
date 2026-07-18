@@ -1,18 +1,20 @@
 use std::{
-    cell::{Cell, OnceCell, RefCell},
+    cell::{OnceCell, RefCell},
     collections::HashMap,
     ffi::c_void,
     rc::Rc,
 };
 
-use nestix::{Element, PropValue, Shared, closure, component, components::ContextProvider, layout};
+use nestix::{Element, Shared, closure, component, components::ContextProvider, layout};
 use nestix_native_core::{Color, RootProps, StyleScope};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
     System::Ole::OleInitialize,
     UI::{
         HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
-        WindowsAndMessaging::{DispatchMessageW, GetMessageW, MSG, TranslateMessage},
+        WindowsAndMessaging::{
+            DispatchMessageW, GetMessageW, MSG, PostQuitMessage, TranslateMessage,
+        },
     },
 };
 
@@ -42,48 +44,28 @@ pub(crate) fn ensure_com_apartment() -> Result<(), String> {
 }
 
 pub(crate) struct AppState {
-    is_running: Cell<bool>,
     windows: RefCell<HashMap<*mut c_void, Rc<WindowState>>>,
     control_handlers: RefCell<HashMap<*mut c_void, Shared<dyn Fn(u32, WPARAM, LPARAM)>>>,
     control_text_colors: RefCell<HashMap<*mut c_void, Color>>,
-    quit_when_all_windows_closed: PropValue<bool>,
 }
 
 impl AppState {
-    fn new(props: &RootProps) -> Self {
+    fn new(_props: &RootProps) -> Self {
         Self {
-            is_running: Cell::new(false),
             windows: RefCell::new(HashMap::new()),
             control_handlers: RefCell::new(HashMap::new()),
             control_text_colors: RefCell::new(HashMap::new()),
-            quit_when_all_windows_closed: props.quit_when_all_windows_closed.clone(),
         }
     }
 
     fn run(&self) {
-        self.is_running.set(true);
-
         let mut msg = MSG::default();
         unsafe {
-            while self.is_running.get() {
-                if GetMessageW(&mut msg, None, 0, 0).into() {
-                    let _ = TranslateMessage(&msg);
-                    DispatchMessageW(&msg);
-                }
+            while GetMessageW(&mut msg, None, 0, 0).into() {
+                let _ = TranslateMessage(&msg);
+                DispatchMessageW(&msg);
             }
         }
-    }
-
-    pub fn quit(&self) {
-        self.is_running.set(false);
-    }
-
-    pub fn quit_when_all_windows_closed(&self) -> bool {
-        self.quit_when_all_windows_closed.get()
-    }
-
-    pub fn has_windows(&self) -> bool {
-        !self.windows.borrow().is_empty()
     }
 
     pub(crate) fn add_window(&self, window: HWND, state: Rc<WindowState>) {
@@ -151,6 +133,8 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     unsafe {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     }
+
+    element.on_unmount(|| unsafe { PostQuitMessage(0) });
 
     element.after_mount(closure!(
         [app_state] || {

@@ -14,7 +14,7 @@ fn main() {
 }
 
 #[component]
-fn AppKitToolbarExample() -> Element {
+fn AppKitToolbarExample(_: &(), element: &Element) -> Element {
     let count = create_state(0_i32);
     let reset_hidden = create_state(false);
     let display_mode = create_state(AppKitToolbarDisplayMode::IconAndLabel);
@@ -49,6 +49,7 @@ fn AppKitToolbarExample() -> Element {
                     .title_bar_mode = title_bar_mode.clone(),
                     .width = 560,
                     .height = 320,
+                    .on_close_requested = callback!([element] || element.unmount()),
                 ) {
                     FlexView(.class = "content") {
                         // AppKitToolbar may be mounted anywhere below its Window.

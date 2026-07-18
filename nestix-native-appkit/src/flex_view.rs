@@ -1,10 +1,10 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, rc::Rc};
 
 use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
+    ChildOrder, Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
     resolved_flex_view_style, style_align_items, style_align_self, style_dimension,
     style_flex_basis, style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap,
     style_gap, style_justify_content, style_margin, style_padding,
@@ -16,7 +16,7 @@ use taffy::{NodeId, Size, Style};
 
 use crate::{
     WindowContext,
-    contexts::{ParentContext, native_child_index},
+    contexts::{ParentContext, native_predecessor},
 };
 use nestix_native_core::utils::{gap_to_taffy, inset_to_taffy, margin_to_taffy, padding_to_taffy};
 
@@ -40,11 +40,9 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(false);
     element.on_place(closure!(
-        [element, view, parent_context] | placement | {
-            if placement.index.is_some()
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(&view, Some(node_id), native_child_index(&element));
+        [element, view, parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(&view, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&view, Some(node_id));
             }
@@ -359,6 +357,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         }
     ));
 
+    let child_order = Rc::new(RefCell::new(ChildOrder::<*const NSObject>::new()));
+
     layout! {
         StyleScope(
             .class = props.class.clone(),
@@ -367,41 +367,34 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         ) {
             ContextProvider<ParentContext>(
                 ParentContext {
-                    add_child: Some(callback!([tree_context, view] |object: &NSObject, child_node: Option<NodeId>| {
+                    add_child: Some(callback!([tree_context, view, child_order] |object: &NSObject, child_node: Option<NodeId>| {
                         let subview = object.downcast_ref::<NSView>().unwrap();
-                        if view.subviews().containsObject(subview) {
-                            subview.removeFromSuperview();
-                            if let Some(child_node) = child_node {
-                                tree_context.remove_child(node_id, child_node);
-                            }
-                        }
+                        let pointer = std::ptr::from_ref(object);
+                        let predecessor = child_order.borrow().last_key();
+                        child_order.borrow_mut().place(pointer, child_node, predecessor);
                         view.addSubview(subview);
-                        if let Some(child_node) = child_node {
-                            tree_context.add_child(node_id, child_node);
-                            tree_context.refresh();
-                        }
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        tree_context.refresh();
                     })),
-                    insert_child: Some(callback!([tree_context, view]
-                        |object: &NSObject, child_node: Option<NodeId>, index: usize| {
+                    insert_child: Some(callback!([tree_context, view, child_order]
+                        |object: &NSObject, child_node: Option<NodeId>, predecessor: Option<*const NSObject>| {
                         let subview = object.downcast_ref::<NSView>().unwrap();
-                        if view.subviews().containsObject(subview) {
-                            subview.removeFromSuperview();
-                            if let Some(child_node) = child_node {
-                                tree_context.remove_child(node_id, child_node);
-                            }
-                        }
+                        let pointer = std::ptr::from_ref(object);
+                        child_order.borrow_mut().place(pointer, child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
                         view.addSubview(subview);
-                        if let Some(child_node) = child_node {
-                            tree_context.insert_child(node_id, child_node, index);
-                            tree_context.refresh();
-                        }
+                        tree_context.set_children(node_id, &nodes);
+                        tree_context.refresh();
                     })),
-                    remove_child: Some(callback!([tree_context] |object: &NSObject, child_node: Option<NodeId>| {
+                    remove_child: Some(callback!([tree_context, child_order] |object: &NSObject, _: Option<NodeId>| {
                         let subview = object.downcast_ref::<NSView>().unwrap();
                         subview.removeFromSuperview();
-                        if let Some(child_node) = child_node {
-                            tree_context.remove_child(node_id, child_node);
-                        }
+                        let pointer = std::ptr::from_ref(object);
+                        child_order.borrow_mut().remove(pointer);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        tree_context.refresh();
                     })),
                     parent_node: Some(node_id),
                 }

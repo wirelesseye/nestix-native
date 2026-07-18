@@ -5,7 +5,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
+    ChildOrder, Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
     resolved_flex_view_style, style_align_items, style_align_self, style_dimension,
     style_flex_basis, style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap,
     style_gap, style_justify_content, style_margin, style_padding,
@@ -13,7 +13,10 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_predecessor},
+};
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
@@ -35,15 +38,13 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     fixed.set_vexpand(true);
     let widget: gtk4::Widget = fixed.clone().upcast();
     let node_id = tree_context.create_node(false);
-    let child_nodes = Rc::new(RefCell::new(Vec::<NodeId>::new()));
+    let child_order = Rc::new(RefCell::new(ChildOrder::<gtk4::Widget>::new()));
     element.provide_handle(widget.clone());
 
     element.on_place(closure!(
-        [widget, parent_context] | placement | {
-            if let Some(index) = placement.index
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(&widget, Some(node_id), index);
+        [element, widget, parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(&widget, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(&widget, Some(node_id));
             }
@@ -200,54 +201,38 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         ) {
             ContextProvider<ParentContext>(ParentContext {
                 fixed: Some(fixed.clone()),
-                add_child: Some(callback!([fixed, tree_context, child_nodes] |child: &gtk4::Widget, child_node: Option<NodeId>| {
+                add_child: Some(callback!([fixed, tree_context, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>| {
                     if child.parent().is_none() {
                         fixed.put(child, 0.0, 0.0);
                     }
-                    if let Some(child_node) = child_node {
-                        detach_node(&tree_context, node_id, &child_nodes, child_node);
-                        tree_context.add_child(node_id, child_node);
-                        child_nodes.borrow_mut().push(child_node);
-                        tree_context.refresh();
-                    }
+                    let predecessor = child_order.borrow().last_key();
+                    child_order.borrow_mut().place(child.clone(), child_node, predecessor);
+                    let nodes = child_order.borrow().taffy_nodes();
+                    tree_context.set_children(node_id, &nodes);
+                    tree_context.refresh();
                 })),
-                insert_child: Some(callback!([fixed, tree_context, child_nodes] |child: &gtk4::Widget, child_node: Option<NodeId>, index: usize| {
+                insert_child: Some(callback!([fixed, tree_context, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>, predecessor: Option<gtk4::Widget>| {
                     if child.parent().is_none() {
                         fixed.put(child, 0.0, 0.0);
                     }
-                    if let Some(child_node) = child_node {
-                        detach_node(&tree_context, node_id, &child_nodes, child_node);
-                        let index = index.min(child_nodes.borrow().len());
-                        tree_context.insert_child(node_id, child_node, index);
-                        child_nodes.borrow_mut().insert(index, child_node);
-                        tree_context.refresh();
-                    }
+                    child_order.borrow_mut().place(child.clone(), child_node, predecessor);
+                    let nodes = child_order.borrow().taffy_nodes();
+                    tree_context.set_children(node_id, &nodes);
+                    tree_context.refresh();
                 })),
-                remove_child: Some(callback!([fixed, tree_context, child_nodes] |child: &gtk4::Widget, child_node: Option<NodeId>| {
+                remove_child: Some(callback!([fixed, tree_context, child_order] |child: &gtk4::Widget, _: Option<NodeId>| {
                     if child.parent().as_ref() == Some(fixed.upcast_ref()) {
                         fixed.remove(child);
                     }
-                    if let Some(child_node) = child_node {
-                        detach_node(&tree_context, node_id, &child_nodes, child_node);
-                        tree_context.refresh();
-                    }
+                    child_order.borrow_mut().remove(child.clone());
+                    let nodes = child_order.borrow().taffy_nodes();
+                    tree_context.set_children(node_id, &nodes);
+                    tree_context.refresh();
                 })),
                 parent_node: Some(node_id),
             }) {
                 $(props.children.clone())
             }
         }
-    }
-}
-
-fn detach_node(
-    tree_context: &TreeContext,
-    parent: NodeId,
-    child_nodes: &RefCell<Vec<NodeId>>,
-    child: NodeId,
-) {
-    if child_nodes.borrow().contains(&child) {
-        tree_context.remove_child(parent, child);
-        child_nodes.borrow_mut().retain(|node| *node != child);
     }
 }

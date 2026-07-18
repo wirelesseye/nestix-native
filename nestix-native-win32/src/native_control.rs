@@ -12,7 +12,10 @@ use windows::Win32::{
     UI::WindowsAndMessaging::{DestroyWindow, SWP_NOZORDER, SetWindowPos},
 };
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{ParentContext, native_predecessor},
+};
 
 pub(crate) fn mount(
     element: &Element,
@@ -28,11 +31,9 @@ pub(crate) fn mount(
     element.provide_handle(hwnd);
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            if let Some(index) = placement.index
-                && let Some(insert_child) = &parent_context.insert_child
-            {
-                insert_child(hwnd, Some(node_id), index);
+        [parent_context] | _ | {
+            if let Some(insert_child) = &parent_context.insert_child {
+                insert_child(hwnd, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
                 add_child(hwnd, Some(node_id));
             }

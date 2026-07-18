@@ -18,7 +18,7 @@ use taffy::{NodeId, Size, Style};
 
 use crate::{
     WindowContext,
-    contexts::{ParentContext, native_child_index},
+    contexts::{ParentContext, native_predecessor},
 };
 
 #[component]
@@ -42,11 +42,9 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     let node = tree_context.create_node(false);
 
     element.on_place(closure!(
-        [element, scroll, parent] | placement | {
-            if placement.index.is_some()
-                && let Some(insert) = &parent.insert_child
-            {
-                insert(&scroll, Some(node), native_child_index(&element));
+        [element, scroll, parent] | _ | {
+            if let Some(insert) = &parent.insert_child {
+                insert(&scroll, Some(node), native_predecessor(&element));
             } else if let Some(add) = &parent.add_child {
                 add(&scroll, Some(node));
             }

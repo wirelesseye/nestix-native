@@ -1,8 +1,8 @@
 use std::{cell::Cell, rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, WeakElement, callback, component,
-    components::ContextProvider, create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     StyleScope, TreeContext, WindowProps,
@@ -92,9 +92,13 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         tree_context: tree_context.clone(),
         root_view: Cell::new(None),
         on_resize: props.on_resize.clone(),
-        element: element.downgrade(),
+        on_close_requested: props.on_close_requested.clone(),
     });
     app_state.add_window(hwnd, window_state.clone());
+
+    element.on_unmount(move || unsafe {
+        DestroyWindow(hwnd).unwrap();
+    });
 
     if let Some(value) = get_scale_factor_for_window(hwnd) {
         scale_factor.set(value);
@@ -229,7 +233,7 @@ pub(crate) struct WindowState {
     tree_context: Rc<TreeContext>,
     root_view: Cell<Option<HWND>>,
     on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
-    element: WeakElement,
+    on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
 }
 
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
@@ -240,6 +244,16 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                     return LRESULT(0);
                 }
                 DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
+            WM_CLOSE => {
+                let app_state = shared_app_state();
+                if let Some(window_state) = app_state.window_state(hwnd)
+                    && let Some(on_close_requested) = window_state.on_close_requested.get()
+                {
+                    on_close_requested();
+                }
+                LRESULT(0)
             }
 
             WM_CTLCOLORSTATIC | WM_CTLCOLORBTN => {
@@ -336,20 +350,7 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 
             WM_DESTROY => {
                 let app_state = shared_app_state();
-                if let Some(window_state) = app_state.window_state(hwnd) {
-                    // Native closure owns the lifetime of this Window too. Unmount
-                    // its subtree so scoped effects cannot later touch destroyed
-                    // child HWNDs when shared application state changes.
-                    if let Some(element) = window_state.element.upgrade() {
-                        element.unmount();
-                    }
-                }
                 app_state.remove_window(hwnd);
-
-                if app_state.quit_when_all_windows_closed() && !app_state.has_windows() {
-                    app_state.quit();
-                }
-
                 LRESULT(0)
             }
             _ => DefWindowProcW(hwnd, msg, wparam, lparam),
