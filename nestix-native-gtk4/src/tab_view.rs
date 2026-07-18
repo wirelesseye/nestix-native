@@ -12,7 +12,8 @@ use nestix_native_core::{
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
 use crate::{
-    allocation_bin::AllocationBin, contexts::ParentContext,
+    allocation_bin::AllocationBin,
+    contexts::{LayoutRefreshContext, ParentContext},
     layout::mount_leaf_with_stretchable_width,
 };
 
@@ -95,6 +96,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     let page_widget: gtk4::Widget = page.clone().upcast();
     let label = gtk4::Label::new(Some(&props.title.get()));
     let subtree_context = Rc::new(TreeContext::new());
+    let subtree_refresh = LayoutRefreshContext::new(subtree_context.clone());
     element.provide_handle(page_widget.clone());
 
     element.on_place(closure!(
@@ -126,39 +128,44 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     let last_width = Rc::new(Cell::new(-1));
     let last_height = Rc::new(Cell::new(-1));
     page.add_tick_callback(closure!(
-        [subtree_context, last_width, last_height] | page,
+        [subtree_context, subtree_refresh, last_width, last_height] | page,
         _ | {
             let width = page.width();
             let height = page.height();
             if width != last_width.get() || height != last_height.get() {
                 last_width.set(width);
                 last_height.set(height);
-                resize_subtree(&subtree_context, width, height);
+                resize_subtree(&subtree_context, &subtree_refresh, width, height);
             }
             gtk4::glib::ControlFlow::Continue
         }
+    ));
+    element.after_mount(closure!(
+        [subtree_refresh] || subtree_refresh.flush_queued_refresh()
     ));
 
     layout! {
         StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
-                ContextProvider<ParentContext>(ParentContext {
-                    fixed: None,
-                    add_child: Some(callback!([page, subtree_context] |child: &gtk4::Widget, child_node: Option<NodeId>| {
-                        page.set_child(Some(child));
-                        subtree_context.set_root_node(child_node);
-                        resize_subtree(&subtree_context, page.width(), page.height());
-                    })),
-                    insert_child: None,
-                    remove_child: Some(callback!([page, subtree_context] |child: &gtk4::Widget, _: Option<NodeId>| {
-                        if page.child().as_ref() == Some(child) {
-                            page.set_child(gtk4::Widget::NONE);
-                            subtree_context.set_root_node(None);
-                        }
-                    })),
-                    parent_node: None,
-                }) {
-                    $(props.children.clone().map(|child| Layout::from(child.clone())))
+                ContextProvider<LayoutRefreshContext>(subtree_refresh.clone()) {
+                    ContextProvider<ParentContext>(ParentContext {
+                        fixed: None,
+                        add_child: Some(callback!([page, subtree_context, subtree_refresh] |child: &gtk4::Widget, child_node: Option<NodeId>| {
+                            page.set_child(Some(child));
+                            subtree_context.set_root_node(child_node);
+                            resize_subtree(&subtree_context, &subtree_refresh, page.width(), page.height());
+                        })),
+                        insert_child: None,
+                        remove_child: Some(callback!([page, subtree_context] |child: &gtk4::Widget, _: Option<NodeId>| {
+                            if page.child().as_ref() == Some(child) {
+                                page.set_child(gtk4::Widget::NONE);
+                                subtree_context.set_root_node(None);
+                            }
+                        })),
+                        parent_node: None,
+                    }) {
+                        $(props.children.clone().map(|child| Layout::from(child.clone())))
+                    }
                 }
             }
         }
@@ -171,7 +178,12 @@ fn remove_page(notebook: &gtk4::Notebook, child: &gtk4::Widget) {
     }
 }
 
-fn resize_subtree(tree_context: &TreeContext, width: i32, height: i32) {
+fn resize_subtree(
+    tree_context: &TreeContext,
+    layout_refresh: &Rc<LayoutRefreshContext>,
+    width: i32,
+    height: i32,
+) {
     let Some(root_node) = tree_context.root_node() else {
         return;
     };
@@ -182,5 +194,5 @@ fn resize_subtree(tree_context: &TreeContext, width: i32, height: i32) {
         },
         ..prev
     });
-    tree_context.refresh();
+    layout_refresh.queue_refresh();
 }

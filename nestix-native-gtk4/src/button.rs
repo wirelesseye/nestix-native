@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use gtk4::prelude::*;
 use nestix::{Element, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
@@ -25,6 +27,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         .style_context()
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     let content_revision = create_state(0usize);
+    let last_css = Rc::new(RefCell::new(None::<String>));
 
     button.connect_clicked(closure!(
         [props.on_click] | _ | {
@@ -51,6 +54,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
         element,
         [
             css,
+            last_css,
             style_props,
             props.font.font_family,
             props.font.font_size,
@@ -125,7 +129,11 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             } else {
                 format!("button {{ {declarations}; }}")
             };
+            if last_css.borrow().as_ref() == Some(&css_rule) {
+                return;
+            }
             css.load_from_data(&css_rule);
+            last_css.replace(Some(css_rule));
             content_revision.mutate(|revision| *revision += 1);
         }
     );

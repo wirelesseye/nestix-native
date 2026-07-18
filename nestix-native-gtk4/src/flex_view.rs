@@ -17,7 +17,10 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{LayoutRefreshContext, ParentContext},
+};
 
 static NEXT_CSS_CLASS: AtomicUsize = AtomicUsize::new(0);
 
@@ -27,6 +30,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
+    let layout_refresh = element.context::<LayoutRefreshContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
     let style_props = matched_style(
@@ -66,9 +70,10 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     fixed
         .style_context()
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+    let last_css = Rc::new(RefCell::new(None::<String>));
     scoped_effect!(
         element,
-        [css, css_class, style_props, props.bg_color] || {
+        [css, css_class, last_css, style_props, props.bg_color] || {
             let style_props = style_props.get();
             let color = bg_color
                 .get()
@@ -85,7 +90,12 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                     )
                 })
                 .unwrap_or_default();
-            css.load_from_data(&format!(".{css_class} {{ {declaration} }}"));
+            let css_rule = format!(".{css_class} {{ {declaration} }}");
+            if last_css.borrow().as_ref() == Some(&css_rule) {
+                return;
+            }
+            css.load_from_data(&css_rule);
+            last_css.replace(Some(css_rule));
         }
     );
 
@@ -93,6 +103,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         element,
         [
             tree_context,
+            layout_refresh,
             parent_context.parent_node,
             style_props,
             props.view.flex_grow,
@@ -169,7 +180,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 flex_wrap: style_flex_wrap(style_props.as_ref(), flex_wrap.get()).to_taffy(),
                 ..prev
             });
-            tree_context.refresh();
+            layout_refresh.queue_refresh();
         }
     );
 
@@ -205,7 +216,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         ) {
             ContextProvider<ParentContext>(ParentContext {
                 fixed: Some(fixed.clone()),
-                add_child: Some(callback!([fixed, tree_context, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>| {
+                add_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>| {
                     if child.parent().is_none() {
                         fixed.put(child, 0.0, 0.0);
                     }
@@ -213,25 +224,25 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                     child_order.borrow_mut().place(child.clone(), child_node, predecessor);
                     let nodes = child_order.borrow().taffy_nodes();
                     tree_context.set_children(node_id, &nodes);
-                    tree_context.refresh();
+                    layout_refresh.queue_refresh();
                 })),
-                insert_child: Some(callback!([fixed, tree_context, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>, predecessor: Option<gtk4::Widget>| {
+                insert_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>, predecessor: Option<gtk4::Widget>| {
                     if child.parent().is_none() {
                         fixed.put(child, 0.0, 0.0);
                     }
                     child_order.borrow_mut().place(child.clone(), child_node, predecessor);
                     let nodes = child_order.borrow().taffy_nodes();
                     tree_context.set_children(node_id, &nodes);
-                    tree_context.refresh();
+                    layout_refresh.queue_refresh();
                 })),
-                remove_child: Some(callback!([fixed, tree_context, child_order] |child: &gtk4::Widget, _: Option<NodeId>| {
+                remove_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget, _: Option<NodeId>| {
                     if child.parent().as_ref() == Some(fixed.upcast_ref()) {
                         fixed.remove(child);
                     }
                     child_order.borrow_mut().remove(child.clone());
                     let nodes = child_order.borrow().taffy_nodes();
                     tree_context.set_children(node_id, &nodes);
-                    tree_context.refresh();
+                    layout_refresh.queue_refresh();
                 })),
                 parent_node: Some(node_id),
             }) {

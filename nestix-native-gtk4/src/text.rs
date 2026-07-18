@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use gtk4::prelude::*;
 use nestix::{Element, component, create_state, scoped_effect};
 use nestix_native_core::{FontStyle, StyleContext, TextProps, matched_style, resolve_font_props};
@@ -22,6 +24,7 @@ pub fn Text(props: &TextProps, element: &Element) {
         .style_context()
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     let content_revision = create_state(0usize);
+    let last_css = Rc::new(RefCell::new(None::<String>));
 
     scoped_effect!(
         element,
@@ -34,6 +37,7 @@ pub fn Text(props: &TextProps, element: &Element) {
         element,
         [
             css,
+            last_css,
             style_props,
             props.font.font_family,
             props.font.font_size,
@@ -86,7 +90,11 @@ pub fn Text(props: &TextProps, element: &Element) {
             } else {
                 format!("label {{ {declarations}; }}")
             };
+            if last_css.borrow().as_ref() == Some(&css_rule) {
+                return;
+            }
             css.load_from_data(&css_rule);
+            last_css.replace(Some(css_rule));
             content_revision.mutate(|revision| *revision += 1);
         }
     );

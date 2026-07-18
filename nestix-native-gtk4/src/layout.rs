@@ -7,7 +7,10 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::{LayoutRefreshContext, ParentContext},
+};
 
 pub(crate) fn mount_leaf(
     element: &Element,
@@ -39,6 +42,7 @@ fn mount_leaf_inner(
 ) -> NodeId {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
+    let layout_refresh = element.context::<LayoutRefreshContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let widget = widget.clone();
     let node_id = tree_context.create_node(true);
@@ -61,6 +65,7 @@ fn mount_leaf_inner(
         element,
         [
             tree_context,
+            layout_refresh,
             style_props,
             props.flex_grow,
             props.flex_basis,
@@ -75,7 +80,7 @@ fn mount_leaf_inner(
                 flex_shrink: style_flex_shrink(style_props.as_ref(), flex_shrink.get()),
                 ..prev
             });
-            tree_context.refresh();
+            layout_refresh.queue_refresh();
         }
     );
 
@@ -83,6 +88,7 @@ fn mount_leaf_inner(
         element,
         [
             tree_context,
+            layout_refresh,
             style_props,
             widget,
             props.width,
@@ -124,7 +130,7 @@ fn mount_leaf_inner(
                 },
                 ..prev
             });
-            tree_context.refresh();
+            layout_refresh.queue_refresh();
         }
     );
 
@@ -132,6 +138,7 @@ fn mount_leaf_inner(
         element,
         [
             tree_context,
+            layout_refresh,
             style_props,
             props.left,
             props.top,
@@ -149,13 +156,14 @@ fn mount_leaf_inner(
                 inset: inset_to_taffy(left, top, scale_factor.get()),
                 ..prev
             });
-            tree_context.refresh();
+            layout_refresh.queue_refresh();
         }
     );
     scoped_effect!(
         element,
         [
             tree_context,
+            layout_refresh,
             style_props,
             props.margin(),
             window_context.scale_factor
@@ -168,18 +176,18 @@ fn mount_leaf_inner(
                 ),
                 ..prev
             });
-            tree_context.refresh();
+            layout_refresh.queue_refresh();
         }
     );
     scoped_effect!(
         element,
-        [tree_context, style_props, props.align_self] || {
+        [tree_context, layout_refresh, style_props, props.align_self] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
                 align_self: style_align_self(style_props.as_ref(), align_self.get()).to_taffy(),
                 ..prev
             });
-            tree_context.refresh();
+            layout_refresh.queue_refresh();
         }
     );
     scoped_effect!(

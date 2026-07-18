@@ -11,7 +11,10 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::{allocation_bin::AllocationBin, contexts::ParentContext};
+use crate::{
+    allocation_bin::AllocationBin,
+    contexts::{LayoutRefreshContext, ParentContext},
+};
 
 #[derive(Clone)]
 pub struct WindowContext {
@@ -24,6 +27,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__gtk4_Window"];
 
     let tree_context = Rc::new(TreeContext::new());
+    let layout_refresh = LayoutRefreshContext::new(tree_context.clone());
     let scale_factor = create_state(1.0);
     let window = gtk4::Window::new();
     let overlay = gtk4::Overlay::new();
@@ -92,6 +96,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     window.add_tick_callback(closure!(
         [
             tree_context,
+            layout_refresh,
             props.on_resize,
             content,
             last_width,
@@ -117,7 +122,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                         },
                         ..prev
                     });
-                    tree_context.refresh();
+                    layout_refresh.queue_refresh();
                 }
             }
             if width != last_width.get() || height != last_height.get() {
@@ -134,7 +139,12 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     ));
 
-    element.after_mount(closure!([window] || window.present()));
+    element.after_mount(closure!(
+        [window, layout_refresh] || {
+            layout_refresh.flush_queued_refresh();
+            window.present();
+        }
+    ));
     let window_context = Rc::new(WindowContext {
         window: window.clone(),
         scale_factor: scale_factor.into_readonly(),
@@ -143,10 +153,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     layout! {
         ContextProvider<WindowContext>(window_context) {
             ContextProvider<TreeContext>(tree_context.clone()) {
-                StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
-                    ContextProvider<ParentContext>(ParentContext {
+                ContextProvider<LayoutRefreshContext>(layout_refresh.clone()) {
+                    StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+                        ContextProvider<ParentContext>(ParentContext {
                         fixed: None,
-                        add_child: Some(callback!([content, tree_context] |widget: &gtk4::Widget, child_node: Option<NodeId>| {
+                        add_child: Some(callback!([content, tree_context, layout_refresh] |widget: &gtk4::Widget, child_node: Option<NodeId>| {
                             content.set_child(Some(widget));
                             tree_context.set_root_node(child_node);
                             if let Some(child_node) = child_node {
@@ -159,7 +170,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                                     },
                                     ..prev
                                 });
-                                tree_context.refresh();
+                                layout_refresh.queue_refresh();
                             }
                         })),
                         insert_child: None,
@@ -168,8 +179,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                             tree_context.set_root_node(None);
                         })),
                         parent_node: None,
-                    }) {
-                        $(props.children.clone().map(|child| Layout::from(child.clone())))
+                        }) {
+                            $(props.children.clone().map(|child| Layout::from(child.clone())))
+                        }
                     }
                 }
             }

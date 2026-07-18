@@ -1,10 +1,48 @@
-use gtk4::{Fixed, Widget};
+use std::{cell::Cell, rc::Rc};
+
+use gtk4::{Fixed, Widget, glib};
 use nestix::{Placement, Shared};
+use nestix_native_core::TreeContext;
 use taffy::NodeId;
 
 type AddChild = Shared<dyn Fn(&Widget, Option<NodeId>)>;
 type InsertChild = Shared<dyn Fn(&Widget, Option<NodeId>, Option<Widget>)>;
 type RemoveChild = Shared<dyn Fn(&Widget, Option<NodeId>)>;
+
+/// Coalesces Taffy refreshes requested during one GTK main-loop turn.
+pub(crate) struct LayoutRefreshContext {
+    tree_context: Rc<TreeContext>,
+    refresh_queued: Cell<bool>,
+}
+
+impl LayoutRefreshContext {
+    pub fn new(tree_context: Rc<TreeContext>) -> Rc<Self> {
+        Rc::new(Self {
+            tree_context,
+            refresh_queued: Cell::new(false),
+        })
+    }
+
+    pub fn queue_refresh(self: &Rc<Self>) {
+        if self.refresh_queued.replace(true) {
+            return;
+        }
+
+        let this = Rc::downgrade(self);
+        glib::idle_add_local_once(move || {
+            let Some(this) = this.upgrade() else {
+                return;
+            };
+            this.flush_queued_refresh();
+        });
+    }
+
+    pub fn flush_queued_refresh(&self) {
+        if self.refresh_queued.replace(false) {
+            self.tree_context.refresh();
+        }
+    }
+}
 
 /// Connects a GTK widget to the fixed-position host used by the Taffy tree.
 pub(crate) struct ParentContext {
