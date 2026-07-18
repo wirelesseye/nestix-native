@@ -31,7 +31,7 @@ pub(crate) fn mount(
     element.provide_handle(hwnd);
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [parent_context] | _ | {
+        [element, parent_context] | _ | {
             if let Some(insert_child) = &parent_context.insert_child {
                 insert_child(hwnd, Some(node_id), native_predecessor(&element));
             } else if let Some(add_child) = &parent_context.add_child {
