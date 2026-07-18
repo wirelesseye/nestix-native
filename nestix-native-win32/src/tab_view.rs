@@ -32,11 +32,7 @@ use windows::{
     core::PWSTR,
 };
 
-use crate::{
-    AppState, WindowContext,
-    contexts::{ParentContext, native_predecessor},
-    font::ui_font,
-};
+use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font};
 
 fn init_common_controls() {
     static ONCE: Once = Once::new();
@@ -97,12 +93,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [element, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(hwnd, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(hwnd, Some(node_id));
-            }
+        [parent_context] | placement | {
+            parent_context.place_child(hwnd, Some(node_id), placement);
         }
     ));
 

@@ -11,7 +11,7 @@ use taffy::{Size, Style, prelude::FromLength};
 
 use crate::{
     WindowContext,
-    contexts::{ParentContext, native_predecessor},
+    contexts::ParentContext,
     font::{ns_color, resolve_font},
 };
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
@@ -40,12 +40,8 @@ pub fn Text(props: &TextProps, element: &Element) {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [element, label, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(&label, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(&label, Some(node_id));
-            }
+        [label, parent_context] | placement | {
+            parent_context.place_child(&label, Some(node_id), placement);
         }
     ));
 

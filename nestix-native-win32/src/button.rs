@@ -34,12 +34,7 @@ use windows::{
     core::{HSTRING, PCWSTR, w},
 };
 
-use crate::{
-    AppState, WindowContext,
-    contexts::{ParentContext, native_predecessor},
-    font::resolved_font,
-    utils::hiword,
-};
+use crate::{AppState, WindowContext, contexts::ParentContext, font::resolved_font, utils::hiword};
 
 const DEFAULT_PADDING_X: f32 = 10.0;
 const DEFAULT_PADDING_Y: f32 = 3.0;
@@ -82,12 +77,8 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     let node_id = tree_context.create_node(false);
     element.on_place(closure!(
-        [element, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(hwnd, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(hwnd, Some(node_id));
-            }
+        [parent_context] | placement | {
+            parent_context.place_child(hwnd, Some(node_id), placement);
         }
     ));
 

@@ -33,12 +33,7 @@ use windows::{
     core::{PCWSTR, w},
 };
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, native_predecessor},
-    font::colorref,
-    shared_app_state,
-};
+use crate::{WindowContext, contexts::ParentContext, font::colorref, shared_app_state};
 
 thread_local! {
     static BACKGROUND_BRUSHES: RefCell<HashMap<*mut std::ffi::c_void, HBRUSH>> =
@@ -105,12 +100,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(false);
     element.on_place(closure!(
-        [element, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(hwnd, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(hwnd, Some(node_id));
-            }
+        [parent_context] | placement | {
+            parent_context.place_child(hwnd, Some(node_id), placement);
         }
     ));
 

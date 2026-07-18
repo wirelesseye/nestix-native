@@ -17,10 +17,7 @@ use objc2_app_kit::{NSTabView, NSTabViewDelegate, NSTabViewItem, NSView};
 use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, native_predecessor},
-};
+use crate::{WindowContext, contexts::ParentContext};
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
 thread_local! {
@@ -77,12 +74,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [element, view, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(&view, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(&view, Some(node_id));
-            }
+        [view, parent_context] | placement | {
+            parent_context.place_child(&view, Some(node_id), placement);
         }
     ));
 
@@ -391,12 +384,8 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     element.provide_handle(item.as_ref() as *const NSObject);
 
     element.on_place(closure!(
-        [element, item, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(&item, None, native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(&item, None);
-            }
+        [item, parent_context] | placement | {
+            parent_context.place_child(&item, None, placement);
         }
     ));
 

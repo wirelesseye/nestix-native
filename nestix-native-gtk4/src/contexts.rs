@@ -1,5 +1,5 @@
 use gtk4::{Fixed, Widget};
-use nestix::{Element, Shared};
+use nestix::{Placement, Shared};
 use taffy::NodeId;
 
 type AddChild = Shared<dyn Fn(&Widget, Option<NodeId>)>;
@@ -15,10 +15,16 @@ pub(crate) struct ParentContext {
     pub parent_node: Option<NodeId>,
 }
 
-pub(crate) fn native_predecessor(element: &Element) -> Option<Widget> {
-    element
-        .previous_siblings()
-        .into_iter()
-        .find_map(|sibling| sibling.last_handle())
-        .and_then(|handle| handle.downcast_ref::<Widget>().cloned())
+impl ParentContext {
+    pub fn place_child(&self, child: &Widget, child_node: Option<NodeId>, placement: &Placement) {
+        if let Some(insert_child) = &self.insert_child {
+            let predecessor = placement
+                .pred
+                .as_ref()
+                .and_then(|handle| handle.downcast_ref::<Widget>().cloned());
+            insert_child(child, child_node, predecessor);
+        } else if let Some(add_child) = &self.add_child {
+            add_child(child, child_node);
+        }
+    }
 }

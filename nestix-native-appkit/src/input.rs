@@ -15,10 +15,7 @@ use objc2_foundation::{
 };
 use taffy::{Size, Style, prelude::FromLength};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, native_predecessor},
-};
+use crate::{WindowContext, contexts::ParentContext};
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
 thread_local! {
@@ -60,12 +57,8 @@ pub fn Input(props: &InputProps, element: &Element) {
 
     let node_id = tree_context.create_node(true);
     element.on_place(closure!(
-        [element, input, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(&input, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(&input, Some(node_id));
-            }
+        [input, parent_context] | placement | {
+            parent_context.place_child(&input, Some(node_id), placement);
         }
     ));
 

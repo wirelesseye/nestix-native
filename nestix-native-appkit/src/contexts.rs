@@ -1,4 +1,4 @@
-use nestix::{Element, Shared};
+use nestix::{Placement, Shared};
 use objc2_foundation::NSObject;
 use taffy::NodeId;
 
@@ -15,12 +15,16 @@ pub(crate) struct ParentContext {
     pub parent_node: Option<NodeId>,
 }
 
-/// Returns the nearest preceding host handle from the same Nestix list,
-/// skipping logical siblings that do not render a host object.
-pub(crate) fn native_predecessor(element: &Element) -> Option<*const NSObject> {
-    element
-        .previous_siblings()
-        .into_iter()
-        .find_map(|sibling| sibling.last_handle())
-        .and_then(|handle| handle.downcast_ref::<*const NSObject>().copied())
+impl ParentContext {
+    pub fn place_child(&self, child: &NSObject, child_node: Option<NodeId>, placement: &Placement) {
+        if let Some(insert_child) = &self.insert_child {
+            let predecessor = placement
+                .pred
+                .as_ref()
+                .and_then(|handle| handle.downcast_ref::<*const NSObject>().copied());
+            insert_child(child, child_node, predecessor);
+        } else if let Some(add_child) = &self.add_child {
+            add_child(child, child_node);
+        }
+    }
 }

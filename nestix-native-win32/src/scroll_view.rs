@@ -28,10 +28,7 @@ use windows::{
     core::{BOOL, PCWSTR, w},
 };
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, native_predecessor},
-};
+use crate::{WindowContext, contexts::ParentContext};
 
 #[link(name = "user32")]
 unsafe extern "system" {
@@ -169,12 +166,8 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     let node = tree_context.create_node(false);
 
     element.on_place(closure!(
-        [element, parent] | _ | {
-            if let Some(insert) = &parent.insert_child {
-                insert(hwnd, Some(node), native_predecessor(&element));
-            } else if let Some(add) = &parent.add_child {
-                add(hwnd, Some(node));
-            }
+        [parent] | placement | {
+            parent.place_child(hwnd, Some(node), placement);
         }
     ));
     element.on_unmount(closure!(

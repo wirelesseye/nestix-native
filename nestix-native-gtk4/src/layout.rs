@@ -7,10 +7,7 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::{
-    WindowContext,
-    contexts::{ParentContext, native_predecessor},
-};
+use crate::{WindowContext, contexts::ParentContext};
 
 pub(crate) fn mount_leaf(
     element: &Element,
@@ -27,12 +24,8 @@ pub(crate) fn mount_leaf(
     element.provide_handle(widget.clone());
 
     element.on_place(closure!(
-        [element, widget, parent_context] | _ | {
-            if let Some(insert_child) = &parent_context.insert_child {
-                insert_child(&widget, Some(node_id), native_predecessor(&element));
-            } else if let Some(add_child) = &parent_context.add_child {
-                add_child(&widget, Some(node_id));
-            }
+        [widget, parent_context] | placement | {
+            parent_context.place_child(&widget, Some(node_id), placement);
         }
     ));
     element.on_unmount(closure!(

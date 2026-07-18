@@ -697,7 +697,7 @@ dependencies = [
 [[package]]
 name = "nestix"
 version = "0.1.0"
-source = "git+https://github.com/wirelesseye/nestix.git#dfebbf65e95cc5b53866671ba274b01931848109"
+source = "git+https://github.com/wirelesseye/nestix.git#7f0ab39e1c3f257b2f35c40c95c63a0266b12339"
 dependencies = [
  "log",
  "nestix-macros",
@@ -707,7 +707,7 @@ dependencies = [
 [[package]]
 name = "nestix-macros"
 version = "0.1.0"
-source = "git+https://github.com/wirelesseye/nestix.git#dfebbf65e95cc5b53866671ba274b01931848109"
+source = "git+https://github.com/wirelesseye/nestix.git#7f0ab39e1c3f257b2f35c40c95c63a0266b12339"
 dependencies = [
  "convert_case",
  "proc-macro-crate",
@@ -790,7 +790,7 @@ version = "0.1.0"
 [[package]]
 name = "nestix-signal"
 version = "0.1.0"
-source = "git+https://github.com/wirelesseye/nestix.git#dfebbf65e95cc5b53866671ba274b01931848109"
+source = "git+https://github.com/wirelesseye/nestix.git#7f0ab39e1c3f257b2f35c40c95c63a0266b12339"
 dependencies = [
  "log",
 ]

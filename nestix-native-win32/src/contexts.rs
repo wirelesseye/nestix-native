@@ -1,4 +1,4 @@
-use nestix::{Element, Shared};
+use nestix::{Placement, Shared};
 use taffy::NodeId;
 use windows::Win32::Foundation::HWND;
 
@@ -16,10 +16,16 @@ pub(crate) struct ParentContext {
     pub parent_node: Option<NodeId>,
 }
 
-pub(crate) fn native_predecessor(element: &Element) -> Option<HWND> {
-    element
-        .previous_siblings()
-        .into_iter()
-        .find_map(|sibling| sibling.last_handle())
-        .and_then(|handle| handle.downcast_ref::<HWND>().copied())
+impl ParentContext {
+    pub fn place_child(&self, child: HWND, child_node: Option<NodeId>, placement: &Placement) {
+        if let Some(insert_child) = &self.insert_child {
+            let predecessor = placement
+                .pred
+                .as_ref()
+                .and_then(|handle| handle.downcast_ref::<HWND>().copied());
+            insert_child(child, child_node, predecessor);
+        } else if let Some(add_child) = &self.add_child {
+            add_child(child, child_node);
+        }
+    }
 }
