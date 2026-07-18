@@ -27,8 +27,9 @@ Nestix Native currently provides built-in backend crates for:
 | --- | --- | --- |
 | macOS | `nestix-native-appkit` | `appkit` |
 | Windows | `nestix-native-win32` | `win32` |
+| Linux | `nestix-native-gtk4` | `gtk4` |
 
-The facade crate enables both backend features by default, but only the backend
+The facade crate enables all backend features by default, but only the backend
 for the current compilation target is used. Builds for unsupported platforms, or
 builds where the relevant platform feature is disabled, must provide their own
 backend context or will fail at runtime when the default backend is requested.

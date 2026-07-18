@@ -74,9 +74,15 @@ pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_win32::WIN32_BACKEND
 }
 
+#[cfg(all(target_os = "linux", feature = "gtk4"))]
+pub fn default_backend() -> &'static dyn Backend {
+    &nestix_native_gtk4::GTK4_BACKEND
+}
+
 #[cfg(not(any(
     all(target_os = "macos", feature = "appkit"),
-    all(target_os = "windows", feature = "win32")
+    all(target_os = "windows", feature = "win32"),
+    all(target_os = "linux", feature = "gtk4")
 )))]
 pub fn default_backend() -> &'static dyn Backend {
     panic!(
