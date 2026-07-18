@@ -64,8 +64,8 @@ pub trait Backend {
         None
     }
 
-    fn create_scroll_view(&self, _props: ScrollViewProps) -> Option<Element> {
-        None
+    fn create_scroll_view(&self, props: ScrollViewProps) -> Option<Element> {
+        props.children.get()
     }
 
     fn create_button(&self, _props: ButtonProps) -> Option<Element> {

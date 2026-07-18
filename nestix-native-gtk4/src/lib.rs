@@ -1,15 +1,20 @@
 pub mod button;
 pub mod flex_view;
+pub mod input;
 pub mod root;
+pub mod tab_view;
 pub mod text;
 pub mod window;
 
+mod allocation_bin;
 mod contexts;
 mod layout;
 
 pub use button::*;
 pub use flex_view::*;
+pub use input::*;
 pub use root::*;
+pub use tab_view::*;
 pub use text::*;
 pub use window::*;
 
@@ -46,5 +51,20 @@ impl Backend for Gtk4Backend {
         props: nestix_native_core::FlexViewProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<FlexView>(props))
+    }
+
+    fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {
+        Some(create_element::<Input>(props))
+    }
+
+    fn create_tab_view(&self, props: nestix_native_core::TabViewProps) -> Option<nestix::Element> {
+        Some(create_element::<TabView>(props))
+    }
+
+    fn create_tab_view_item(
+        &self,
+        props: nestix_native_core::TabViewItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<TabViewItem>(props))
     }
 }

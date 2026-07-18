@@ -11,7 +11,7 @@ use nestix_native_core::{
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
-use crate::contexts::ParentContext;
+use crate::{allocation_bin::AllocationBin, contexts::ParentContext};
 
 #[derive(Clone)]
 pub struct WindowContext {
@@ -27,12 +27,14 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let scale_factor = create_state(1.0);
     let window = gtk4::Window::new();
     let overlay = gtk4::Overlay::new();
+    let content = AllocationBin::new();
     let header_bar = gtk4::HeaderBar::new();
     let header_title = gtk4::Label::new(None);
     header_bar.set_title_widget(Some(&header_title));
     header_bar.set_show_title_buttons(true);
     header_bar.set_valign(gtk4::Align::Start);
     overlay.add_overlay(&header_bar);
+    overlay.set_child(Some(&content));
     window.set_child(Some(&overlay));
     let unmounting = Rc::new(Cell::new(false));
     scale_factor.set(window.scale_factor() as f64);
@@ -85,24 +87,42 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     let last_width = Rc::new(Cell::new(-1));
     let last_height = Rc::new(Cell::new(-1));
+    let last_content_width = Rc::new(Cell::new(-1));
+    let last_content_height = Rc::new(Cell::new(-1));
     window.add_tick_callback(closure!(
-        [tree_context, props.on_resize, last_width, last_height] | window,
+        [
+            tree_context,
+            props.on_resize,
+            content,
+            last_width,
+            last_height,
+            last_content_width,
+            last_content_height
+        ] | window,
         _ | {
             let width = window.width();
             let height = window.height();
-            if width != last_width.get() || height != last_height.get() {
-                last_width.set(width);
-                last_height.set(height);
+            let content_width = content.width();
+            let content_height = content.height();
+            if content_width != last_content_width.get()
+                || content_height != last_content_height.get()
+            {
+                last_content_width.set(content_width);
+                last_content_height.set(content_height);
                 if let Some(root_node) = tree_context.root_node() {
                     tree_context.update_style(root_node, |prev| Style {
                         size: Size {
-                            width: taffy::Dimension::from_length(width.max(0) as f32),
-                            height: taffy::Dimension::from_length(height.max(0) as f32),
+                            width: taffy::Dimension::from_length(content_width.max(0) as f32),
+                            height: taffy::Dimension::from_length(content_height.max(0) as f32),
                         },
                         ..prev
                     });
                     tree_context.refresh();
                 }
+            }
+            if width != last_width.get() || height != last_height.get() {
+                last_width.set(width);
+                last_height.set(height);
                 if let Some(on_resize) = on_resize.get() {
                     on_resize(DpiSize::Logical(LogicalSize::new(
                         width as f64,
@@ -126,12 +146,12 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
                     ContextProvider<ParentContext>(ParentContext {
                         fixed: None,
-                        add_child: Some(callback!([window, overlay, tree_context] |widget: &gtk4::Widget, child_node: Option<NodeId>| {
-                            overlay.set_child(Some(widget));
+                        add_child: Some(callback!([content, tree_context] |widget: &gtk4::Widget, child_node: Option<NodeId>| {
+                            content.set_child(Some(widget));
                             tree_context.set_root_node(child_node);
                             if let Some(child_node) = child_node {
-                                let width = window.width().max(0) as f32;
-                                let height = window.height().max(0) as f32;
+                                let width = content.width().max(0) as f32;
+                                let height = content.height().max(0) as f32;
                                 tree_context.update_style(child_node, |prev| Style {
                                     size: Size {
                                         width: taffy::Dimension::from_length(width),
@@ -143,8 +163,8 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                             }
                         })),
                         insert_child: None,
-                        remove_child: Some(callback!([overlay, tree_context] |_: &gtk4::Widget, _: Option<NodeId>| {
-                            overlay.set_child(gtk4::Widget::NONE);
+                        remove_child: Some(callback!([content, tree_context] |_: &gtk4::Widget, _: Option<NodeId>| {
+                            content.set_child(gtk4::Widget::NONE);
                             tree_context.set_root_node(None);
                         })),
                         parent_node: None,

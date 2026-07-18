@@ -1,4 +1,8 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use gtk4::prelude::*;
 use nestix::{
@@ -14,6 +18,8 @@ use nestix_native_core::{
 use taffy::{NodeId, Size, Style};
 
 use crate::{WindowContext, contexts::ParentContext};
+
+static NEXT_CSS_CLASS: AtomicUsize = AtomicUsize::new(0);
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
@@ -52,12 +58,17 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     ));
 
     let css = gtk4::CssProvider::new();
+    let css_class = format!(
+        "nestix-flex-view-{}",
+        NEXT_CSS_CLASS.fetch_add(1, Ordering::Relaxed)
+    );
+    fixed.add_css_class(&css_class);
     fixed
         .style_context()
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     scoped_effect!(
         element,
-        [css, style_props, props.bg_color] || {
+        [css, css_class, style_props, props.bg_color] || {
             let style_props = style_props.get();
             let color = bg_color
                 .get()
@@ -74,7 +85,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                     )
                 })
                 .unwrap_or_default();
-            css.load_from_data(&format!("fixed {{ {declaration} }}"));
+            css.load_from_data(&format!(".{css_class} {{ {declaration} }}"));
         }
     );
 

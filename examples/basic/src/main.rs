@@ -44,7 +44,7 @@ fn ExampleApp(_: &(), element: &Element) -> Element {
                         println!("{:?}", size);
                     }),
                 ) {
-                    FlexView(.class = "surface", .view(.flex_grow = 1.0_f32)) {
+                    FlexView(.class = "surface") {
                         FlexView(.class = "panel stack", .align_items = AlignItems::Start) {
                             Text("Nestix native")
                             Text(computed!([count] || format!("Count: {}", count.get())))

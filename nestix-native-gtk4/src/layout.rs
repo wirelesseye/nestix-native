@@ -16,6 +16,27 @@ pub(crate) fn mount_leaf(
     props: &ViewProps,
     content_revision: Readonly<usize>,
 ) -> NodeId {
+    mount_leaf_inner(element, widget, style_props, props, content_revision, true)
+}
+
+pub(crate) fn mount_leaf_with_stretchable_width(
+    element: &Element,
+    widget: &Widget,
+    style_props: Computed<Option<ResolvedStyle>>,
+    props: &ViewProps,
+    content_revision: Readonly<usize>,
+) -> NodeId {
+    mount_leaf_inner(element, widget, style_props, props, content_revision, false)
+}
+
+fn mount_leaf_inner(
+    element: &Element,
+    widget: &Widget,
+    style_props: Computed<Option<ResolvedStyle>>,
+    props: &ViewProps,
+    content_revision: Readonly<usize>,
+    intrinsic_auto_width: bool,
+) -> NodeId {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
@@ -86,8 +107,11 @@ pub(crate) fn mount_leaf(
             let (_, natural_width, _, _) = widget.measure(Orientation::Horizontal, -1);
             let (_, natural_height, _, _) = widget.measure(Orientation::Vertical, natural_width);
             let width = match width {
-                Dimension::Auto => natural_width as f32,
-                Dimension::Length(value) => value.to_logical::<f32>(scale_factor.get()).into(),
+                Dimension::Auto if !intrinsic_auto_width => taffy::Dimension::auto(),
+                Dimension::Auto => taffy::Dimension::from_length(natural_width as f32),
+                Dimension::Length(value) => {
+                    taffy::Dimension::from_length(value.to_logical::<f32>(scale_factor.get()))
+                }
             };
             let height = match height {
                 Dimension::Auto => natural_height as f32,
@@ -95,7 +119,7 @@ pub(crate) fn mount_leaf(
             };
             tree_context.update_style(node_id, |prev| Style {
                 size: Size {
-                    width: taffy::Dimension::from_length(width),
+                    width,
                     height: taffy::Dimension::from_length(height),
                 },
                 ..prev
@@ -177,6 +201,7 @@ pub(crate) fn mount_leaf(
                     && widget.parent().as_ref() == Some(fixed.upcast_ref())
                 {
                     fixed.move_(&widget, layout.location.x as f64, layout.location.y as f64);
+                    fixed.queue_allocate();
                 }
             }
         }
