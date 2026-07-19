@@ -155,31 +155,35 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             ContextProvider<TreeContext>(tree_context.clone()) {
                 ContextProvider<LayoutRefreshContext>(layout_refresh.clone()) {
                     StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
-                        ContextProvider<ParentContext>(ParentContext {
-                        fixed: None,
-                        add_child: Some(callback!([content, tree_context, layout_refresh] |widget: &gtk4::Widget, child_node: Option<NodeId>| {
-                            content.set_child(Some(widget));
-                            tree_context.set_root_node(child_node);
-                            if let Some(child_node) = child_node {
-                                let width = content.width().max(0) as f32;
-                                let height = content.height().max(0) as f32;
-                                tree_context.update_style(child_node, |prev| Style {
-                                    size: Size {
-                                        width: taffy::Dimension::from_length(width),
-                                        height: taffy::Dimension::from_length(height),
-                                    },
-                                    ..prev
-                                });
-                                layout_refresh.queue_refresh();
-                            }
-                        })),
-                        insert_child: None,
-                        remove_child: Some(callback!([content, tree_context] |_: &gtk4::Widget, _: Option<NodeId>| {
-                            content.set_child(gtk4::Widget::NONE);
-                            tree_context.set_root_node(None);
-                        })),
-                        parent_node: None,
-                        }) {
+                        ContextProvider<ParentContext>(
+                            ParentContext {
+                                fixed: None,
+                                add_child: Some(callback!([content, tree_context, layout_refresh] |widget: &gtk4::Widget,
+                                child_node: Option<NodeId> | {
+                                    content.set_child(Some(widget));
+                                    tree_context.set_root_node(child_node);
+                                    if let Some(child_node) = child_node {
+                                        let width = content.width().max(0) as f32;
+                                        let height = content.height().max(0) as f32;
+                                        tree_context.update_style(child_node, |prev| Style {
+                                            size: Size {
+                                                width: taffy::Dimension::from_length(width),
+                                                height: taffy::Dimension::from_length(height),
+                                            },
+                                            ..prev
+                                        });
+                                        layout_refresh.queue_refresh();
+                                    }
+                                })),
+                                insert_child: None,
+                                remove_child: Some(callback!([content, tree_context] |_: &gtk4::Widget,
+                                _: Option<NodeId> | {
+                                    content.set_child(gtk4::Widget::NONE);
+                                    tree_context.set_root_node(None);
+                                })),
+                                parent_node: None
+                            },
+                        ) {
                             $(props.children.clone().map(|child| Layout::from(child.clone())))
                         }
                     }

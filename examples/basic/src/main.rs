@@ -7,7 +7,7 @@ use nestix_native::{
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    mount_root(&layout! {ExampleApp});
+    mount_root(&layout! { ExampleApp });
 }
 
 #[component]
@@ -56,17 +56,21 @@ fn ExampleApp(_: &(), element: &Element) -> Element {
                             ) {
                                 Button(
                                     .title = "Increment",
-                                    .on_click = callback!([count, message] || {
-                                        count.mutate(|count| *count += 1);
-                                        message.set("Counter updated".to_string());
-                                    })
+                                    .on_click = callback!(
+                                        [count, message] || {
+                                            count.mutate(|count| *count += 1);
+                                            message.set("Counter updated".to_string());
+                                        }
+                                    ),
                                 )
                                 Button(
                                     .title = "Reset",
-                                    .on_click = callback!([count, message] || {
-                                        count.set(0);
-                                        message.set("Ready".to_string());
-                                    })
+                                    .on_click = callback!(
+                                        [count, message] || {
+                                            count.set(0);
+                                            message.set("Ready".to_string());
+                                        }
+                                    ),
                                 )
                             }
                             FlexView(

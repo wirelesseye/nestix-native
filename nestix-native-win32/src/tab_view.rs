@@ -322,11 +322,9 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
-            ContextProvider<TabViewContext>(
-                tab_view_context
-            ) {
+            ContextProvider<TabViewContext>(tab_view_context) {
                 ContextProvider<ParentContext>(
                     ParentContext {
                         parent_hwnd: hwnd,
@@ -494,20 +492,24 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 ContextProvider<ParentContext>(
                     ParentContext {
                         parent_hwnd: parent_context.parent_hwnd,
-                        add_child: Some(callback!([window_context.scale_factor, tab_view_context] |child_hwnd: HWND, child_node: Option<NodeId>| {
+                        add_child: Some(callback!([window_context.scale_factor, tab_view_context] |child_hwnd: HWND,
+                        child_node: Option<NodeId> | {
                             subtree_context.set_root_node(child_node);
                             subtree_root.set(Some(child_hwnd));
-
                             let mut pages = tab_view_context.pages.borrow_mut();
                             pages.retain(|(page_hwnd, _)| *page_hwnd != child_hwnd);
                             pages.push((child_hwnd, subtree_context.clone()));
                             drop(pages);
-
-                            resize_tab_view_content(&subtree_context, scale_factor.get(), parent_context.parent_hwnd, child_hwnd);
+                            resize_tab_view_content(
+                                &subtree_context,
+                                scale_factor.get(),
+                                parent_context.parent_hwnd,
+                                child_hwnd,
+                            );
                         })),
                         insert_child: None,
                         remove_child: None,
-                        parent_node: None,
+                        parent_node: None
                     },
                 ) {
                     $(props.children.clone().map(|element| Layout::from(element.clone())))

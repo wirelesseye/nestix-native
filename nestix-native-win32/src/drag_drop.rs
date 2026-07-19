@@ -617,7 +617,9 @@ pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
             registration.borrow_mut().take();
         }
     ));
-    layout! { $(props.children.get()) }
+    layout! {
+        $(props.children.get())
+    }
 }
 
 fn hglobal(bytes: &[u8]) -> windows::core::Result<STGMEDIUM> {
@@ -1044,7 +1046,9 @@ pub fn DragSource(props: &DragSourceProps, element: &Element) -> Element {
             registration.borrow_mut().take();
         }
     ));
-    layout! {$(props.children.get())}
+    layout! {
+        $(props.children.get())
+    }
 }
 
 #[cfg(test)]

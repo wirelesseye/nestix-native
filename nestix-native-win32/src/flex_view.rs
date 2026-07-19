@@ -419,31 +419,39 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
             ContextProvider<ParentContext>(
                 ParentContext {
                     parent_hwnd: hwnd,
-                    add_child: Some(callback!([tree_context, child_order] |child: HWND, child_node: Option<NodeId>| {
+                    add_child: Some(callback!([tree_context, child_order] |child: HWND,
+                    child_node: Option<NodeId> | {
                         let predecessor = child_order.borrow().last_key();
-                        child_order.borrow_mut().place(child, child_node, predecessor);
+                        child_order
+                            .borrow_mut()
+                            .place(child, child_node, predecessor);
                         let nodes = child_order.borrow().taffy_nodes();
                         tree_context.set_children(node_id, &nodes);
                         tree_context.refresh();
                     })),
-                    insert_child: Some(callback!([tree_context, child_order] |child: HWND, child_node: Option<NodeId>, predecessor: Option<HWND>| {
-                        child_order.borrow_mut().place(child, child_node, predecessor);
+                    insert_child: Some(callback!([tree_context, child_order] |child: HWND,
+                    child_node: Option<NodeId>,
+                    predecessor: Option<HWND> | {
+                        child_order
+                            .borrow_mut()
+                            .place(child, child_node, predecessor);
                         let nodes = child_order.borrow().taffy_nodes();
                         tree_context.set_children(node_id, &nodes);
                         tree_context.refresh();
                     })),
-                    remove_child: Some(callback!([tree_context, child_order] |child: HWND, _: Option<NodeId>| {
+                    remove_child: Some(callback!([tree_context, child_order] |child: HWND,
+                    _: Option<NodeId> | {
                         child_order.borrow_mut().remove(child);
                         let nodes = child_order.borrow().taffy_nodes();
                         tree_context.set_children(node_id, &nodes);
                         tree_context.refresh();
                     })),
-                    parent_node: Some(node_id),
+                    parent_node: Some(node_id)
                 },
             ) {
                 $(props.children.clone())

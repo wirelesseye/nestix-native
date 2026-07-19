@@ -475,7 +475,9 @@ pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
             registration.borrow_mut().take();
         }
     ));
-    layout! { $(props.children.get()) }
+    layout! {
+        $(props.children.get())
+    }
 }
 
 struct DragSourceState {
@@ -808,5 +810,7 @@ pub fn DragSource(props: &DragSourceProps, element: &Element) -> Element {
             registration.borrow_mut().take();
         }
     ));
-    layout! { $(props.children.get()) }
+    layout! {
+        $(props.children.get())
+    }
 }

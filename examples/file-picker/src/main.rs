@@ -18,11 +18,11 @@ fn FilePickerExample(_: &(), element: &Element) -> Element {
     layout! {
         Root {
             Window(
-                    .title = "Nestix File Picker",
-                    .width = 520,
-                    .height = 360,
-                    .on_close_requested = callback!([element] || element.unmount()),
-                ) {
+                .title = "Nestix File Picker",
+                .width = 520,
+                .height = 360,
+                .on_close_requested = callback!([element] || element.unmount()),
+            ) {
                 FlexView(
                     .align_items = AlignItems::Start,
                     .container(.padding = 24),
@@ -35,9 +35,10 @@ fn FilePickerExample(_: &(), element: &Element) -> Element {
                         .on_click = picker_callback(
                             picker.clone(),
                             status.clone(),
-                            FilePickerRequest::open_file().with_filter(
-                                FilePickerFilter::new("Images", ["png", "jpg", "jpeg"]),
-                            ),
+                            FilePickerRequest::open_file().with_filter(FilePickerFilter::new(
+                                "Images",
+                                ["png", "jpg", "jpeg"],
+                            )),
                         ),
                     )
                     Button(

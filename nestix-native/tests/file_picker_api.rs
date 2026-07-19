@@ -14,13 +14,15 @@ fn PickerControls() -> Element {
             FilePicker(.controller = picker.clone())
             Button(
                 .title = "Open",
-                .on_click = callback!([picker] || {
-                    let _ = picker.open(
-                        FilePickerRequest::open_file()
-                            .with_filter(FilePickerFilter::new("Images", ["png", "jpg"])),
-                        callback!(|_result| {}),
-                    );
-                }),
+                .on_click = callback!(
+                    [picker] || {
+                        let _ = picker.open(
+                            FilePickerRequest::open_file()
+                                .with_filter(FilePickerFilter::new("Images", ["png", "jpg"])),
+                            callback!(|_result| {}),
+                        );
+                    }
+                ),
             )
         }
     }

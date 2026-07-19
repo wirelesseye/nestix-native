@@ -51,34 +51,42 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
-            ContextProvider<TabViewContext>(TabViewContext {
-                notebook: notebook.clone(),
-                content_revision: content_revision.clone(),
-            }) {
-                ContextProvider<ParentContext>(ParentContext {
-                    fixed: None,
-                    add_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget, _: Option<NodeId>| {
-                        remove_page(&notebook, child);
-                        notebook.append_page(child, gtk4::Widget::NONE);
-                        content_revision.mutate(|revision| *revision += 1);
-                    })),
-                    insert_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget, _: Option<NodeId>, predecessor: Option<gtk4::Widget>| {
-                        remove_page(&notebook, child);
-                        let position = predecessor
-                            .as_ref()
-                            .and_then(|predecessor| notebook.page_num(predecessor))
-                            .map_or(0, |position| position + 1);
-                        notebook.insert_page(child, gtk4::Widget::NONE, Some(position));
-                        content_revision.mutate(|revision| *revision += 1);
-                    })),
-                    remove_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget, _: Option<NodeId>| {
-                        remove_page(&notebook, child);
-                        content_revision.mutate(|revision| *revision += 1);
-                    })),
-                    parent_node: Some(node_id),
-                }) {
+            ContextProvider<TabViewContext>(
+                TabViewContext {
+                    notebook: notebook.clone(),
+                    content_revision: content_revision.clone(),
+                },
+            ) {
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        fixed: None,
+                        add_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget,
+                        _: Option<NodeId> | {
+                            remove_page(&notebook, child);
+                            notebook.append_page(child, gtk4::Widget::NONE);
+                            content_revision.mutate(|revision| *revision += 1);
+                        })),
+                        insert_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget,
+                        _: Option<NodeId>,
+                        predecessor: Option<gtk4::Widget> | {
+                            remove_page(&notebook, child);
+                            let position = predecessor
+                                .as_ref()
+                                .and_then(|predecessor| notebook.page_num(predecessor))
+                                .map_or(0, |position| position + 1);
+                            notebook.insert_page(child, gtk4::Widget::NONE, Some(position));
+                            content_revision.mutate(|revision| *revision += 1);
+                        })),
+                        remove_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget,
+                        _: Option<NodeId> | {
+                            remove_page(&notebook, child);
+                            content_revision.mutate(|revision| *revision += 1);
+                        })),
+                        parent_node: Some(node_id)
+                    },
+                ) {
                     $(props.children.clone())
                 }
             }
@@ -148,22 +156,31 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
                 ContextProvider<LayoutRefreshContext>(subtree_refresh.clone()) {
-                    ContextProvider<ParentContext>(ParentContext {
-                        fixed: None,
-                        add_child: Some(callback!([page, subtree_context, subtree_refresh] |child: &gtk4::Widget, child_node: Option<NodeId>| {
-                            page.set_child(Some(child));
-                            subtree_context.set_root_node(child_node);
-                            resize_subtree(&subtree_context, &subtree_refresh, page.width(), page.height());
-                        })),
-                        insert_child: None,
-                        remove_child: Some(callback!([page, subtree_context] |child: &gtk4::Widget, _: Option<NodeId>| {
-                            if page.child().as_ref() == Some(child) {
-                                page.set_child(gtk4::Widget::NONE);
-                                subtree_context.set_root_node(None);
-                            }
-                        })),
-                        parent_node: None,
-                    }) {
+                    ContextProvider<ParentContext>(
+                        ParentContext {
+                            fixed: None,
+                            add_child: Some(callback!([page, subtree_context, subtree_refresh] |child: &gtk4::Widget,
+                            child_node: Option<NodeId> | {
+                                page.set_child(Some(child));
+                                subtree_context.set_root_node(child_node);
+                                resize_subtree(
+                                    &subtree_context,
+                                    &subtree_refresh,
+                                    page.width(),
+                                    page.height(),
+                                );
+                            })),
+                            insert_child: None,
+                            remove_child: Some(callback!([page, subtree_context] |child: &gtk4::Widget,
+                            _: Option<NodeId> | {
+                                if page.child().as_ref() == Some(child) {
+                                    page.set_child(gtk4::Widget::NONE);
+                                    subtree_context.set_root_node(None);
+                                }
+                            })),
+                            parent_node: None
+                        },
+                    ) {
                         $(props.children.clone().map(|child| Layout::from(child.clone())))
                     }
                 }

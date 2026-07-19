@@ -67,9 +67,11 @@ fn AppKitToolbarExample(_: &(), element: &Element) -> Element {
                                 .tool_tip = Some("Decrease the counter".to_string()),
                                 .bordered = true,
                                 .disabled = computed!([count] || count.get() <= 0),
-                                .on_click = callback!([count] || {
-                                    count.mutate(|value| *value -= 1);
-                                }),
+                                .on_click = callback!(
+                                    [count] || {
+                                        count.mutate(|value| *value -= 1);
+                                    }
+                                ),
                             )
                             AppKitToolbarSpace()
                             AppKitToolbarItem(
@@ -79,9 +81,11 @@ fn AppKitToolbarExample(_: &(), element: &Element) -> Element {
                                 .accessibility_description = Some("Add one".to_string()),
                                 .tool_tip = Some("Increase the counter".to_string()),
                                 .bordered = true,
-                                .on_click = callback!([count] || {
-                                    count.mutate(|value| *value += 1);
-                                }),
+                                .on_click = callback!(
+                                    [count] || {
+                                        count.mutate(|value| *value += 1);
+                                    }
+                                ),
                             )
                             AppKitToolbarFlexibleSpace()
                             AppKitToolbarItem(
@@ -96,61 +100,84 @@ fn AppKitToolbarExample(_: &(), element: &Element) -> Element {
                                 .on_click = callback!([count] || count.set(0)),
                             )
                         }
-
                         Text(computed!([count] || format!("Count: {}", count.get())))
                         Button(
-                            .title = computed!([reset_hidden] || if reset_hidden.get() {
-                                "Show reset toolbar item"
-                            } else {
-                                "Hide reset toolbar item"
-                            }),
-                            .on_click = callback!([reset_hidden] || {
-                                reset_hidden.mutate(|hidden| *hidden = !*hidden);
-                            }),
+                            .title = computed!(
+                                [reset_hidden]
+                                    || if reset_hidden.get() {
+                                        "Show reset toolbar item"
+                                    } else {
+                                        "Hide reset toolbar item"
+                                    }
+                            ),
+                            .on_click = callback!(
+                                [reset_hidden] || {
+                                    reset_hidden.mutate(|hidden| *hidden = !*hidden);
+                                }
+                            ),
                         )
                         Button(
                             .title = "Cycle toolbar display mode",
-                            .on_click = callback!([display_mode] || {
-                                display_mode.set(match display_mode.get() {
-                                    AppKitToolbarDisplayMode::Default => {
-                                        AppKitToolbarDisplayMode::IconAndLabel
-                                    }
-                                    AppKitToolbarDisplayMode::IconAndLabel => {
-                                        AppKitToolbarDisplayMode::IconOnly
-                                    }
-                                    AppKitToolbarDisplayMode::IconOnly => {
-                                        AppKitToolbarDisplayMode::LabelOnly
-                                    }
-                                    AppKitToolbarDisplayMode::LabelOnly => {
-                                        AppKitToolbarDisplayMode::Default
-                                    }
-                                });
-                            }),
+                            .on_click = callback!(
+                                [display_mode] || {
+                                    display_mode.set(match display_mode.get() {
+                                        AppKitToolbarDisplayMode::Default => {
+                                            AppKitToolbarDisplayMode::IconAndLabel
+                                        }
+                                        AppKitToolbarDisplayMode::IconAndLabel => {
+                                            AppKitToolbarDisplayMode::IconOnly
+                                        }
+                                        AppKitToolbarDisplayMode::IconOnly => {
+                                            AppKitToolbarDisplayMode::LabelOnly
+                                        }
+                                        AppKitToolbarDisplayMode::LabelOnly => {
+                                            AppKitToolbarDisplayMode::Default
+                                        }
+                                    });
+                                }
+                            ),
                         )
                         Button(
                             .title = "Cycle toolbar style",
-                            .on_click = callback!([toolbar_style] || {
-                                toolbar_style.set(match toolbar_style.get() {
-                                    AppKitToolbarStyle::Automatic => AppKitToolbarStyle::Expanded,
-                                    AppKitToolbarStyle::Expanded => AppKitToolbarStyle::Preference,
-                                    AppKitToolbarStyle::Preference => AppKitToolbarStyle::Unified,
-                                    AppKitToolbarStyle::Unified => AppKitToolbarStyle::UnifiedCompact,
-                                    AppKitToolbarStyle::UnifiedCompact => AppKitToolbarStyle::Automatic,
-                                });
-                            }),
+                            .on_click = callback!(
+                                [toolbar_style] || {
+                                    toolbar_style.set(match toolbar_style.get() {
+                                        AppKitToolbarStyle::Automatic => {
+                                            AppKitToolbarStyle::Expanded
+                                        }
+                                        AppKitToolbarStyle::Expanded => {
+                                            AppKitToolbarStyle::Preference
+                                        }
+                                        AppKitToolbarStyle::Preference => {
+                                            AppKitToolbarStyle::Unified
+                                        }
+                                        AppKitToolbarStyle::Unified => {
+                                            AppKitToolbarStyle::UnifiedCompact
+                                        }
+                                        AppKitToolbarStyle::UnifiedCompact => {
+                                            AppKitToolbarStyle::Automatic
+                                        }
+                                    });
+                                }
+                            ),
                         )
                         Button(
-                            .title = computed!([title_bar_mode] || format!(
-                                "Toggle title bar overlay mode (current: {:?})",
-                                title_bar_mode.get(),
-                            )),
-                            .on_click = callback!([title_bar_mode] || {
-                                title_bar_mode.set(match title_bar_mode.get() {
-                                    TitleBarMode::System => TitleBarMode::Overlay,
-                                    TitleBarMode::Overlay => TitleBarMode::System,
-                                    _ => TitleBarMode::System,
-                                });
-                            }),
+                            .title = computed!(
+                                [title_bar_mode]
+                                    || format!(
+                                        "Toggle title bar overlay mode (current: {:?})",
+                                        title_bar_mode.get(),
+                                    )
+                            ),
+                            .on_click = callback!(
+                                [title_bar_mode] || {
+                                    title_bar_mode.set(match title_bar_mode.get() {
+                                        TitleBarMode::System => TitleBarMode::Overlay,
+                                        TitleBarMode::Overlay => TitleBarMode::System,
+                                        _ => TitleBarMode::System,
+                                    });
+                                }
+                            ),
                         )
                     }
                 }

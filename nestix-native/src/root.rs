@@ -15,10 +15,8 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     let platform_root = backend.create_root(props.clone());
 
     layout! {
-        ContextProvider<BackendContext>(
-            BackendContext { backend },
-        ) {
-            $(platform_root),
+        ContextProvider<BackendContext>(BackendContext { backend }) {
+            $(platform_root)
         }
     }
 }

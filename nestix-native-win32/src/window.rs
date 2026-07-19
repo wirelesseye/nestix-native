@@ -148,27 +148,35 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     ContextProvider<ParentContext>(
                         ParentContext {
                             parent_hwnd: hwnd,
-                            add_child: Some(callback!([] |child_hwnd: HWND, child_node: Option<NodeId>| {
+                            add_child: Some(callback!([] |child_hwnd: HWND,
+                            child_node: Option<NodeId> | {
                                 tree_context.set_root_node(child_node);
                                 window_state.root_view.set(Some(child_hwnd));
-
                                 let mut client_rect: RECT = RECT::default();
-                                unsafe { GetClientRect(hwnd, &mut client_rect).unwrap(); }
-
+                                unsafe {
+                                    GetClientRect(hwnd, &mut client_rect).unwrap();
+                                }
                                 let width = client_rect.right - client_rect.left;
                                 let height = client_rect.bottom - client_rect.top;
-
                                 unsafe {
-                                    SetWindowPos(child_hwnd, None, 0, 0, width, height, SWP_NOZORDER)
-                                        .unwrap();
+                                    SetWindowPos(
+                                        child_hwnd,
+                                        None,
+                                        0,
+                                        0,
+                                        width,
+                                        height,
+                                        SWP_NOZORDER,
+                                    )
+                                    .unwrap();
                                 }
-
-                                let size: LogicalSize<f32> = PhysicalSize::new(width, height).to_logical(scale_factor.get());
+                                let size: LogicalSize<f32> =
+                                    PhysicalSize::new(width, height).to_logical(scale_factor.get());
                                 if let Some(child_node) = child_node {
                                     tree_context.update_style(child_node, |prev| Style {
                                         size: taffy::Size {
                                             width: taffy::Dimension::from_length(size.width),
-                                            height: taffy::Dimension::from_length(size.height)
+                                            height: taffy::Dimension::from_length(size.height),
                                         },
                                         ..prev
                                     });
@@ -177,8 +185,8 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                             })),
                             insert_child: None,
                             remove_child: None,
-                            parent_node: None,
-                        }
+                            parent_node: None
+                        },
                     ) {
                         $(props.children.clone().map(|element| Layout::from(element.clone())))
                     }

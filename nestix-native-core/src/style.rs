@@ -1305,7 +1305,16 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
         .unwrap_or_else(|| PropValue::from_plain(ResolvedStyle::default()));
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet: Some(style_sheet), ancestors, ancestor_positions, inherited_style, class_registry, structure_version}) {
+        ContextProvider<StyleContext>(
+            StyleContext {
+                style_sheet: Some(style_sheet),
+                ancestors,
+                ancestor_positions,
+                inherited_style,
+                class_registry,
+                structure_version,
+            },
+        ) {
             $(props.children.clone())
         }
     }
@@ -1385,7 +1394,16 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<StyleContext>(StyleContext {style_sheet, ancestors, ancestor_positions, inherited_style, class_registry, structure_version}) {
+        ContextProvider<StyleContext>(
+            StyleContext {
+                style_sheet,
+                ancestors,
+                ancestor_positions,
+                inherited_style,
+                class_registry,
+                structure_version,
+            },
+        ) {
             $(props.children.clone())
         }
     }

@@ -212,40 +212,50 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
-            ContextProvider<ParentContext>(ParentContext {
-                fixed: Some(fixed.clone()),
-                add_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>| {
-                    if child.parent().is_none() {
-                        fixed.put(child, 0.0, 0.0);
-                    }
-                    let predecessor = child_order.borrow().last_key();
-                    child_order.borrow_mut().place(child.clone(), child_node, predecessor);
-                    let nodes = child_order.borrow().taffy_nodes();
-                    tree_context.set_children(node_id, &nodes);
-                    layout_refresh.queue_refresh();
-                })),
-                insert_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget, child_node: Option<NodeId>, predecessor: Option<gtk4::Widget>| {
-                    if child.parent().is_none() {
-                        fixed.put(child, 0.0, 0.0);
-                    }
-                    child_order.borrow_mut().place(child.clone(), child_node, predecessor);
-                    let nodes = child_order.borrow().taffy_nodes();
-                    tree_context.set_children(node_id, &nodes);
-                    layout_refresh.queue_refresh();
-                })),
-                remove_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget, _: Option<NodeId>| {
-                    if child.parent().as_ref() == Some(fixed.upcast_ref()) {
-                        fixed.remove(child);
-                    }
-                    child_order.borrow_mut().remove(child.clone());
-                    let nodes = child_order.borrow().taffy_nodes();
-                    tree_context.set_children(node_id, &nodes);
-                    layout_refresh.queue_refresh();
-                })),
-                parent_node: Some(node_id),
-            }) {
+            ContextProvider<ParentContext>(
+                ParentContext {
+                    fixed: Some(fixed.clone()),
+                    add_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget,
+                    child_node: Option<NodeId> | {
+                        if child.parent().is_none() {
+                            fixed.put(child, 0.0, 0.0);
+                        }
+                        let predecessor = child_order.borrow().last_key();
+                        child_order
+                            .borrow_mut()
+                            .place(child.clone(), child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        layout_refresh.queue_refresh();
+                    })),
+                    insert_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget,
+                    child_node: Option<NodeId>,
+                    predecessor: Option<gtk4::Widget> | {
+                        if child.parent().is_none() {
+                            fixed.put(child, 0.0, 0.0);
+                        }
+                        child_order
+                            .borrow_mut()
+                            .place(child.clone(), child_node, predecessor);
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        layout_refresh.queue_refresh();
+                    })),
+                    remove_child: Some(callback!([fixed, tree_context, layout_refresh, child_order] |child: &gtk4::Widget,
+                    _: Option<NodeId> | {
+                        if child.parent().as_ref() == Some(fixed.upcast_ref()) {
+                            fixed.remove(child);
+                        }
+                        child_order.borrow_mut().remove(child.clone());
+                        let nodes = child_order.borrow().taffy_nodes();
+                        tree_context.set_children(node_id, &nodes);
+                        layout_refresh.queue_refresh();
+                    })),
+                    parent_node: Some(node_id)
+                },
+            ) {
                 $(props.children.clone())
             }
         }

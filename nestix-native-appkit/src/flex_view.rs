@@ -356,31 +356,38 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
             ContextProvider<ParentContext>(
                 ParentContext {
-                    add_child: Some(callback!([tree_context, view, child_order] |object: &NSObject, child_node: Option<NodeId>| {
+                    add_child: Some(callback!([tree_context, view, child_order] |object: &NSObject,
+                    child_node: Option<NodeId> | {
                         let subview = object.downcast_ref::<NSView>().unwrap();
                         let pointer = std::ptr::from_ref(object);
                         let predecessor = child_order.borrow().last_key();
-                        child_order.borrow_mut().place(pointer, child_node, predecessor);
+                        child_order
+                            .borrow_mut()
+                            .place(pointer, child_node, predecessor);
                         view.addSubview(subview);
                         let nodes = child_order.borrow().taffy_nodes();
                         tree_context.set_children(node_id, &nodes);
                         tree_context.refresh();
                     })),
-                    insert_child: Some(callback!([tree_context, view, child_order]
-                        |object: &NSObject, child_node: Option<NodeId>, predecessor: Option<*const NSObject>| {
+                    insert_child: Some(callback!([tree_context, view, child_order] |object: &NSObject,
+                    child_node: Option<NodeId>,
+                    predecessor: Option<*const NSObject> | {
                         let subview = object.downcast_ref::<NSView>().unwrap();
                         let pointer = std::ptr::from_ref(object);
-                        child_order.borrow_mut().place(pointer, child_node, predecessor);
+                        child_order
+                            .borrow_mut()
+                            .place(pointer, child_node, predecessor);
                         let nodes = child_order.borrow().taffy_nodes();
                         view.addSubview(subview);
                         tree_context.set_children(node_id, &nodes);
                         tree_context.refresh();
                     })),
-                    remove_child: Some(callback!([tree_context, child_order] |object: &NSObject, _: Option<NodeId>| {
+                    remove_child: Some(callback!([tree_context, child_order] |object: &NSObject,
+                    _: Option<NodeId> | {
                         let subview = object.downcast_ref::<NSView>().unwrap();
                         subview.removeFromSuperview();
                         let pointer = std::ptr::from_ref(object);
@@ -389,8 +396,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                         tree_context.set_children(node_id, &nodes);
                         tree_context.refresh();
                     })),
-                    parent_node: Some(node_id),
-                }
+                    parent_node: Some(node_id)
+                },
             ) {
                 $(props.children.clone())
             }

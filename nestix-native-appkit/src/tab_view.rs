@@ -232,39 +232,48 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
             ContextProvider<TabViewContext>(
-                TabViewContext {
-                    current_selected: current_selected.into_readonly(),
-                    subtrees,
-                }
+                TabViewContext { current_selected: current_selected.into_readonly(), subtrees,  },
             ) {
-                ContextProvider<ParentContext>(ParentContext {
-                    add_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
-                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
-                        if view.tabViewItems().containsObject(item) {
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        add_child: Some(callback!([view] |child: &NSObject,
+                        _: Option<NodeId> | {
+                            let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                            if view.tabViewItems().containsObject(item) {
+                                view.removeTabViewItem(item);
+                            }
+                            view.addTabViewItem(item);
+                        })),
+                        insert_child: Some(callback!([view] |child: &NSObject,
+                        _: Option<NodeId>,
+                        predecessor: Option<*const NSObject> | {
+                            let item = child.downcast_ref::<NSTabViewItem>().unwrap();
+                            if view.tabViewItems().containsObject(item) {
+                                view.removeTabViewItem(item);
+                            }
+                            let items = view.tabViewItems();
+                            let index = predecessor
+                                .and_then(|predecessor| {
+                                    items.iter().position(|item| {
+                                        std::ptr::from_ref::<NSTabViewItem>(&*item)
+                                            .cast::<NSObject>()
+                                            == predecessor
+                                    })
+                                })
+                                .map_or(0, |index| index + 1);
+                            view.insertTabViewItem_atIndex(item, index as _);
+                        })),
+                        remove_child: Some(callback!([view] |child: &NSObject,
+                        _: Option<NodeId> | {
+                            let item = child.downcast_ref::<NSTabViewItem>().unwrap();
                             view.removeTabViewItem(item);
-                        }
-                        view.addTabViewItem(item);
-                    })),
-                    insert_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>, predecessor: Option<*const NSObject>| {
-                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
-                        if view.tabViewItems().containsObject(item) {
-                            view.removeTabViewItem(item);
-                        }
-                        let items = view.tabViewItems();
-                        let index = predecessor
-                            .and_then(|predecessor| items.iter().position(|item| std::ptr::from_ref::<NSTabViewItem>(&*item).cast::<NSObject>() == predecessor))
-                            .map_or(0, |index| index + 1);
-                        view.insertTabViewItem_atIndex(item, index as _);
-                    })),
-                    remove_child: Some(callback!([view] |child: &NSObject, _: Option<NodeId>| {
-                        let item = child.downcast_ref::<NSTabViewItem>().unwrap();
-                        view.removeTabViewItem(item);
-                    })),
-                    parent_node: Some(node_id),
-                }) {
+                        })),
+                        parent_node: Some(node_id)
+                    },
+                ) {
                     $(props.children.clone())
                 }
             }
@@ -475,36 +484,41 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     layout! {
         StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
             ContextProvider<TreeContext>(subtree_context.clone()) {
-                ContextProvider<ParentContext>(ParentContext {
-                    add_child: Some(callback!([item, subtree_context] |object: &NSObject, child_node: Option<NodeId>| {
-                        let view = object.downcast_ref::<NSView>().unwrap();
-                        item.setView(Some(view));
-                        subtree_context.set_root_node(child_node);
-
-                        let frame = view.frame();
-                        if let Some(child_node) = child_node {
-                            subtree_context.update_style(child_node, |prev| Style {
-                                size: Size {
-                                    width: taffy::Dimension::from_length(frame.size.width as f32),
-                                    height: taffy::Dimension::from_length(frame.size.height as f32)
-                                },
-                                ..prev
-                            });
-                            subtree_context.refresh();
-                        }
-
-                        if let Some(tab_view) = item.tabView(mtm) {
-                            tab_view.setNeedsLayout(true);
-                            tab_view.layoutSubtreeIfNeeded();
-                        }
-                    })),
-                    insert_child: None,
-                    remove_child: Some(callback!([item] |_: &NSObject, _: Option<NodeId>| {
-                        item.setView(None);
-                        subtree_context.set_root_node(None);
-                    })),
-                    parent_node: None,
-                }) {
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        add_child: Some(callback!([item, subtree_context] |object: &NSObject,
+                        child_node: Option<NodeId> | {
+                            let view = object.downcast_ref::<NSView>().unwrap();
+                            item.setView(Some(view));
+                            subtree_context.set_root_node(child_node);
+                            let frame = view.frame();
+                            if let Some(child_node) = child_node {
+                                subtree_context.update_style(child_node, |prev| Style {
+                                    size: Size {
+                                        width: taffy::Dimension::from_length(
+                                            frame.size.width as f32,
+                                        ),
+                                        height: taffy::Dimension::from_length(
+                                            frame.size.height as f32,
+                                        ),
+                                    },
+                                    ..prev
+                                });
+                                subtree_context.refresh();
+                            } if let Some(tab_view) = item.tabView(mtm) {
+                                tab_view.setNeedsLayout(true);
+                                tab_view.layoutSubtreeIfNeeded();
+                            }
+                        })),
+                        insert_child: None,
+                        remove_child: Some(callback!([item] |_: &NSObject,
+                        _: Option<NodeId> | {
+                            item.setView(None);
+                            subtree_context.set_root_node(None);
+                        })),
+                        parent_node: None
+                    },
+                ) {
                     $(props.children.clone().map(|element| Layout::from(element.clone())))
                 }
             }

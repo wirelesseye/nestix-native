@@ -306,32 +306,42 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
         StyleScope(
             .class = props.class.clone(),
             .default_classes = DEFAULT_CLASSES,
-            .effective_style = effective_style
+            .effective_style = effective_style,
         ) {
             ContextProvider<TreeContext>(subtree.clone()) {
-                ContextProvider<ParentContext>(ParentContext {
-                    parent_hwnd: content,
-                    add_child: Some(callback!([subtree, child_order] |child: HWND, child_node: Option<NodeId>| {
-                        let predecessor = child_order.borrow().last_key();
-                        child_order.borrow_mut().place(child, child_node, predecessor);
-                        let nodes = child_order.borrow().taffy_nodes();
-                        subtree.set_children(subtree_root, &nodes);
-                        subtree.refresh();
-                    })),
-                    insert_child: Some(callback!([subtree, child_order] |child: HWND, child_node: Option<NodeId>, predecessor: Option<HWND>| {
-                        child_order.borrow_mut().place(child, child_node, predecessor);
-                        let nodes = child_order.borrow().taffy_nodes();
-                        subtree.set_children(subtree_root, &nodes);
-                        subtree.refresh();
-                    })),
-                    remove_child: Some(callback!([subtree, child_order] |child: HWND, _: Option<NodeId>| {
-                        child_order.borrow_mut().remove(child);
-                        let nodes = child_order.borrow().taffy_nodes();
-                        subtree.set_children(subtree_root, &nodes);
-                        subtree.refresh();
-                    })),
-                    parent_node: Some(subtree_root),
-                }) {
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        parent_hwnd: content,
+                        add_child: Some(callback!([subtree, child_order] |child: HWND,
+                        child_node: Option<NodeId> | {
+                            let predecessor = child_order.borrow().last_key();
+                            child_order
+                                .borrow_mut()
+                                .place(child, child_node, predecessor);
+                            let nodes = child_order.borrow().taffy_nodes();
+                            subtree.set_children(subtree_root, &nodes);
+                            subtree.refresh();
+                        })),
+                        insert_child: Some(callback!([subtree, child_order] |child: HWND,
+                        child_node: Option<NodeId>,
+                        predecessor: Option<HWND> | {
+                            child_order
+                                .borrow_mut()
+                                .place(child, child_node, predecessor);
+                            let nodes = child_order.borrow().taffy_nodes();
+                            subtree.set_children(subtree_root, &nodes);
+                            subtree.refresh();
+                        })),
+                        remove_child: Some(callback!([subtree, child_order] |child: HWND,
+                        _: Option<NodeId> | {
+                            child_order.borrow_mut().remove(child);
+                            let nodes = child_order.borrow().taffy_nodes();
+                            subtree.set_children(subtree_root, &nodes);
+                            subtree.refresh();
+                        })),
+                        parent_node: Some(subtree_root)
+                    },
+                ) {
                     $(props.children.clone().map(|element| Layout::from(element.clone())))
                 }
             }

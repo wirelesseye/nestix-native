@@ -98,28 +98,34 @@ fn StyleMacroApp(_: &(), element: &Element) -> Element {
                             "Class, compound, pseudo-class, combinator, selector-list, and nested rules.",
                             .class = "intro",
                         )
-
                         FlexView(.class = "gallery") {
                             FlexView(.class = "card") {
                                 Text("First child", .class = "card_title")
-                                Text(":first_child changes this card's background.", .class = "detail")
+                                Text(
+                                    ":first_child changes this card's background.",
+                                    .class = "detail",
+                                )
                                 Text(":not(.featured) > .tag", .class = "tag")
                             }
-
                             FlexView(.class = "card featured") {
                                 Text("Compound selector", .class = "card_title")
-                                Text("&.featured combines the nested parent with a class.", .class = "detail")
+                                Text(
+                                    "&.featured combines the nested parent with a class.",
+                                    .class = "detail",
+                                )
                                 Text(".card.featured > .tag", .class = "tag")
                                 FlexView(.class = "actions") {
                                     Button(.title = "Nested action", .class = "action")
                                     Button(.title = "Sibling action", .class = "action")
                                 }
                             }
-
                             FlexView(.class = "card") {
                                 Text("Combinators", .class = "card_title")
                                 FlexView {
-                                    Text("> targets direct children; >> targets descendants.", .class = "detail")
+                                    Text(
+                                        "> targets direct children; >> targets descendants.",
+                                        .class = "detail",
+                                    )
                                     Button(.title = "Descendant button", .class = "action")
                                 }
                                 Text("+ adds spacing between adjacent cards.", .class = "tag")
