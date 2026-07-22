@@ -5,7 +5,7 @@ use nestix::{
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleScope, TreeContext, WindowProps,
+    StyleScope, TitleBarMode, TreeContext, WindowProps,
     dpi::{LogicalSize, PhysicalSize, Size},
 };
 use taffy::{NodeId, Style, prelude::FromLength};
@@ -109,6 +109,14 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         [props.title]
             || unsafe {
                 SetWindowTextW(hwnd, &HSTRING::from(title.get())).unwrap();
+            }
+    );
+
+    scoped_effect!(
+        element,
+        [props.title_bar_mode]
+            || unsafe {
+                apply_title_bar_mode(hwnd, title_bar_mode.get());
             }
     );
 
@@ -242,6 +250,31 @@ pub(crate) struct WindowState {
     root_view: Cell<Option<HWND>>,
     on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
+}
+
+unsafe fn apply_title_bar_mode(hwnd: HWND, mode: TitleBarMode) {
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        let next_style = match mode {
+            TitleBarMode::Hidden => style & !(WS_CAPTION.0 as isize),
+            // Custom title-bar overlays are not supported by this backend.
+            TitleBarMode::System | TitleBarMode::Overlay => style | WS_CAPTION.0 as isize,
+        };
+        if next_style != style {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, next_style);
+        }
+
+        SetWindowPos(
+            hwnd,
+            None,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+        )
+        .unwrap();
+    }
 }
 
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
