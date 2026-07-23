@@ -21,6 +21,7 @@ pub mod style;
 pub mod switch;
 pub mod tab_view;
 pub mod text;
+pub mod tray_icon;
 pub mod utils;
 pub mod view;
 pub mod window;
@@ -48,6 +49,7 @@ pub use style::*;
 pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
+pub use tray_icon::*;
 pub use utils::*;
 pub use view::*;
 pub use window::*;
@@ -163,5 +165,9 @@ pub trait Backend {
     /// The default preserves the wrapped visual target on unsupported backends.
     fn create_context_menu(&self, props: ContextMenuProps) -> Option<Element> {
         Some(props.children.get())
+    }
+
+    fn create_tray_icon(&self, _props: TrayIconProps) -> Option<Element> {
+        None
     }
 }

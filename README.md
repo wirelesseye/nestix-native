@@ -54,6 +54,8 @@ The workspace includes these examples:
   requests through a window-bound controller.
 - `examples/menu-bar` demonstrates application-wide and window-specific menu
   bars.
+- `examples/tray-icon` demonstrates primary and secondary tray activation,
+  explicit menu presentation, reactive visibility, and shared menu components.
 - `examples/tabs` shows tabs, editable input, dynamic lists, conditional
   rendering, and reactive styles.
 

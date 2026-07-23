@@ -38,6 +38,11 @@ pub(crate) struct ContextMenuContext {
 }
 
 #[derive(Clone)]
+pub(crate) struct TrayMenuContext {
+    pub menu: State<Option<Retained<NSMenu>>>,
+}
+
+#[derive(Clone)]
 struct MenuBarContext {
     menu: State<Option<Retained<NSMenu>>>,
 }
@@ -97,6 +102,15 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
                     .get()
                     .is_some_and(|current| std::ptr::eq::<NSMenu>(current.as_ref(), menu.as_ref()))
                 {
+                    context.menu.set(None);
+                }
+            }
+        ));
+    } else if let Some(context) = element.context::<TrayMenuContext>() {
+        context.menu.set(Some(menu.clone()));
+        element.on_unmount(closure!(
+            [context, menu] || {
+                if contains_menu(&context.menu.get(), &menu) {
                     context.menu.set(None);
                 }
             }

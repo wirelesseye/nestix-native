@@ -13,6 +13,7 @@ pub mod select;
 pub mod slider;
 pub mod tab_view;
 pub mod text;
+pub mod tray_icon;
 pub mod window;
 
 mod contexts;
@@ -35,6 +36,7 @@ pub use select::*;
 pub use slider::*;
 pub use tab_view::*;
 pub use text::*;
+pub use tray_icon::*;
 pub use window::*;
 
 use nestix::create_element;
@@ -193,5 +195,12 @@ impl Backend for Win32Backend {
         props: nestix_native_core::DropTargetProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<DropTarget>(props))
+    }
+
+    fn create_tray_icon(
+        &self,
+        props: nestix_native_core::TrayIconProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<TrayIcon>(props))
     }
 }

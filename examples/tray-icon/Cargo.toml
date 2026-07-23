@@ -1,0 +1,12 @@
+[package]
+name = "tray-icon-example"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+env_logger = "0.11.8"
+nestix = { git = "https://github.com/wirelesseye/nestix.git" }
+nestix-native = { path = "../../nestix-native" }
+
+[build-dependencies]
+nestix-native-win32-build = { path = "../../nestix-native-win32-build" }

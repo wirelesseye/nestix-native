@@ -213,6 +213,19 @@ fn load_image(source: ImageSource) -> (*mut GpImage, Option<IStream>, u32, u32) 
     }
 }
 
+pub(crate) fn load_icon(source: ImageSource) -> Option<HICON> {
+    let (image, _stream, _, _) = load_image(source);
+    if image.is_null() {
+        return None;
+    }
+    unsafe {
+        let mut icon = HICON::default();
+        let status = GdipCreateHICONFromBitmap(image.cast(), &mut icon);
+        GdipDisposeImage(image);
+        (status == Ok && !icon.is_invalid()).then_some(icon)
+    }
+}
+
 #[component]
 pub fn ImageView(props: &ImageViewProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__ImageView", "__win32_ImageView"];

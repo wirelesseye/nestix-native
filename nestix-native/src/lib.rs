@@ -42,6 +42,7 @@ pub mod slider;
 pub mod switch;
 pub mod tab_view;
 pub mod text;
+pub mod tray_icon;
 pub mod window;
 
 pub use button::*;
@@ -60,6 +61,7 @@ pub use slider::*;
 pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
+pub use tray_icon::*;
 pub use window::*;
 
 pub use nestix_native_core::*;

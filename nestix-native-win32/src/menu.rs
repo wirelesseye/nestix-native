@@ -28,8 +28,9 @@ use windows::{
             WindowsAndMessaging::{
                 AppendMenuW, CreateMenu, CreatePopupMenu, DestroyMenu, DrawMenuBar, EndMenu,
                 GetCursorPos, GetWindowRect, HMENU, MF_BYPOSITION, MF_CHECKED, MF_DISABLED,
-                MF_GRAYED, MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, SetMenu, TPM_LEFTALIGN,
-                TPM_RETURNCMD, TPM_TOPALIGN, TrackPopupMenu, WM_CONTEXTMENU,
+                MF_GRAYED, MF_POPUP, MF_SEPARATOR, MF_STRING, MF_UNCHECKED, PostMessageW,
+                SetForegroundWindow, SetMenu, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_TOPALIGN,
+                TrackPopupMenu, WM_CONTEXTMENU, WM_NULL,
             },
         },
     },
@@ -58,7 +59,7 @@ impl Drop for NativeMenu {
     }
 }
 
-struct MenuData {
+pub(crate) struct MenuData {
     native: NativeMenu,
     entries: RefCell<Vec<Rc<Entry>>>,
 }
@@ -92,6 +93,11 @@ struct MenuContext(Rc<MenuData>);
 struct ContextMenuContext {
     menu: State<Option<Rc<MenuData>>>,
     target: State<Option<Shared<dyn Any>>>,
+}
+
+#[derive(Clone)]
+pub(crate) struct TrayMenuContext {
+    pub menu: State<Option<Rc<MenuData>>>,
 }
 
 #[derive(Clone)]
@@ -301,6 +307,20 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
             }
         ));
     } else if let Some(context) = element.context::<ContextMenuContext>() {
+        context.menu.set(Some(menu.clone()));
+        element.on_unmount(closure!(
+            [context, menu] || {
+                if context
+                    .menu
+                    .get()
+                    .as_ref()
+                    .is_some_and(|value| Rc::ptr_eq(value, &menu))
+                {
+                    context.menu.set(None);
+                }
+            }
+        ));
+    } else if let Some(context) = element.context::<TrayMenuContext>() {
         context.menu.set(Some(menu.clone()));
         element.on_unmount(closure!(
             [context, menu] || {
@@ -683,6 +703,28 @@ fn show_menu(menu: &MenuData, target: HWND, position: ContextMenuPosition) -> bo
         if id != 0 {
             menu.activate(id);
         }
+        true
+    }
+}
+
+pub(crate) fn show_tray_menu(menu: &MenuData, target: HWND, point: POINT) -> bool {
+    menu.rebuild();
+    unsafe {
+        let _ = SetForegroundWindow(target);
+        let id = TrackPopupMenu(
+            menu.native.0,
+            TPM_LEFTALIGN | TPM_TOPALIGN | TPM_RETURNCMD,
+            point.x,
+            point.y,
+            Some(0),
+            target,
+            None,
+        )
+        .0 as usize;
+        if id != 0 {
+            menu.activate(id);
+        }
+        let _ = PostMessageW(Some(target), WM_NULL, WPARAM(0), LPARAM(0));
         true
     }
 }
