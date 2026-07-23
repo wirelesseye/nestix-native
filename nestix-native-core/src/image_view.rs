@@ -44,18 +44,22 @@ pub enum ContentFit {
     ScaleDown,
 }
 
+/// Properties for an image view.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct ImageViewProps {
+    /// Style classes applied to the image view.
     #[props(default)]
     pub class: ClassList,
 
+    /// Common view layout properties.
     #[props(nested, default)]
     pub view: ViewProps,
 
     /// The image to display. This is a named, required prop.
     pub source: ImageSource,
 
+    /// How the source is fitted into the view's bounds.
     #[props(default)]
     pub content_fit: ContentFit,
 }

@@ -99,32 +99,43 @@ impl FlexWrap {
     }
 }
 
+/// Properties for a flex-layout container.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct FlexViewProps {
+    /// Style classes applied to the container.
     #[props(default)]
     pub class: ClassList,
 
+    /// Common view layout properties.
     #[props(nested, default)]
     pub view: ViewProps,
 
+    /// Container padding properties.
     #[props(nested, default)]
     pub container: ContainerProps,
 
+    /// Components arranged by the flex layout.
     #[props(default)]
     pub children: Layout,
 
+    /// Direction of the main flex axis.
     #[props(default = FlexDirection::Column)]
     pub flex_direction: FlexDirection,
+    /// Default cross-axis alignment of children.
     #[props(default = AlignItems::Normal)]
     pub align_items: AlignItems,
+    /// Distribution of children along the main axis.
     #[props(default = JustifyContent::Normal)]
     pub justify_content: JustifyContent,
+    /// Whether and how children wrap across lines.
     #[props(default = FlexWrap::NoWrap)]
     pub flex_wrap: FlexWrap,
 
+    /// Spacing between adjacent children.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub gap: Dimension,
 
+    /// Optional background fill color.
     pub bg_color: Option<Color>,
 }

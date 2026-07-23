@@ -5,6 +5,8 @@ pub use nestix_native_core::{
 };
 
 delegate!(
+    /// Makes its child a native drag source for files, images, or text.
     pub DragSource(DragSourceProps) => create_drag_source,
+    /// Makes its child accept compatible native drag-and-drop data.
     pub DropTarget(DropTargetProps) => create_drop_target,
 );

@@ -1,3 +1,6 @@
 pub use nestix_native_core::CheckboxProps;
 
-delegate!(pub Checkbox(CheckboxProps) => create_checkbox);
+delegate!(
+    /// Displays a checkbox whose checked state can be controlled reactively.
+    pub Checkbox(CheckboxProps) => create_checkbox
+);

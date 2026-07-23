@@ -1,3 +1,5 @@
+//! macOS AppKit backend for `nestix-native`.
+
 pub mod button;
 pub mod checkbox;
 pub mod drag_drop;
@@ -45,8 +47,10 @@ pub use window::*;
 use nestix::create_element;
 use nestix_native_core::Backend;
 
+/// Shared AppKit backend instance.
 pub const APPKIT_BACKEND: AppKitBackend = AppKitBackend;
 
+/// Backend that renders native components with AppKit.
 pub struct AppKitBackend;
 
 impl Backend for AppKitBackend {

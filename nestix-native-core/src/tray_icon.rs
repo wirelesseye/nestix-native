@@ -45,6 +45,7 @@ impl fmt::Debug for TrayIconEvent {
 }
 
 impl TrayIconEvent {
+    /// Presents the menu associated with the tray icon.
     pub fn show_menu(&self) -> Result<(), TrayIconError> {
         (self.show_menu)()
     }
@@ -59,14 +60,21 @@ impl TrayIconEvent {
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct TrayIconProps {
+    /// Image displayed in the notification area or status bar.
     pub icon: ImageSource,
+    /// Optional hover text for the icon.
     pub tooltip: Option<String>,
+    /// Optional menu presented by an activation callback.
     pub menu: Option<Element>,
+    /// Whether the icon is visible.
     #[props(default = true)]
     pub visible: bool,
+    /// Whether macOS should treat the image as a monochrome template.
     #[props(default = true)]
     pub template: bool,
+    /// Called for a primary activation.
     pub on_activate: Option<Shared<dyn Fn(TrayIconEvent)>>,
+    /// Called for a secondary activation.
     pub on_secondary: Option<Shared<dyn Fn(TrayIconEvent)>>,
 }
 

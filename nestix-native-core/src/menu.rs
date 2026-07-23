@@ -340,9 +340,11 @@ mod tests {
     }
 }
 
+/// Properties for a native menu.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct MenuProps {
+    /// Menu items and submenus in display order.
     #[props(default)]
     pub children: Layout,
 }
@@ -352,77 +354,110 @@ pub struct MenuProps {
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct MenuBarProps {
+    /// Menu element installed as the window's menu bar.
     pub menu: Element,
 }
 
+/// Properties for a submenu.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct SubmenuProps {
+    /// User-visible submenu label.
     #[props(start)]
     pub label: String,
+    /// Whether the submenu accepts interaction.
     #[props(default = true)]
     pub enabled: bool,
+    /// Whether the submenu is displayed.
     #[props(default = true)]
     pub visible: bool,
+    /// Items contained by the submenu.
     #[props(default)]
     pub children: Layout,
 }
 
+/// Properties for an actionable menu item.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct MenuItemProps {
+    /// User-visible item label.
     #[props(start)]
     pub label: String,
+    /// Whether the item accepts interaction.
     #[props(default = true)]
     pub enabled: bool,
+    /// Whether the item is displayed.
     #[props(default = true)]
     pub visible: bool,
+    /// Optional keyboard shortcut.
     pub shortcut: Option<Shortcut>,
+    /// Called when the user activates the item.
     pub on_activate: Option<Shared<dyn Fn()>>,
 }
 
+/// Properties for a checkable menu item.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct CheckMenuItemProps {
+    /// User-visible item label.
     #[props(start)]
     pub label: String,
+    /// Whether the item accepts interaction.
     #[props(default = true)]
     pub enabled: bool,
+    /// Whether the item is displayed.
     #[props(default = true)]
     pub visible: bool,
+    /// Optional keyboard shortcut.
     pub shortcut: Option<Shortcut>,
+    /// Whether the item is checked.
     #[props(default)]
     pub checked: bool,
+    /// Called with the new checked state after activation.
     pub on_checked_change: Option<Shared<dyn Fn(bool)>>,
 }
 
+/// Properties for an item in a mutually exclusive radio group.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct RadioMenuItemProps {
+    /// User-visible item label.
     #[props(start)]
     pub label: String,
+    /// Whether the item accepts interaction.
     #[props(default = true)]
     pub enabled: bool,
+    /// Whether the item is displayed.
     #[props(default = true)]
     pub visible: bool,
+    /// Optional keyboard shortcut.
     pub shortcut: Option<Shortcut>,
+    /// Whether the item is selected.
     #[props(default)]
     pub selected: bool,
+    /// Identifier shared by mutually exclusive items.
     pub group: String,
+    /// Called when the user selects the item.
     pub on_select: Option<Shared<dyn Fn()>>,
 }
 
+/// Properties for a visual separator between menu items.
 #[props(debug, default)]
 #[derive(Debug, Clone)]
 pub struct MenuSeparatorProps {
+    /// Whether the separator is displayed.
     #[props(default = true)]
     pub visible: bool,
 }
 
+/// Properties for a menu presented from a visual element.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct ContextMenuProps {
+    /// Menu element to present.
     pub menu: Element,
+    /// Optional imperative presentation controller.
     pub controller: Option<ContextMenuController>,
+    /// Visual element that owns the context-menu interaction.
     pub children: Element,
 }

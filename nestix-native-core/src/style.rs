@@ -21,18 +21,22 @@ use crate::{
     JustifyContent, Rect, ResolvedFontProps,
 };
 
+/// A whitespace-separated set of style class names.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClassList(HashSet<String>);
 
 impl ClassList {
+    /// Returns whether this list contains `class`.
     pub fn contains(&self, class: &str) -> bool {
         self.0.contains(class)
     }
 
+    /// Returns whether every class in `other` is present in this list.
     pub fn is_superset(&self, other: &ClassList) -> bool {
         self.0.is_superset(&other.0)
     }
 
+    /// Returns a copy with the renderer's default classes added.
     pub fn with_defaults(&self, defaults: &[&str]) -> Self {
         let mut classes = self.0.clone();
         classes.extend(defaults.iter().map(|class| (*class).to_string()));
@@ -58,41 +62,65 @@ impl From<HashSet<String>> for ClassList {
     }
 }
 
+/// A selector used to match a [`StyleRule`] against an element context.
 #[derive(Debug, Clone)]
 pub enum StyleSelector {
+    /// Matches an element containing the given class.
     Class(String),
+    /// Matches when the nested selector does not match.
     Not(Box<StyleSelector>),
+    /// Matches the first child of its parent.
     FirstChild,
+    /// Matches the last child of its parent.
     LastChild,
+    /// Matches children whose one-based index satisfies `a * n + b`.
     NthChild {
+        /// Step size of the arithmetic sequence.
         a: isize,
+        /// Offset of the arithmetic sequence.
         b: isize,
     },
+    /// Matches when every nested selector matches the same element.
     All(Vec<StyleSelector>),
+    /// Matches a child and its direct parent.
     Child {
+        /// Selector applied to the direct parent.
         parent: Box<StyleSelector>,
+        /// Selector applied to the child.
         child: Box<StyleSelector>,
     },
+    /// Matches an element with any matching ancestor.
     Descendant {
+        /// Selector applied to an ancestor.
         ancestor: Box<StyleSelector>,
+        /// Selector applied to the descendant element.
         descendant: Box<StyleSelector>,
     },
+    /// Matches an element immediately preceded by a matching sibling.
     AdjacentSibling {
+        /// Selector applied to the immediately preceding sibling.
         previous: Box<StyleSelector>,
+        /// Selector applied to the current sibling.
         sibling: Box<StyleSelector>,
     },
+    /// Matches an element preceded by any matching sibling.
     SubsequentSibling {
+        /// Selector applied to an earlier sibling.
         previous: Box<StyleSelector>,
+        /// Selector applied to the current sibling.
         sibling: Box<StyleSelector>,
     },
+    /// Matches when any nested selector matches.
     List(Vec<StyleSelector>),
 }
 
 impl StyleSelector {
+    /// Returns whether this selector matches `context`.
     pub fn matches(&self, context: &MatchContext) -> bool {
         self.matched_specificity(context).is_some()
     }
 
+    /// Returns the selector specificity when it matches `context`.
     pub fn matched_specificity(&self, context: &MatchContext) -> Option<usize> {
         match self {
             StyleSelector::Class(class) if context.class_list.contains(class) => Some(1),
@@ -248,6 +276,7 @@ fn nth_child_matches(index: usize, a: isize, b: isize) -> bool {
     difference % a == 0 && difference / a >= 0
 }
 
+/// A built-in style property and its declared value.
 #[derive(Debug, Clone)]
 pub enum StyleProperty {
     /// Whether a component uses its backend-native theme.
@@ -436,6 +465,7 @@ impl StyleProperty {
         }
     }
 
+    /// Returns the source-language name of this property.
     pub fn name(&self) -> &'static str {
         self.property_name().name()
     }
@@ -480,10 +510,18 @@ impl StyleProperty {
     }
 }
 
+/// A declaration contained in a [`StyleRule`].
 #[derive(Debug, Clone)]
 pub enum StyleDeclaration {
+    /// A declaration for a built-in property.
     Property(StyleProperty),
-    Custom { name: String, value: String },
+    /// A custom property retained as a string.
+    Custom {
+        /// Custom property name.
+        name: String,
+        /// Custom property value.
+        value: String,
+    },
 }
 
 impl StyleDeclaration {
@@ -497,46 +535,79 @@ impl StyleDeclaration {
     }
 }
 
+/// A selector and the declarations applied when it matches.
 #[derive(Debug, Clone)]
 pub struct StyleRule {
+    /// Selector controlling where the declarations apply.
     pub selector: StyleSelector,
+    /// Declarations in source order.
     pub declarations: Vec<StyleDeclaration>,
 }
 
+/// Effective values produced by resolving matching declarations.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedStyle {
+    /// Resolved native appearance mode.
     pub appearance: Option<Appearance>,
+    /// Resolved background color.
     pub bg_color: Option<Color>,
+    /// Resolved font family.
     pub font_family: Option<String>,
+    /// Resolved font size.
     pub font_size: Option<f64>,
+    /// Resolved font weight.
     pub font_weight: Option<FontWeight>,
+    /// Resolved font style.
     pub font_style: Option<FontStyle>,
+    /// Resolved foreground text color.
     pub text_color: Option<Color>,
+    /// Resolved left offset.
     pub left: Option<Dimension>,
+    /// Resolved top offset.
     pub top: Option<Dimension>,
+    /// Resolved width.
     pub width: Option<Dimension>,
+    /// Resolved height.
     pub height: Option<Dimension>,
+    /// Resolved left margin.
     pub margin_left: Option<Dimension>,
+    /// Resolved right margin.
     pub margin_right: Option<Dimension>,
+    /// Resolved top margin.
     pub margin_top: Option<Dimension>,
+    /// Resolved bottom margin.
     pub margin_bottom: Option<Dimension>,
+    /// Resolved left padding.
     pub padding_left: Option<Dimension>,
+    /// Resolved right padding.
     pub padding_right: Option<Dimension>,
+    /// Resolved top padding.
     pub padding_top: Option<Dimension>,
+    /// Resolved bottom padding.
     pub padding_bottom: Option<Dimension>,
+    /// Resolved flex grow factor.
     pub flex_grow: Option<f32>,
+    /// Resolved flex basis.
     pub flex_basis: Option<Dimension>,
+    /// Resolved flex shrink factor.
     pub flex_shrink: Option<f32>,
+    /// Resolved cross-axis alignment override.
     pub align_self: Option<AlignItems>,
+    /// Resolved main-axis direction.
     pub flex_direction: Option<FlexDirection>,
+    /// Resolved child cross-axis alignment.
     pub align_items: Option<AlignItems>,
+    /// Resolved child main-axis distribution.
     pub justify_content: Option<JustifyContent>,
+    /// Resolved flex wrapping mode.
     pub flex_wrap: Option<FlexWrap>,
+    /// Resolved spacing between flex children.
     pub gap: Option<Dimension>,
     custom: HashMap<String, String>,
 }
 
 impl ResolvedStyle {
+    /// Extracts the resolved inherited font properties.
     pub fn font(&self) -> ResolvedFontProps {
         ResolvedFontProps {
             font_family: self.font_family.clone(),
@@ -547,10 +618,12 @@ impl ResolvedStyle {
         }
     }
 
+    /// Returns a custom property as a string slice.
     pub fn custom(&self, name: &str) -> Option<&str> {
         self.custom.get(name).map(String::as_str)
     }
 
+    /// Returns a custom property as its stored string.
     pub fn get(&self, name: &str) -> Option<&String> {
         self.custom.get(name)
     }
@@ -791,6 +864,10 @@ impl ResolvedStyle {
     }
 }
 
+/// Computes the reactive style matching an element and its class list.
+///
+/// `default_classes` are combined with the user-supplied classes before
+/// selector matching.
 pub fn matched_style(
     style_context: Option<Rc<StyleContext>>,
     element: &Element,
@@ -943,6 +1020,9 @@ fn inline_or_style<T: Copy + PartialEq>(inline: T, default: T, style: Option<T>)
     }
 }
 
+/// Resolves an inline dimension against a style-derived value.
+///
+/// The inline value wins unless it equals `default`.
 pub fn style_dimension(
     style: Option<&ResolvedStyle>,
     inline: Dimension,
@@ -952,6 +1032,7 @@ pub fn style_dimension(
     inline_or_style(inline, default, style.and_then(f))
 }
 
+/// Resolves the effective appearance, preferring a non-default inline value.
 pub fn style_appearance(style: Option<&ResolvedStyle>, inline: Appearance) -> Appearance {
     inline_or_style(
         inline,
@@ -960,20 +1041,24 @@ pub fn style_appearance(style: Option<&ResolvedStyle>, inline: Appearance) -> Ap
     )
 }
 
+/// Resolves the effective flex-grow factor.
 pub fn style_flex_grow(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
     inline_or_style(inline, 0.0, style.and_then(|style| style.flex_grow))
 }
 
+/// Resolves the effective flex basis.
 pub fn style_flex_basis(style: Option<&ResolvedStyle>, inline: Dimension) -> Dimension {
     style_dimension(style, inline, Dimension::Auto, |style| {
         style.flex_basis.clone()
     })
 }
 
+/// Resolves the effective flex-shrink factor.
 pub fn style_flex_shrink(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
     inline_or_style(inline, 1.0, style.and_then(|style| style.flex_shrink))
 }
 
+/// Resolves the effective per-item cross-axis alignment.
 pub fn style_align_self(style: Option<&ResolvedStyle>, inline: AlignItems) -> AlignItems {
     inline_or_style(
         inline,
@@ -982,6 +1067,7 @@ pub fn style_align_self(style: Option<&ResolvedStyle>, inline: AlignItems) -> Al
     )
 }
 
+/// Resolves the effective flex main-axis direction.
 pub fn style_flex_direction(style: Option<&ResolvedStyle>, inline: FlexDirection) -> FlexDirection {
     inline_or_style(
         inline,
@@ -990,6 +1076,7 @@ pub fn style_flex_direction(style: Option<&ResolvedStyle>, inline: FlexDirection
     )
 }
 
+/// Resolves the effective cross-axis alignment for flex children.
 pub fn style_align_items(style: Option<&ResolvedStyle>, inline: AlignItems) -> AlignItems {
     inline_or_style(
         inline,
@@ -998,6 +1085,7 @@ pub fn style_align_items(style: Option<&ResolvedStyle>, inline: AlignItems) -> A
     )
 }
 
+/// Resolves the effective main-axis distribution for flex children.
 pub fn style_justify_content(
     style: Option<&ResolvedStyle>,
     inline: JustifyContent,
@@ -1009,6 +1097,7 @@ pub fn style_justify_content(
     )
 }
 
+/// Resolves the effective flex wrapping mode.
 pub fn style_flex_wrap(style: Option<&ResolvedStyle>, inline: FlexWrap) -> FlexWrap {
     inline_or_style(
         inline,
@@ -1017,10 +1106,12 @@ pub fn style_flex_wrap(style: Option<&ResolvedStyle>, inline: FlexWrap) -> FlexW
     )
 }
 
+/// Resolves the effective gap between flex children.
 pub fn style_gap(style: Option<&ResolvedStyle>, inline: Dimension) -> Dimension {
     style_dimension(style, inline, Dimension::from(0), |style| style.gap)
 }
 
+/// Resolves the effective margin on all four edges.
 pub fn style_margin(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
     let zero = Dimension::from(0);
     Rect {
@@ -1031,10 +1122,12 @@ pub fn style_margin(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> R
     }
 }
 
+/// Resolves the effective padding on all four edges using zero as the default.
 pub fn style_padding(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
     style_padding_with_default(style, inline, Dimension::from(0))
 }
 
+/// Resolves the effective padding using a caller-provided inline default.
 pub fn style_padding_with_default(
     style: Option<&ResolvedStyle>,
     inline: Rect<Dimension>,
@@ -1048,6 +1141,7 @@ pub fn style_padding_with_default(
     }
 }
 
+/// Combines explicitly supplied font props with inherited resolved values.
 pub fn resolve_font_props(
     style: Option<&ResolvedStyle>,
     font_family: Option<String>,
@@ -1066,12 +1160,14 @@ pub fn resolve_font_props(
     }
 }
 
+/// An ordered collection of style rules.
 #[derive(Debug, Clone)]
 pub struct StyleSheet {
     rules: Vec<StyleRule>,
 }
 
 impl StyleSheet {
+    /// Creates a style sheet from rules in source order.
     pub fn new(rules: Vec<StyleRule>) -> Self {
         Self { rules }
     }
@@ -1082,6 +1178,7 @@ impl StyleSheet {
             .any(|rule| rule.selector.uses_structural_position())
     }
 
+    /// Resolves declarations matching `context` without a parent style.
     pub fn matched_props(&self, context: &MatchContext) -> ResolvedStyle {
         self.matched_props_with_parent(context, None)
     }
@@ -1142,32 +1239,42 @@ impl StyleSheet {
         style
     }
 
+    /// Returns a style sheet containing this sheet followed by `other`.
     pub fn merged(&self, other: &Self) -> Self {
         let mut style_sheet = self.clone();
         style_sheet.extend(other);
         style_sheet
     }
 
+    /// Adds clones of `other`'s rules after this sheet's rules.
     pub fn extend(&mut self, other: &Self) {
         self.rules.extend(other.rules.clone());
     }
 
+    /// Moves all rules from `other` to the end of this sheet.
     pub fn append(&mut self, other: &mut Self) {
         self.rules.append(&mut other.rules);
     }
 }
 
+/// Structural and class information used when matching selectors.
 #[derive(Debug, Clone)]
 pub struct MatchContext {
+    /// Classes on the element being matched.
     pub class_list: ClassList,
+    /// Classes on ancestors, ordered from parent to root.
     pub ancestors: Vec<ClassList>,
+    /// Classes on preceding siblings, ordered nearest first.
     pub previous_siblings: Vec<ClassList>,
+    /// One-based index of the element within its parent.
     pub child_index: Option<usize>,
+    /// Total logical child count of the parent.
     pub child_count: Option<usize>,
     ancestor_positions: Vec<Option<(usize, usize)>>,
 }
 
 impl MatchContext {
+    /// Creates a context for an element with the supplied classes.
     pub fn new(class_list: ClassList) -> Self {
         Self {
             class_list,
@@ -1179,17 +1286,24 @@ impl MatchContext {
         }
     }
 
+    /// Sets ancestor classes, ordered from parent to root.
     pub fn with_ancestors(mut self, ancestors: impl Into<Vec<ClassList>>) -> Self {
         self.ancestors = ancestors.into();
         self.ancestor_positions = vec![None; self.ancestors.len()];
         self
     }
 
+    /// Sets preceding sibling classes, ordered nearest first.
     pub fn with_previous_siblings(mut self, previous_siblings: impl Into<Vec<ClassList>>) -> Self {
         self.previous_siblings = previous_siblings.into();
         self
     }
 
+    /// Sets the element's one-based position and its parent's child count.
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index` is zero or greater than `count`.
     pub fn with_child_position(mut self, index: usize, count: usize) -> Self {
         assert!(
             index >= 1 && index <= count,
@@ -1200,6 +1314,7 @@ impl MatchContext {
         self
     }
 
+    /// Sets one-based structural positions corresponding to [`Self::ancestors`].
     pub fn with_ancestor_positions(
         mut self,
         positions: impl Into<Vec<Option<(usize, usize)>>>,
@@ -1251,23 +1366,37 @@ impl MatchContext {
 
 type ClassRegistry = Rc<RefCell<HashMap<Element, PropValue<ClassList>>>>;
 
+/// Styling state inherited by components beneath a style provider or scope.
 pub struct StyleContext {
+    /// Active style sheet, when styling is enabled.
     pub style_sheet: Option<PropValue<StyleSheet>>,
+    /// Reactive ancestor class lists, ordered from parent to root.
     pub ancestors: PropValue<Vec<ClassList>>,
     ancestor_positions: PropValue<Vec<Option<(usize, usize)>>>,
+    /// Style values inherited from the parent scope.
     pub inherited_style: PropValue<ResolvedStyle>,
     class_registry: ClassRegistry,
     structure_version: State<usize>,
 }
 
+/// Properties for [`StyleProvider`].
+///
+/// Generated builder support is an implementation detail of `#[props]`.
+#[allow(missing_docs)]
 #[props]
 pub struct StyleProviderProps {
+    /// Style sheet made available to descendant components.
     #[props(start)]
     style_sheet: StyleSheet,
+    /// Components that receive the style sheet.
     #[props(default)]
     children: Layout,
 }
 
+/// Provides a style sheet to descendant native components.
+///
+/// When nested, the local rules are appended after inherited rules and
+/// therefore win equal-specificity ties.
 #[component]
 pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
     let parent_style_context = element.context::<StyleContext>();
@@ -1320,17 +1449,26 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
     }
 }
 
+/// Properties for [`StyleScope`].
+///
+/// Generated builder support is an implementation detail of `#[props]`.
+#[allow(missing_docs)]
 #[props]
 pub struct StyleScopeProps {
+    /// Classes representing this scope during selector matching.
     #[props(default)]
     class: ClassList,
+    /// Renderer-defined classes added to `class`.
     #[props(default)]
     default_classes: Vec<&'static str>,
+    /// Effective style inherited by descendant scopes.
     effective_style: Option<ResolvedStyle>,
+    /// Components contained by the scope.
     #[props(default)]
     children: Layout,
 }
 
+/// Adds an element's classes and effective style to descendant match contexts.
 #[component]
 pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
     let parent_style_context = element.context::<StyleContext>();
@@ -1495,7 +1633,9 @@ fn style_class_for_subtree(
         .find_map(|child| style_class_for_subtree(&child, class_registry))
 }
 
+/// Converts a [`ResolvedStyle`] entry into a requested output type.
 pub trait ResolvedStyleValue: Sized {
+    /// Reads a built-in property or parses a custom property named `name`.
     fn from_resolved_style(
         style: &ResolvedStyle,
         name: &str,
@@ -1517,6 +1657,10 @@ impl ResolvedStyleValue for Color {
     }
 }
 
+/// Resolves an optional inline value against a named resolved style property.
+///
+/// `inlined` takes precedence. For custom properties, `f` parses the stored
+/// string into `T`.
 pub fn compute_style<T: ResolvedStyleValue>(
     style_props: Option<&ResolvedStyle>,
     name: &str,

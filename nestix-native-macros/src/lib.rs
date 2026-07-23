@@ -1,3 +1,5 @@
+//! Procedural macros used by the `nestix-native`.
+
 mod style;
 mod utils;
 

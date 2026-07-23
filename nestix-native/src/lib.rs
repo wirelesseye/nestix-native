@@ -1,3 +1,5 @@
+//! Cross-platform Nestix components backed by native platform controls.
+
 /// Defines facade components which forward their props to a backend factory.
 ///
 /// The macro accepts one or more component mappings so modules containing a
@@ -66,21 +68,29 @@ pub use window::*;
 
 pub use nestix_native_core::*;
 
+/// Returns the backend selected for the current platform and feature set.
 #[cfg(all(target_os = "macos", feature = "appkit"))]
 pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_appkit::APPKIT_BACKEND
 }
 
+/// Returns the backend selected for the current platform and feature set.
 #[cfg(all(target_os = "windows", feature = "win32"))]
 pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_win32::WIN32_BACKEND
 }
 
+/// Returns the backend selected for the current platform and feature set.
 #[cfg(all(target_os = "linux", feature = "gtk4"))]
 pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_gtk4::GTK4_BACKEND
 }
 
+/// Returns the backend selected for the current platform and feature set.
+///
+/// # Panics
+///
+/// Panics when no backend feature is enabled for the target platform.
 #[cfg(not(any(
     all(target_os = "macos", feature = "appkit"),
     all(target_os = "windows", feature = "win32"),
@@ -92,7 +102,9 @@ pub fn default_backend() -> &'static dyn Backend {
     )
 }
 
+/// Context that selects the backend used by descendant native components.
 #[derive(Clone)]
 pub struct BackendContext {
+    /// Backend responsible for constructing native controls.
     pub backend: &'static dyn Backend,
 }

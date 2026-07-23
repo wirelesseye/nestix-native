@@ -5,8 +5,11 @@ use nestix::{Element, Shared, props};
 /// A logical representation advertised by a native drag.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DragDataType {
+    /// A list of filesystem paths.
     Files,
+    /// Encoded image data.
     Image,
+    /// Plain text.
     Text,
 }
 
@@ -15,20 +18,28 @@ pub enum DragDataType {
 pub struct DragDataTypes(u8);
 
 impl DragDataTypes {
+    /// No data representations.
     pub const NONE: Self = Self(0);
+    /// Filesystem paths.
     pub const FILES: Self = Self(1 << 0);
+    /// Encoded image data.
     pub const IMAGE: Self = Self(1 << 1);
+    /// Plain text.
     pub const TEXT: Self = Self(1 << 2);
+    /// Every supported representation.
     pub const ALL: Self = Self(Self::FILES.0 | Self::IMAGE.0 | Self::TEXT.0);
 
+    /// Returns whether all flags in `value` are present.
     pub const fn contains(self, value: Self) -> bool {
         self.0 & value.0 == value.0
     }
 
+    /// Returns whether the given logical representation is present.
     pub const fn contains_type(self, value: DragDataType) -> bool {
         self.contains(Self::from_type(value))
     }
 
+    /// Creates a one-bit set for a logical representation.
     pub const fn from_type(value: DragDataType) -> Self {
         match value {
             DragDataType::Files => Self::FILES,
@@ -37,10 +48,12 @@ impl DragDataTypes {
         }
     }
 
+    /// Returns the representations shared by both sets.
     pub const fn intersection(self, other: Self) -> Self {
         Self(self.0 & other.0)
     }
 
+    /// Returns whether the set contains no representations.
     pub const fn is_empty(self) -> bool {
         self.0 == 0
     }
@@ -69,8 +82,11 @@ impl std::ops::BitOrAssign for DragDataTypes {
 /// A drag operation negotiated between the source and target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DragOperation {
+    /// Copy the dragged data.
     Copy,
+    /// Move the dragged data.
     Move,
+    /// Create a link to the dragged data.
     Link,
 }
 
@@ -155,12 +171,16 @@ impl std::ops::BitOrAssign for DragModifiers {
 /// Encoded image bytes advertised in a drag.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DragImage {
+    /// Encoded image bytes.
     pub bytes: Arc<[u8]>,
+    /// Media type describing the encoding, such as `image/png`.
     pub media_type: String,
+    /// Preferred file name when materializing the image.
     pub suggested_name: String,
 }
 
 impl DragImage {
+    /// Creates encoded drag image data.
     pub fn new(
         bytes: impl Into<Arc<[u8]>>,
         media_type: impl Into<String>,
@@ -320,17 +340,25 @@ impl DropDataReader {
 
 #[derive(Debug, Clone)]
 pub struct DragOffer {
+    /// Data representations offered by the source.
     pub available_types: DragDataTypes,
+    /// Operations permitted by the source.
     pub allowed_operations: DragOperations,
+    /// Pointer position relative to the target.
     pub position: dpi::LogicalPosition<f64>,
+    /// Keyboard modifiers active for the event.
     pub modifiers: DragModifiers,
 }
 
 #[derive(Debug, Clone)]
 pub struct DropEvent {
+    /// Operation negotiated for the drop.
     pub operation: DragOperation,
+    /// Drop position relative to the target.
     pub position: dpi::LogicalPosition<f64>,
+    /// Keyboard modifiers active for the drop.
     pub modifiers: DragModifiers,
+    /// Reader used to request the dropped data.
     pub data: DropDataReader,
 }
 
@@ -359,34 +387,51 @@ impl fmt::Display for DragSourceError {
 
 impl std::error::Error for DragSourceError {}
 
+/// Properties that make a visual element a native drag source.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct DragSourceProps {
+    /// Visual element that acts as the draggable target.
     pub children: Element,
+    /// Data advertised by the drag.
     #[props(default)]
     pub content: DragContent,
+    /// Whether dragging may begin.
     #[props(default = true)]
     pub enabled: bool,
+    /// Operations the source permits a target to negotiate.
     #[props(default)]
     pub allowed_operations: DragOperations,
+    /// Called after the native drag session starts.
     pub on_started: Option<Shared<dyn Fn()>>,
+    /// Called when the drag session completes.
     pub on_completed: Option<Shared<dyn Fn(DragSourceOutcome)>>,
+    /// Called when a drag session cannot be started.
     pub on_error: Option<Shared<dyn Fn(DragSourceError)>>,
 }
 
+/// Properties that make a visual element accept native drops.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct DropTargetProps {
+    /// Visual element that defines the drop target bounds.
     pub children: Element,
+    /// Whether the target accepts drops.
     #[props(default = true)]
     pub enabled: bool,
+    /// Data representations accepted by the target.
     #[props(default)]
     pub accepted_types: DragDataTypes,
+    /// Operation proposed when a callback does not override it.
     #[props(default = DragOperation::Copy)]
     pub default_operation: DragOperation,
+    /// Called when a compatible drag enters the target.
     pub on_enter: Option<Shared<dyn Fn(&DragOffer) -> Option<DragOperation>>>,
+    /// Called as a compatible drag moves over the target.
     pub on_over: Option<Shared<dyn Fn(&DragOffer) -> Option<DragOperation>>>,
+    /// Called when a drag leaves the target without dropping.
     pub on_leave: Option<Shared<dyn Fn()>>,
+    /// Called when data is dropped on the target.
     pub on_drop: Shared<dyn Fn(DropEvent)>,
 }
 

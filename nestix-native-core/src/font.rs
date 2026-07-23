@@ -39,21 +39,33 @@ pub enum FontStyle {
     Italic,
 }
 
+/// Optional font properties shared by text-bearing controls.
 #[props(debug, default)]
 #[derive(Debug, Clone)]
 pub struct FontProps {
+    /// Preferred font family name.
     pub font_family: Option<String>,
+    /// Font size in logical points.
     pub font_size: Option<f64>,
+    /// Font weight.
     pub font_weight: Option<FontWeight>,
+    /// Font style.
     pub font_style: Option<FontStyle>,
+    /// Foreground color of text.
     pub text_color: Option<Color>,
 }
 
+/// Concrete font properties after style inheritance and defaults are resolved.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ResolvedFontProps {
+    /// Resolved font family name.
     pub font_family: Option<String>,
+    /// Resolved font size in logical points.
     pub font_size: Option<f64>,
+    /// Resolved font weight.
     pub font_weight: Option<FontWeight>,
+    /// Resolved font style.
     pub font_style: Option<FontStyle>,
+    /// Resolved foreground color.
     pub text_color: Option<Color>,
 }

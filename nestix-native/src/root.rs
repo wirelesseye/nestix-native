@@ -4,6 +4,10 @@ pub use nestix_native_core::RootProps;
 
 use crate::{BackendContext, default_backend};
 
+/// Establishes the native backend context for a component tree.
+///
+/// Uses an inherited [`BackendContext`] when present, otherwise selecting the
+/// default backend for the current platform.
 #[component]
 pub fn Root(props: &RootProps, element: &Element) -> Element {
     let backend = if let Some(ctx) = element.context::<BackendContext>() {

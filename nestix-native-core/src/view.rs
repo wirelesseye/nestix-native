@@ -3,6 +3,7 @@ use nestix::{Computed, computed, props};
 
 use crate::{AlignItems, Dimension, Rect};
 
+/// Layout properties shared by native visual controls.
 #[props(
     debug,
     default,
@@ -12,18 +13,24 @@ use crate::{AlignItems, Dimension, Rect};
 )]
 #[derive(Debug, Clone)]
 pub struct ViewProps {
+    /// Horizontal offset from the containing view.
     #[props(default = Dimension::Auto)]
     pub left: Dimension,
+    /// Vertical offset from the containing view.
     #[props(default = Dimension::Auto)]
     pub top: Dimension,
 
+    /// Requested width.
     #[props(default = Dimension::Auto)]
     pub width: Dimension,
+    /// Requested height.
     #[props(default = Dimension::Auto)]
     pub height: Dimension,
 
+    /// Margin on the left edge.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_left: Dimension,
+    /// Margin on the right edge.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_right: Dimension,
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
@@ -31,6 +38,7 @@ pub struct ViewProps {
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub margin_bottom: Dimension,
 
+    /// Relative amount of free space the view may consume.
     #[props(default = 0.0)]
     pub flex_grow: f32,
     #[props(default = Dimension::Auto)]
@@ -42,6 +50,7 @@ pub struct ViewProps {
 }
 
 impl ViewProps {
+    /// Returns the four reactive margin values as a rectangle.
     pub fn margin(&self) -> Computed<Rect<Dimension>> {
         computed!([this: self] || {
             let top = this.margin_top.get();

@@ -19,7 +19,9 @@ pub enum FilePickerMode {
 /// list represents all files.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilePickerFilter {
+    /// User-visible filter name.
     pub name: String,
+    /// Accepted extensions without leading dots.
     pub extensions: Vec<String>,
 }
 
@@ -49,10 +51,15 @@ impl FilePickerFilter {
 /// Configuration for one native picker presentation.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FilePickerRequest {
+    /// Kind of picker operation to perform.
     pub mode: FilePickerMode,
+    /// Optional dialog title.
     pub title: Option<String>,
+    /// Directory shown when the dialog opens.
     pub initial_directory: Option<PathBuf>,
+    /// Initial file name for save operations.
     pub suggested_name: Option<String>,
+    /// File-type filters offered to the user.
     pub filters: Vec<FilePickerFilter>,
 }
 
@@ -312,9 +319,11 @@ impl Drop for FilePickerRegistration {
     }
 }
 
+/// Properties for the native file-picker service component.
 #[props(debug)]
 #[derive(Debug, Clone)]
 pub struct FilePickerProps {
+    /// Controller used to issue file-picker requests.
     pub controller: FilePickerController,
 }
 

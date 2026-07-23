@@ -3,6 +3,7 @@ use nestix::{Computed, PropValue, computed, props};
 
 use crate::{Dimension, Rect};
 
+/// Padding properties shared by container-like controls.
 #[props(
     debug,
     default,
@@ -12,12 +13,16 @@ use crate::{Dimension, Rect};
 )]
 #[derive(Debug, Clone)]
 pub struct ContainerProps {
+    /// Padding on the left edge.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub padding_left: Dimension,
+    /// Padding on the right edge.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub padding_right: Dimension,
+    /// Padding on the top edge.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub padding_top: Dimension,
+    /// Padding on the bottom edge.
     #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
     pub padding_bottom: Dimension,
 }
@@ -29,6 +34,7 @@ impl ContainerProps {
             .build()
     }
 
+    /// Returns the four reactive padding values as a rectangle.
     pub fn padding(&self) -> Computed<Rect<Dimension>> {
         computed!([this: self] || {
             let top = this.padding_top.get();
