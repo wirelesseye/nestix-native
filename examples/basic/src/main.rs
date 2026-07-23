@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     AlignItems, Button, Color, FlexDirection, FlexView, RGBColor, Root, StyleProvider, Text,
     Window, style,
@@ -11,7 +13,7 @@ fn main() {
 }
 
 #[component]
-fn ExampleApp(_: &(), element: &Element) -> Element {
+fn ExampleApp() -> Element {
     let count = create_state(0);
     let message = create_state("Ready".to_string());
     let styles = style! {
@@ -39,7 +41,9 @@ fn ExampleApp(_: &(), element: &Element) -> Element {
                     .title = "Nestix Counter",
                     .width = 420,
                     .height = 320,
-                    .on_close_requested = callback!([element] || element.unmount()),
+                    .on_close_requested = callback!(|| {
+                        unmount_root().expect("root should be mounted");
+                    }),
                     .on_resize = callback!(|size| {
                         println!("{:?}", size);
                     }),

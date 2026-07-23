@@ -1,5 +1,5 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, create_state, layout, mount_root};
+use nestix::{Element, callback, component, create_state, layout, mount_root, unmount_root};
 use nestix_native::{
     AlignItems, Button, FilePicker, FilePickerController, FilePickerFilter, FilePickerOutcome,
     FilePickerRequest, FlexView, Root, Text, Window,
@@ -11,7 +11,7 @@ fn main() {
 }
 
 #[component]
-fn FilePickerExample(_: &(), element: &Element) -> Element {
+fn FilePickerExample() -> Element {
     let picker = FilePickerController::new();
     let status = create_state("Choose an operation".to_string());
 
@@ -21,7 +21,9 @@ fn FilePickerExample(_: &(), element: &Element) -> Element {
                 .title = "Nestix File Picker",
                 .width = 520,
                 .height = 360,
-                .on_close_requested = callback!([element] || element.unmount()),
+                .on_close_requested = callback!(|| {
+                    unmount_root().expect("root should be mounted");
+                }),
             ) {
                 FlexView(
                     .align_items = AlignItems::Start,

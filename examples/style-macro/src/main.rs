@@ -1,5 +1,5 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, layout, mount_root};
+use nestix::{Element, callback, component, layout, mount_root, unmount_root};
 use nestix_native::{Button, FlexView, Root, StyleProvider, Text, Window, style};
 
 fn main() {
@@ -8,7 +8,7 @@ fn main() {
 }
 
 #[component]
-fn StyleMacroApp(_: &(), element: &Element) -> Element {
+fn StyleMacroApp() -> Element {
     let styles = style! {
         // Class selectors and selector lists.
         .app {
@@ -90,7 +90,9 @@ fn StyleMacroApp(_: &(), element: &Element) -> Element {
                     .title = "Nestix style! selector gallery",
                     .width = 620,
                     .height = 650,
-                    .on_close_requested = callback!([element] || element.unmount()),
+                    .on_close_requested = callback!(|| {
+                        unmount_root().expect("root should be mounted");
+                    }),
                 ) {
                     FlexView(.class = "app", .view(.flex_grow = 1.0)) {
                         Text("style! selector gallery", .class = "heading")

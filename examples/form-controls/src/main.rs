@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     AlignItems, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton, Root, Select,
     SelectOption, Slider, StyleProvider, Switch, Text, Window, style,
@@ -11,7 +13,7 @@ fn main() {
 }
 
 #[component]
-fn FormControlsApp(_: &(), element: &Element) -> Element {
+fn FormControlsApp() -> Element {
     let name = create_state(String::new());
     let newsletter = create_state(false);
     let notifications = create_state(true);
@@ -63,7 +65,9 @@ fn FormControlsApp(_: &(), element: &Element) -> Element {
                     .title = "Nestix Form Controls",
                     .width = 560,
                     .height = 680,
-                    .on_close_requested = callback!([element] || element.unmount()),
+                    .on_close_requested = callback!(|| {
+                        unmount_root().expect("root should be mounted");
+                    }),
                 ) {
                     FlexView(.class = "content", .view(.flex_grow = 1.0)) {
                         Text("Form controls", .class = "heading")

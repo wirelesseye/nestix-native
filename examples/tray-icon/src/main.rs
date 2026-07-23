@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     AlignItems, Button, CheckMenuItem, FlexView, ImageSource, JustifyContent, Menu, MenuItem,
     MenuSeparator, RadioMenuItem, Root, Submenu, Text, TrayIcon, Window,
@@ -11,7 +13,7 @@ fn main() {
 }
 
 #[component]
-fn TrayIconExample(_: &(), element: &Element) -> Element {
+fn TrayIconExample() -> Element {
     let activation_count = create_state(0);
     let icon_visible = create_state(true);
     let menu_on_primary = create_state(false);
@@ -52,7 +54,12 @@ fn TrayIconExample(_: &(), element: &Element) -> Element {
                 )
             }
             MenuSeparator()
-            MenuItem("Quit", .on_activate = callback!([element] || element.unmount()))
+            MenuItem(
+                "Quit",
+                .on_activate = callback!(|| {
+                    unmount_root().expect("root should be mounted");
+                }),
+            )
         }
     };
 

@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     Button, Dimension, FlexView, Root, StyleProvider, Text, TitleBarMode, Window, style,
 };
@@ -14,7 +16,7 @@ fn main() {
 }
 
 #[component]
-fn AppKitToolbarExample(_: &(), element: &Element) -> Element {
+fn AppKitToolbarExample() -> Element {
     let count = create_state(0_i32);
     let reset_hidden = create_state(false);
     let display_mode = create_state(AppKitToolbarDisplayMode::IconAndLabel);
@@ -49,7 +51,9 @@ fn AppKitToolbarExample(_: &(), element: &Element) -> Element {
                     .title_bar_mode = title_bar_mode.clone(),
                     .width = 560,
                     .height = 320,
-                    .on_close_requested = callback!([element] || element.unmount()),
+                    .on_close_requested = callback!(|| {
+                        unmount_root().expect("root should be mounted");
+                    }),
                 ) {
                     FlexView(.class = "content") {
                         // AppKitToolbar may be mounted anywhere below its Window.

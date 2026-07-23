@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     AlignItems, Button, CheckMenuItem, Color, ContextMenu, ContextMenuController,
     ContextMenuPosition, FlexView, JustifyContent, Menu, MenuItem, MenuSeparator, RGBColor,
@@ -12,7 +14,7 @@ fn main() {
 }
 
 #[component]
-fn ContextMenuExample(_: &(), element: &Element) -> Element {
+fn ContextMenuExample() -> Element {
     let status = create_state("No command selected".to_string());
     let show_details = create_state(true);
     let show_advanced = create_state(false);
@@ -105,7 +107,9 @@ fn ContextMenuExample(_: &(), element: &Element) -> Element {
                 .title = "Nestix Context Menu",
                 .width = 520,
                 .height = 360,
-                .on_close_requested = callback!([element] || element.unmount()),
+                .on_close_requested = callback!(|| {
+                    unmount_root().expect("root should be mounted");
+                }),
             ) {
                 FlexView(
                     .align_items = AlignItems::Center,

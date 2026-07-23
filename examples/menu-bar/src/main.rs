@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, effect, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, effect, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     AlignItems, CheckMenuItem, Color, FlexView, JustifyContent, Menu, MenuBar, MenuItem,
     MenuSeparator, RGBColor, Root, Shortcut, Submenu, Text, Window,
@@ -11,16 +13,16 @@ fn main() {
 }
 
 #[component]
-fn MenuBarExample(_: &(), element: &Element) -> Element {
+fn MenuBarExample() -> Element {
     let status = create_state("Choose a menu command".to_string());
     let show_status = create_state(true);
     let window_menu_open = create_state(true);
     let plain_window_open = create_state(true);
 
     effect!(
-        [element, window_menu_open, plain_window_open] || {
+        [window_menu_open, plain_window_open] || {
             if !window_menu_open.get() && !plain_window_open.get() {
-                element.unmount();
+                unmount_root().expect("root should be mounted");
             }
         }
     );

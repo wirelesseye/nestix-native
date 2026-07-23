@@ -1,7 +1,7 @@
 use env_logger::Env;
 use nestix::{
     Element, Shared, callback, component, computed, create_state, destructure, layout, mount_root,
-    props,
+    props, unmount_root,
 };
 use nestix_native::{
     AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor,
@@ -23,7 +23,7 @@ fn random_color() -> Color {
 }
 
 #[component]
-fn ExampleApp(_: &(), element: &Element) -> Element {
+fn ExampleApp() -> Element {
     let styles = style! {
         .app {
             // bg_color: #F4F6F8;
@@ -59,7 +59,9 @@ fn ExampleApp(_: &(), element: &Element) -> Element {
                     .title = "Nestix Tabs",
                     .width = 520,
                     .height = 420,
-                    .on_close_requested = callback!([element] || element.unmount()),
+                    .on_close_requested = callback!(|| {
+                        unmount_root().expect("root should be mounted");
+                    }),
                 ) {
                     FlexView(.class = "app", .view(.flex_grow = 1.0)) {
                         TabView(.view(.flex_grow = 1.0)) {

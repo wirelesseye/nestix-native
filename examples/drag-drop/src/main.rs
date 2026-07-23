@@ -1,5 +1,7 @@
 use env_logger::Env;
-use nestix::{Element, callback, component, computed, create_state, layout, mount_root};
+use nestix::{
+    Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+};
 use nestix_native::{
     AlignItems, Color, DragContent, DragDataTypes, DragImage, DragOffer, DragOperation,
     DragOperations, DragReadError, DragSource, DragSourceOutcome, DropEvent, DropTarget, FlexView,
@@ -14,7 +16,7 @@ fn main() {
 }
 
 #[component]
-fn DragDropExample(_: &(), element: &Element) -> Element {
+fn DragDropExample() -> Element {
     let hovering = create_state(false);
     let status =
         create_state("Drag the card, or drop files, an image, or text onto it.".to_string());
@@ -31,7 +33,9 @@ fn DragDropExample(_: &(), element: &Element) -> Element {
                 .title = "Nestix Drag and Drop",
                 .width = 620,
                 .height = 420,
-                .on_close_requested = callback!([element] || element.unmount()),
+                .on_close_requested = callback!(|| {
+                    unmount_root().expect("root should be mounted");
+                }),
             ) {
                 FlexView(
                     .align_items = AlignItems::Center,
