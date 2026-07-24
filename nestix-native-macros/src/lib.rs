@@ -1,9 +1,34 @@
 //! Procedural macros used by the `nestix-native`.
 
+mod computed_style;
 mod style;
 mod utils;
 
 use proc_macro::TokenStream;
+
+/// Builds a reactive Nestix Native stylesheet.
+///
+/// An optional capture list at the beginning uses the same syntax and
+/// semantics as [`nestix::computed!`].
+///
+/// ```rust,ignore
+/// # use nestix_native_core::*;
+/// let bg_color = nestix::create_state(Color::WHITE);
+///
+/// let styles = computed_style! {
+///     [bg_color]
+///
+///     .counter {
+///         bg_color: $(bg_color.get());
+///     }
+/// };
+/// ```
+///
+/// This is equivalent to wrapping [`style!`] in [`nestix::computed!`].
+#[proc_macro]
+pub fn computed_style(input: TokenStream) -> TokenStream {
+    computed_style::computed_style(input)
+}
 
 /// Builds a Nestix Native stylesheet.
 ///

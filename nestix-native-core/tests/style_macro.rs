@@ -757,6 +757,44 @@ fn style_macro_can_be_wrapped_in_computed_for_dynamic_style_sheets() {
 }
 
 #[test]
+fn computed_style_macro_builds_a_dynamic_style_sheet() {
+    let bg_color = nestix::create_state(Color::WHITE);
+    let sheet = computed_style! {
+        [bg_color]
+
+        .counter {
+            bg_color: $(bg_color.get());
+        }
+    };
+
+    let props = sheet
+        .get()
+        .matched_props(&MatchContext::new(ClassList::from("counter")));
+    assert_eq!(props.bg_color, Some(Color::WHITE));
+
+    bg_color.set(Color::BLACK);
+
+    let props = sheet
+        .get()
+        .matched_props(&MatchContext::new(ClassList::from("counter")));
+    assert_eq!(props.bg_color, Some(Color::BLACK));
+}
+
+#[test]
+fn computed_style_macro_allows_omitting_the_capture_list() {
+    let sheet = computed_style! {
+        .counter {
+            bg_color: white;
+        }
+    };
+
+    let props = sheet
+        .get()
+        .matched_props(&MatchContext::new(ClassList::from("counter")));
+    assert_eq!(props.bg_color, Some(Color::WHITE));
+}
+
+#[test]
 fn style_macro_supports_view_props() {
     let sheet = style! {
         .panel {

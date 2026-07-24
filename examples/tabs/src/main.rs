@@ -4,8 +4,7 @@ use nestix::{
     props, unmount_root,
 };
 use nestix_native::{
-    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor,
-    Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor, Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, computed_style, style,
 };
 
 const SAMPLE_IMAGE: &[u8] = include_bytes!("../../assets/sample.jpg");
@@ -30,7 +29,7 @@ fn ExampleApp() -> Element {
         }
 
         .counter {
-            padding: initial;
+            padding: 10px;
         }
 
         .counter > .__Text, .counter > .__Button {
@@ -83,13 +82,12 @@ fn ExampleApp() -> Element {
 fn Counter() -> Element {
     let count = create_state(0);
     let bg_color = create_state(Color::TRANSPARENT);
-    let styles = computed!(
+    let styles = computed_style!(
         [bg_color]
-            || style! {
-                .counter {
-                    bg_color: $(bg_color.get());
-                }
-            }
+
+        .counter {
+            bg_color: $(bg_color.get());
+        }
     );
 
     layout! {
