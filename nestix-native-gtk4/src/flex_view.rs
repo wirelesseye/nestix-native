@@ -72,7 +72,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     let last_css = Rc::new(RefCell::new(None::<String>));
     scoped_effect!(
-        element,
         [css, css_class, last_css, style_props, props.bg_color] || {
             let style_props = style_props.get();
             let color = bg_color
@@ -100,7 +99,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             layout_refresh,
@@ -185,7 +183,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             parent_context.parent_node,

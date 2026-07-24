@@ -258,19 +258,16 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
     window.ns_window.setToolbar(Some(&toolbar));
 
     scoped_effect!(
-        element,
         [toolbar, props.visible] || {
             toolbar.setVisible(visible.get());
         }
     );
     scoped_effect!(
-        element,
         [toolbar, props.display_mode] || {
             toolbar.setDisplayMode(display_mode.get().to_native());
         }
     );
     scoped_effect!(
-        element,
         [window, props.style] || {
             window.ns_window.setToolbarStyle(style.get().to_native());
         }
@@ -365,7 +362,6 @@ pub fn AppKitToolbarItem(props: &AppKitToolbarItemProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [instances, props.label] || {
             let label = label.get();
             for item in instances.borrow().iter() {
@@ -374,7 +370,6 @@ pub fn AppKitToolbarItem(props: &AppKitToolbarItemProps, element: &Element) {
         }
     );
     scoped_effect!(
-        element,
         [instances, props.tool_tip] || {
             let tool_tip = tool_tip.get();
             for item in instances.borrow().iter() {
@@ -383,7 +378,6 @@ pub fn AppKitToolbarItem(props: &AppKitToolbarItemProps, element: &Element) {
         }
     );
     scoped_effect!(
-        element,
         [instances, props.disabled, props.bordered] || {
             let disabled = disabled.get();
             let bordered = bordered.get();
@@ -393,14 +387,12 @@ pub fn AppKitToolbarItem(props: &AppKitToolbarItemProps, element: &Element) {
         }
     );
     scoped_effect!(
-        element,
         [context, props.hidden] || {
             let _ = hidden.get();
             context.sync();
         }
     );
     scoped_effect!(
-        element,
         [
             instances,
             props.symbol_name,

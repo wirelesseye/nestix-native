@@ -107,7 +107,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [props.disabled]
             || unsafe {
                 let _ = EnableWindow(hwnd, !disabled.get());
@@ -128,7 +127,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [
             tree_context,
             style_props,
@@ -150,7 +148,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             style_props,
@@ -198,7 +195,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -286,7 +282,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -312,7 +307,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -335,7 +329,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.view.align_self] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -348,7 +341,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [window_context.scale_factor, tree_context] || {
             if let Some(layout) = tree_context.layout(node_id) {
                 let scale_factor = scale_factor.get();

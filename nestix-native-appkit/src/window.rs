@@ -81,7 +81,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     element.provide_handle(ns_window.as_ref() as *const NSObject);
 
     scoped_effect!(
-        element,
         [ns_window, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             ns_window.setTitle(&ns_string);
@@ -89,14 +88,12 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [ns_window, props.title_bar_mode] || {
             apply_title_bar_mode(&ns_window, title_bar_mode.get());
         }
     );
 
     scoped_effect!(
-        element,
         [ns_window, props.width, props.height] || {
             ns_window.setContentSize(NSSize::new(width.get(), height.get()));
         }

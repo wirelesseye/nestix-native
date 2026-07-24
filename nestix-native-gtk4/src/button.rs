@@ -38,20 +38,17 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [button, props.disabled] || {
             button.set_sensitive(!disabled.get());
         }
     );
     scoped_effect!(
-        element,
         [button, props.title, content_revision] || {
             button.set_label(&title.get());
             content_revision.mutate(|revision| *revision += 1);
         }
     );
     scoped_effect!(
-        element,
         [
             css,
             last_css,

@@ -119,7 +119,6 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [props.enabled, props.selected]
             || unsafe {
                 let _ = EnableWindow(hwnd, enabled.get());
@@ -137,7 +136,6 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             window.scale_factor,
             style,

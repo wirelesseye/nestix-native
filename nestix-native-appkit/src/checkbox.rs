@@ -63,7 +63,6 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             checkbox,
             style_props,

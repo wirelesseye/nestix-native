@@ -427,7 +427,6 @@ pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
     let on_leave = props.on_leave.clone();
     let on_drop = props.on_drop.clone();
     scoped_effect!(
-        element,
         [registration, props.children] || {
             registration.borrow_mut().take();
             children.get().on_last_handle_change(closure!(
@@ -742,7 +741,6 @@ impl Drop for SourceRegistration {
 pub fn DragSource(props: &DragSourceProps, element: &Element) -> Element {
     let registration = Rc::new(RefCell::new(None::<SourceRegistration>));
     scoped_effect!(
-        element,
         [
             registration,
             props.children,

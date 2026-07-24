@@ -208,7 +208,6 @@ pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             state,
             handler,

@@ -1,8 +1,6 @@
-use std::cell::Cell;
-
 use env_logger::Env;
 use nestix::{
-    Element, callback, component, computed, create_state, effect, layout, mount_root, unmount_root,
+    Element, callback, component, computed, create_state, layout, mount_root, scoped_effect, unmount_root,
 };
 use nestix_native::{
     AlignItems, CheckMenuItem, Color, FlexView, JustifyContent, Menu, MenuBar, MenuItem,
@@ -21,11 +19,9 @@ fn MenuBarExample() -> Element {
     let window_menu_open = create_state(true);
     let plain_window_open = create_state(true);
 
-    let is_app_running = Cell::new(true);
-    effect!(
+    scoped_effect!(
         [window_menu_open, plain_window_open] || {
-            if is_app_running.get() && !window_menu_open.get() && !plain_window_open.get() {
-                is_app_running.set(false);
+            if !window_menu_open.get() && !plain_window_open.get() {
                 unmount_root().expect("root should be mounted");
             }
         }

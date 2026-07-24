@@ -92,7 +92,6 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [props.enabled, props.checked]
             || unsafe {
                 let _ = EnableWindow(hwnd, enabled.get());
@@ -110,7 +109,6 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             window.scale_factor,
             style,

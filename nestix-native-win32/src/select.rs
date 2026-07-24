@@ -120,14 +120,12 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     ));
 
     scoped_effect!(
-        element,
         [props.enabled]
             || unsafe {
                 let _ = EnableWindow(hwnd, enabled.get());
             }
     );
     scoped_effect!(
-        element,
         [window.scale_factor, font]
             || unsafe {
                 let next_font = ui_font(12.0, scale_factor.get());
@@ -143,7 +141,6 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
             }
     );
     scoped_effect!(
-        element,
         [options, revision, props.value, intrinsic] || {
             let _ = revision.get();
             let options = options.borrow();
@@ -203,7 +200,6 @@ pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
         }
     ));
     scoped_effect!(
-        element,
         [context, props.label, props.value, props.enabled] || {
             let changed = {
                 let mut options = context.options.borrow_mut();

@@ -68,13 +68,11 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [popup, props.enabled] || {
             popup.setEnabled(enabled.get());
         }
     );
     scoped_effect!(
-        element,
         [popup, props.value, revision] || {
             let _ = revision.get();
             let desired = value.get();
@@ -142,7 +140,6 @@ pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [item, props.label, props.value, props.enabled] || {
             item.setTitle(&NSString::from_str(&label.get()));
             item.setEnabled(enabled.get());

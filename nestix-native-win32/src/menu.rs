@@ -349,7 +349,6 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let attached = Rc::new(RefCell::new(None::<Rc<MenuData>>));
 
     scoped_effect!(
-        element,
         [window, menu, attached] || {
             let Some(window) = &window else { return };
             if let Some(previous) = attached.take() {
@@ -461,7 +460,6 @@ fn common_effects(
     shortcut: PropValue<Option<Shortcut>>,
 ) {
     scoped_effect!(
-        element,
         [menu, entry, label, enabled, visible, shortcut] || {
             *entry.label.borrow_mut() = label.get();
             entry.enabled.set(enabled.get());
@@ -573,7 +571,6 @@ pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
         props.shortcut.clone(),
     );
     scoped_effect!(
-        element,
         [menu, entry, props.checked] || {
             entry.checked.set(checked.get());
             menu.rebuild();
@@ -627,14 +624,12 @@ pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
         props.shortcut.clone(),
     );
     scoped_effect!(
-        element,
         [menu, entry, props.selected] || {
             entry.checked.set(selected.get());
             menu.rebuild();
         }
     );
     scoped_effect!(
-        element,
         [entry, props.group] || {
             *entry.group.borrow_mut() = Some(group.get());
         }
@@ -655,7 +650,6 @@ pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
     });
     place_entry(element, menu.clone(), entry.clone());
     scoped_effect!(
-        element,
         [menu, entry, props.visible] || {
             entry.visible.set(visible.get());
             menu.rebuild();
@@ -758,7 +752,6 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         target: target.clone(),
     });
     scoped_effect!(
-        element,
         [context, props.children] || {
             children
                 .get()
@@ -766,7 +759,6 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         }
     );
     scoped_effect!(
-        element,
         [
             menu,
             target,

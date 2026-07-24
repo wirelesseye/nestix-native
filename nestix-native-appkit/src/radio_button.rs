@@ -91,7 +91,6 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             radio,
             style_props,

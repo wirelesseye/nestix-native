@@ -29,7 +29,6 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     element.on_unmount(closure!([ns_application] || ns_application.stop(None)));
 
     scoped_effect!(
-        element,
         [ns_application, app_menu, active_window_menu] || {
             let active_window_menu = active_window_menu.get();
             let app_menu = app_menu.get();

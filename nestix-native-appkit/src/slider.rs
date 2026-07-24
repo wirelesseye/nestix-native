@@ -59,7 +59,6 @@ pub fn Slider(props: &SliderProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [
             slider,
             props.enabled,

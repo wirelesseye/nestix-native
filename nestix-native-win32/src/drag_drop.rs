@@ -564,7 +564,6 @@ fn register_target(state: Rc<TargetState>) -> windows::core::Result<TargetRegist
 pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
     let registration = Rc::new(RefCell::new(None::<TargetRegistration>));
     scoped_effect!(
-        element,
         [
             registration,
             props.children,
@@ -996,7 +995,6 @@ fn register_source(state: Rc<SourceState>) -> Option<SourceRegistration> {
 pub fn DragSource(props: &DragSourceProps, element: &Element) -> Element {
     let registration = Rc::new(RefCell::new(None::<SourceRegistration>));
     scoped_effect!(
-        element,
         [
             registration,
             props.children,

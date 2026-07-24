@@ -124,7 +124,6 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     ));
 
     scoped_effect!(
-        element,
         [tab_view_context, label, props.title] || {
             label.set_text(&title.get());
             tab_view_context

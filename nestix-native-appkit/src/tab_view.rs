@@ -89,7 +89,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     ));
 
     scoped_effect!(
-        element,
         [
             tree_context,
             style_props,
@@ -112,7 +111,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -151,7 +149,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -179,7 +176,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -202,7 +198,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.view.align_self] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -215,7 +210,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, parent_context.parent_node, view] || {
             if parent_node.is_some()
                 && let Some(layout) = tree_context.layout(node_id)
@@ -414,7 +408,6 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     ));
 
     scoped_effect!(
-        element,
         [item, props.id] || {
             let ns_id = NSString::from_str(&id.get());
             unsafe {
@@ -424,7 +417,6 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             props.id,
             tab_view_context.current_selected,
@@ -448,7 +440,6 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [item, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             item.setLabel(&ns_string);
@@ -456,7 +447,6 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             subtree_context,

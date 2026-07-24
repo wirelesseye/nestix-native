@@ -51,7 +51,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     let effective_style = resolved_flex_view_style(style_props.clone(), props);
 
     scoped_effect!(
-        element,
         [view, style_props, props.bg_color] || {
             let style_props = style_props.get();
             let bg_color = bg_color.get().or_else(|| {
@@ -104,7 +103,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             style_props,
@@ -127,7 +125,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -166,7 +163,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -194,7 +190,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -217,7 +212,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -240,7 +234,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -264,7 +257,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.view.align_self] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -277,7 +269,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.flex_direction] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -291,7 +282,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.align_items] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -304,7 +294,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.justify_content] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -318,7 +307,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.flex_wrap] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -331,7 +319,6 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [tree_context, parent_context.parent_node, view] || {
             if parent_node.is_some()
                 && let Some(layout) = tree_context.layout(node_id)

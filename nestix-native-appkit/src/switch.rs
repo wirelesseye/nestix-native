@@ -54,7 +54,6 @@ pub fn Switch(props: &SwitchProps, element: &Element) {
     );
 
     scoped_effect!(
-        element,
         [switch, props.enabled, props.checked] || {
             switch.setEnabled(enabled.get());
             switch.setState(if checked.get() {

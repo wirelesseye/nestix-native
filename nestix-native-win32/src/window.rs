@@ -105,7 +105,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     }
 
     scoped_effect!(
-        element,
         [props.title]
             || unsafe {
                 SetWindowTextW(hwnd, &HSTRING::from(title.get())).unwrap();
@@ -113,7 +112,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [props.title_bar_mode]
             || unsafe {
                 apply_title_bar_mode(hwnd, title_bar_mode.get());
@@ -121,7 +119,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [scale_factor, props.width, props.height]
             || unsafe {
                 let mut rect_client = RECT::default();

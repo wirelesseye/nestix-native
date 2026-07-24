@@ -181,7 +181,6 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     ));
 
     scoped_effect!(
-        element,
         [props.scroll_x, props.scroll_y] || {
             SCROLL_STATES.with_borrow_mut(|states| {
                 if let Some(state) = states.get_mut(&hwnd.0) {
@@ -195,7 +194,6 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             styles,
@@ -219,7 +217,6 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [
             window.scale_factor,
             tree_context,
@@ -252,7 +249,6 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [window.scale_factor, tree_context, parent.parent_node] || {
             if parent_node.is_some()
                 && let Some(value) = tree_context.layout(node)
@@ -285,7 +281,6 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [window.scale_factor, subtree] || {
             if let Some(value) = subtree.layout(subtree_root) {
                 let size = LogicalSize::new(value.size.width, value.size.height)

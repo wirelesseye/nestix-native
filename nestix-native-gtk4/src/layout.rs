@@ -62,7 +62,6 @@ fn mount_leaf_inner(
     ));
 
     scoped_effect!(
-        element,
         [
             tree_context,
             layout_refresh,
@@ -85,7 +84,6 @@ fn mount_leaf_inner(
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             layout_refresh,
@@ -135,7 +133,6 @@ fn mount_leaf_inner(
     );
 
     scoped_effect!(
-        element,
         [
             tree_context,
             layout_refresh,
@@ -160,7 +157,6 @@ fn mount_leaf_inner(
         }
     );
     scoped_effect!(
-        element,
         [
             tree_context,
             layout_refresh,
@@ -180,7 +176,6 @@ fn mount_leaf_inner(
         }
     );
     scoped_effect!(
-        element,
         [tree_context, layout_refresh, style_props, props.align_self] || {
             let style_props = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -191,7 +186,6 @@ fn mount_leaf_inner(
         }
     );
     scoped_effect!(
-        element,
         [
             tree_context,
             parent_context.parent_node,

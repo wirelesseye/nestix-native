@@ -27,14 +27,12 @@ pub fn Text(props: &TextProps, element: &Element) {
     let last_css = Rc::new(RefCell::new(None::<String>));
 
     scoped_effect!(
-        element,
         [label, props.text, content_revision] || {
             label.set_text(&text.get());
             content_revision.mutate(|revision| *revision += 1);
         }
     );
     scoped_effect!(
-        element,
         [
             css,
             last_css,

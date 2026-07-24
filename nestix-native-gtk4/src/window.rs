@@ -69,7 +69,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     ));
 
     scoped_effect!(
-        element,
         [window, header_title, props.title] || {
             let title = title.get();
             window.set_title(Some(&title));
@@ -77,13 +76,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
     scoped_effect!(
-        element,
         [window, props.width, props.height] || {
             window.set_default_size(width.get().round() as i32, height.get().round() as i32);
         }
     );
     scoped_effect!(
-        element,
         [window, header_bar, props.title_bar_mode] || {
             apply_title_bar_mode(&window, &header_bar, title_bar_mode.get());
         }

@@ -84,7 +84,6 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
     } else if let Some(context) = element.context::<ContextMenuContext>() {
         context.menu.set(Some(menu.clone()));
         scoped_effect!(
-            element,
             [element, context.target] || {
                 if let Some(handle) = target.get()
                     && let Some(pointer) = handle.downcast_ref::<*const NSObject>()
@@ -132,7 +131,6 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let registered = Rc::new(RefCell::new(None::<Retained<NSMenu>>));
 
     scoped_effect!(
-        element,
         [root, window, menu, registered] || {
             let current = menu.get();
             if let Some(current) = current {
@@ -194,7 +192,6 @@ pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
 
     place_item(element, &parent, &item);
     scoped_effect!(
-        element,
         [item, props.label, props.enabled, props.visible] || {
             item.setTitle(&NSString::from_str(&label.get()));
             item.setEnabled(enabled.get());
@@ -221,7 +218,6 @@ pub fn MenuItem(props: &MenuItemProps, element: &Element) {
     retain_handler(element, handler);
     place_item(element, &parent, &item);
     update_common_item(
-        element,
         &item,
         props.label.clone(),
         props.enabled.clone(),
@@ -242,7 +238,6 @@ pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
     retain_handler(element, handler);
     place_item(element, &parent, &item);
     update_common_item(
-        element,
         &item,
         props.label.clone(),
         props.enabled.clone(),
@@ -250,7 +245,6 @@ pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
         props.shortcut.clone(),
     );
     scoped_effect!(
-        element,
         [item, props.checked] || {
             item.setState(if checked.get() {
                 NSControlStateValueOn
@@ -276,7 +270,6 @@ pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
     retain_handler(element, handler);
     place_item(element, &parent, &item);
     update_common_item(
-        element,
         &item,
         props.label.clone(),
         props.enabled.clone(),
@@ -284,7 +277,6 @@ pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
         props.shortcut.clone(),
     );
     scoped_effect!(
-        element,
         [item, props.selected] || {
             item.setState(if selected.get() {
                 NSControlStateValueOn
@@ -294,7 +286,6 @@ pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
         }
     );
     scoped_effect!(
-        element,
         [item, props.group] || {
             let group = NSString::from_str(&group.get());
             unsafe { item.setRepresentedObject(Some(&group)) };
@@ -309,7 +300,6 @@ pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
     let item = NSMenuItem::separatorItem(mtm);
     place_item(element, &parent, &item);
     scoped_effect!(
-        element,
         [item, props.visible] || {
             item.setHidden(!visible.get());
         }
@@ -325,7 +315,6 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
 
     scoped_effect!(
-        element,
         [context, props.children] || {
             children.get().on_last_handle_change(closure!(
                 [context] | handle | {
@@ -336,7 +325,6 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        element,
         [context.menu, context.target, props.controller, registration] || {
             registration.borrow_mut().take();
             if let Some(handle) = target.get()
@@ -447,7 +435,6 @@ fn retain_handler(element: &Element, handler: Retained<MenuItemHandler>) {
 }
 
 fn update_common_item(
-    element: &Element,
     item: &Retained<NSMenuItem>,
     label: PropValue<String>,
     enabled: PropValue<bool>,
@@ -456,7 +443,6 @@ fn update_common_item(
 ) {
     let item = item.clone();
     scoped_effect!(
-        element,
         [item, label, enabled, visible, shortcut] || {
             item.setTitle(&NSString::from_str(&label.get()));
             item.setEnabled(enabled.get());

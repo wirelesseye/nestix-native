@@ -42,7 +42,6 @@ pub(crate) fn mount(
     ));
 
     scoped_effect!(
-        element,
         [
             tree_context,
             style_props,
@@ -64,7 +63,6 @@ pub(crate) fn mount(
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -99,7 +97,6 @@ pub(crate) fn mount(
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -119,7 +116,6 @@ pub(crate) fn mount(
     );
 
     scoped_effect!(
-        element,
         [
             window_context.scale_factor,
             tree_context,
@@ -139,7 +135,6 @@ pub(crate) fn mount(
     );
 
     scoped_effect!(
-        element,
         [tree_context, style_props, props.align_self] || {
             let style = style_props.get();
             tree_context.update_style(node_id, |prev| Style {
@@ -151,7 +146,6 @@ pub(crate) fn mount(
     );
 
     scoped_effect!(
-        element,
         [window_context.scale_factor, tree_context] || {
             if let Some(layout) = tree_context.layout(node_id) {
                 let point = LogicalPosition::new(layout.location.x, layout.location.y)

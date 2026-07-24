@@ -92,14 +92,12 @@ pub fn Slider(props: &SliderProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [props.enabled]
             || unsafe {
                 let _ = EnableWindow(hwnd, enabled.get());
             }
     );
     scoped_effect!(
-        element,
         [props.value, props.minimum, props.maximum]
             || unsafe {
                 let position = position_from_value(value.get(), minimum.get(), maximum.get());

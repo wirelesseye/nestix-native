@@ -33,7 +33,6 @@ pub fn Input(props: &InputProps, element: &Element) {
     ));
 
     scoped_effect!(
-        element,
         [input, props.value, content_revision, updating_value] || {
             let value = value.get();
             if input.text().as_str() != value {

@@ -286,7 +286,6 @@ pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     state.borrow_mut().hwnd = hwnd;
 
     scoped_effect!(
-        element,
         [state, props.icon, props.tooltip, props.visible] || {
             let decoded = load_icon(icon.get()).map(OwnedIcon);
             let mut state = state.borrow_mut();
