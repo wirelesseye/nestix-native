@@ -252,6 +252,7 @@ extern "system" fn window_proc(
 }
 
 #[component]
+/// Adds an application icon to the Windows notification area.
 pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     let menu = create_state(None::<Rc<MenuData>>);
     let state = Rc::new(RefCell::new(TrayIconState {

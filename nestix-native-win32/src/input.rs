@@ -27,6 +27,7 @@ use windows::{
 use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
 
 #[component]
+/// Renders a native Win32 single-line text input.
 pub fn Input(props: &InputProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__win32_Input"];
 

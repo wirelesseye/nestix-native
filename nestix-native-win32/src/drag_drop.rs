@@ -561,6 +561,7 @@ fn register_target(state: Rc<TargetState>) -> windows::core::Result<TargetRegist
 }
 
 #[component]
+/// Makes a visual element accept native Win32 drop operations.
 pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
     let registration = Rc::new(RefCell::new(None::<TargetRegistration>));
     scoped_effect!(
@@ -992,6 +993,7 @@ fn register_source(state: Rc<SourceState>) -> Option<SourceRegistration> {
 }
 
 #[component]
+/// Makes a visual element a native Win32 drag source.
 pub fn DragSource(props: &DragSourceProps, element: &Element) -> Element {
     let registration = Rc::new(RefCell::new(None::<SourceRegistration>));
     scoped_effect!(

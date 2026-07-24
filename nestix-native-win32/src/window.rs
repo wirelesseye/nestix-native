@@ -47,12 +47,15 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
 }
 
 #[derive(Clone)]
+/// Context provided to descendants of a Win32 window.
 pub struct WindowContext {
+    /// The window's current display scale relative to 96 DPI.
     pub scale_factor: Readonly<f64>,
     pub(crate) hwnd: HWND,
 }
 
 #[component]
+/// Creates a native Win32 top-level window and renders its contents.
 pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__win32_Window"];
 

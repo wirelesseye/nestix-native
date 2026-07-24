@@ -122,6 +122,7 @@ impl AppState {
 }
 
 #[component]
+/// Initializes the Win32 application root and renders its child tree.
 pub fn Root(props: &RootProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Root", "__win32_Root"];
 

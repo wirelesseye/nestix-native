@@ -34,6 +34,7 @@ fn init_trackbar_class() {
 }
 
 #[component]
+/// Renders a native Win32 slider.
 pub fn Slider(props: &SliderProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Slider", "__win32_Slider"];
     let app_state = element.context::<AppState>().unwrap();

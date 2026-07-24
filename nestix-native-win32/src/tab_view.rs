@@ -53,6 +53,7 @@ struct TabViewContext {
 }
 
 #[component]
+/// Renders a native Win32 tab view.
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__win32_TabView"];
 
@@ -335,6 +336,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 }
 
 #[component]
+/// Renders one page and tab label within a [`TabView`].
 pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__TabViewItem", "__win32_TabViewItem"];
 

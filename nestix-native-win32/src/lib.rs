@@ -1,19 +1,38 @@
+//! Win32 backend components for Nestix Native.
+
+/// Win32 push-button component.
 pub mod button;
+/// Win32 checkbox component.
 pub mod checkbox;
+/// Win32 drag-and-drop components.
 pub mod drag_drop;
+/// Win32 file-picker service component.
 pub mod file_picker;
+/// Win32 flex-layout container component.
 pub mod flex_view;
+/// Win32 image-view component.
 pub mod image_view;
+/// Win32 single-line text-input component.
 pub mod input;
+/// Win32 menu components.
 pub mod menu;
+/// Win32 radio-button component.
 pub mod radio_button;
+/// Win32 application-root component.
 pub mod root;
+/// Win32 scroll-view component.
 pub mod scroll_view;
+/// Win32 selection components.
 pub mod select;
+/// Win32 slider component.
 pub mod slider;
+/// Win32 tab-view components.
 pub mod tab_view;
+/// Win32 text component.
 pub mod text;
+/// Win32 notification-area icon component.
 pub mod tray_icon;
+/// Win32 top-level window component.
 pub mod window;
 
 mod contexts;
@@ -42,8 +61,10 @@ pub use window::*;
 use nestix::create_element;
 use nestix_native_core::Backend;
 
+/// The shared Win32 backend value used to register this backend with Nestix Native.
 pub const WIN32_BACKEND: Win32Backend = Win32Backend;
 
+/// A Nestix Native backend that creates components implemented with the Win32 API.
 pub struct Win32Backend;
 
 impl Backend for Win32Backend {

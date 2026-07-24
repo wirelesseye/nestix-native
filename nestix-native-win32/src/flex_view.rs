@@ -62,6 +62,7 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
 }
 
 #[component]
+/// Renders a Win32 container that lays out its children with flexbox.
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__FlexView", "__win32_FlexView"];
 

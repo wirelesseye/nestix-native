@@ -31,6 +31,7 @@ use crate::{
 };
 
 #[component]
+/// Renders a native Win32 checkbox.
 pub fn Checkbox(props: &CheckboxProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Checkbox", "__win32_Checkbox"];
     let app_state = element.context::<AppState>().unwrap();

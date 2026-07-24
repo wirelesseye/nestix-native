@@ -315,6 +315,7 @@ fn shortcut_text(shortcut: Shortcut) -> String {
 }
 
 #[component]
+/// Creates a native Win32 menu containing the supplied menu entries.
 pub fn Menu(props: &MenuProps, element: &Element) -> Element {
     let menu_bar = element.context::<MenuBarContext>();
     let menu = new_menu(menu_bar.is_none());
@@ -369,6 +370,7 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
 }
 
 #[component]
+/// Installs a native Win32 menu bar on the containing window.
 pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let window = element.context::<crate::WindowContext>();
     let menu = create_state(None::<Rc<MenuData>>);
@@ -496,6 +498,7 @@ fn common_effects(
 }
 
 #[component]
+/// Adds a labeled submenu to its containing native menu.
 pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
     let parent = element.context::<MenuContext>().unwrap().0.clone();
     let submenu = new_menu(true);
@@ -525,6 +528,7 @@ pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
 }
 
 #[component]
+/// Adds an actionable item to its containing native menu.
 pub fn MenuItem(props: &MenuItemProps, element: &Element) {
     let menu = element.context::<MenuContext>().unwrap().0.clone();
     let entry = Rc::new(Entry {
@@ -557,6 +561,7 @@ pub fn MenuItem(props: &MenuItemProps, element: &Element) {
 }
 
 #[component]
+/// Adds a checkable item to its containing native menu.
 pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
     let menu = element.context::<MenuContext>().unwrap().0.clone();
     let entry_slot = Rc::new(RefCell::new(Weak::<Entry>::new()));
@@ -601,6 +606,7 @@ pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
 }
 
 #[component]
+/// Adds an item in a mutually exclusive group to its containing native menu.
 pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
     let menu = element.context::<MenuContext>().unwrap().0.clone();
     let entry_slot = Rc::new(RefCell::new(Weak::<Entry>::new()));
@@ -658,6 +664,7 @@ pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
 }
 
 #[component]
+/// Adds a visual separator to its containing native menu.
 pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
     let menu = element.context::<MenuContext>().unwrap().0.clone();
     let entry = Rc::new(Entry {
@@ -763,6 +770,7 @@ unsafe extern "system" fn context_subclass(
 }
 
 #[component]
+/// Attaches a native Win32 context menu to a visual element.
 pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let menu = create_state(None::<Rc<MenuData>>);
     let target = create_state(None::<Shared<dyn Any>>);

@@ -40,6 +40,7 @@ const DEFAULT_PADDING_X: f32 = 10.0;
 const DEFAULT_PADDING_Y: f32 = 3.0;
 
 #[component]
+/// Renders a native Win32 push button.
 pub fn Button(props: &ButtonProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__win32_Button"];
 

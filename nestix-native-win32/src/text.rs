@@ -29,6 +29,7 @@ use windows::{
 use crate::{AppState, WindowContext, contexts::ParentContext, font::resolved_font};
 
 #[component]
+/// Renders read-only text in a native Win32 control.
 pub fn Text(props: &TextProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__win32_Text"];
 

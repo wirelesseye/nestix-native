@@ -23,6 +23,7 @@ use windows::{
 use crate::{root::ensure_com_apartment, window::WindowContext};
 
 #[component]
+/// Registers a native Win32 file-picker service with its controller.
 pub fn FilePicker(props: &FilePickerProps, element: &Element) {
     let window = element.context::<WindowContext>().unwrap();
     let registration = Rc::new(RefCell::new(None::<FilePickerRegistration>));
