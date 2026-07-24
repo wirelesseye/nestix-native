@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use env_logger::Env;
 use nestix::{
     Element, callback, component, computed, create_state, effect, layout, mount_root, unmount_root,
@@ -19,9 +21,11 @@ fn MenuBarExample() -> Element {
     let window_menu_open = create_state(true);
     let plain_window_open = create_state(true);
 
+    let is_app_running = Cell::new(true);
     effect!(
         [window_menu_open, plain_window_open] || {
-            if !window_menu_open.get() && !plain_window_open.get() {
+            if is_app_running.get() && !window_menu_open.get() && !plain_window_open.get() {
+                is_app_running.set(false);
                 unmount_root().expect("root should be mounted");
             }
         }
@@ -55,88 +59,87 @@ fn MenuBarExample() -> Element {
             // macOS only: This menu bar is available application-wide.
             // A window without its own menu bar uses it when focused.
             MenuBar(.menu = layout!{ Menu { $(application_menu.clone()) } })
-            if window_menu_open.get() {
-                Window(
-                    .title = "Window-specific menu",
-                    .width = 480,
-                    .height = 300,
-                    .on_close_requested = callback!(
-                        [window_menu_open] || {
-                            window_menu_open.set(false);
-                        }
-                    ),
-                ) {
-                    FlexView(
-                        .align_items = AlignItems::Center,
-                        .justify_content = JustifyContent::Center,
-                        .bg_color = Some(Color::RGB(RGBColor::from_rgb(238, 242, 247))),
-                        .view(.flex_grow = 1.0),
-                    ) {
-                        // On macOS: it is active only while this window is focused.
-                        MenuBar(
-                            .menu = layout! {
-                                Menu {
-                                    $(application_menu)
-                                    Submenu("File") {
-                                        MenuItem(
-                                            "New Document",
-                                            .shortcut = Shortcut::primary('N'),
-                                            .on_activate = callback!(
-                                                [status] || {
-                                                    status.set("New Document selected".to_string());
-                                                }
-                                            ),
-                                        )
-                                        MenuItem(
-                                            "Save",
-                                            .shortcut = Shortcut::primary('S'),
-                                            .on_activate = callback!(
-                                                [status] || {
-                                                    status.set("Save selected".to_string());
-                                                }
-                                            ),
-                                        )
-                                        MenuSeparator()
-                                        CheckMenuItem(
-                                            "Show status",
-                                            .checked = show_status.clone(),
-                                            .on_checked_change = callback!(
-                                                [show_status] | checked | {
-                                                    show_status.set(checked);
-                                                }
-                                            ),
-                                        )
-                                    }
-                                }
-                            },
-                        )
-                        Text("This window supplies its own File menu.")
-                        if show_status.get() {
-                            Text(computed!([status] || format!("Status: {}", status.get())))
-                        }
+            Window(
+                $if = window_menu_open.get(),
+                .title = "Window-specific menu",
+                .width = 480,
+                .height = 300,
+                .on_close_requested = callback!(
+                    [window_menu_open] || {
+                        window_menu_open.set(false);
                     }
+                ),
+            ) {
+                FlexView(
+                    .align_items = AlignItems::Center,
+                    .justify_content = JustifyContent::Center,
+                    .bg_color = Some(Color::RGB(RGBColor::from_rgb(238, 242, 247))),
+                    .view(.flex_grow = 1.0),
+                ) {
+                    // On macOS: it is active only while this window is focused.
+                    MenuBar(
+                        .menu = layout! {
+                            Menu {
+                                $(application_menu)
+                                Submenu("File") {
+                                    MenuItem(
+                                        "New Document",
+                                        .shortcut = Shortcut::primary('N'),
+                                        .on_activate = callback!(
+                                            [status] || {
+                                                status.set("New Document selected".to_string());
+                                            }
+                                        ),
+                                    )
+                                    MenuItem(
+                                        "Save",
+                                        .shortcut = Shortcut::primary('S'),
+                                        .on_activate = callback!(
+                                            [status] || {
+                                                status.set("Save selected".to_string());
+                                            }
+                                        ),
+                                    )
+                                    MenuSeparator()
+                                    CheckMenuItem(
+                                        "Show status",
+                                        .checked = show_status.clone(),
+                                        .on_checked_change = callback!(
+                                            [show_status] | checked | {
+                                                show_status.set(checked);
+                                            }
+                                        ),
+                                    )
+                                }
+                            }
+                        },
+                    )
+                    Text("This window supplies its own File menu.")
+                    Text(
+                        computed!([status] || format!("Status: {}", status.get())),
+                        $if = show_status.get(),
+                    )
                 }
             }
-            if plain_window_open.get() {
-                Window(
-                    .title = "No window menu",
-                    .width = 480,
-                    .height = 240,
-                    .on_close_requested = callback!(
-                        [plain_window_open] || {
-                            plain_window_open.set(false);
-                        }
-                    ),
-                ) {
-                    FlexView(
-                        .align_items = AlignItems::Center,
-                        .justify_content = JustifyContent::Center,
-                        .bg_color = Some(Color::RGB(RGBColor::from_rgb(247, 244, 238))),
-                        .view(.flex_grow = 1.0),
-                    ) {
-                        Text("This window has no window-specific menu bar.")
-                        Text(computed!([status] || format!("Status: {}", status.get())))
+            Window(
+                $if = plain_window_open.get(),
+                .title = "No window menu",
+                .width = 480,
+                .height = 240,
+                .on_close_requested = callback!(
+                    [plain_window_open] || {
+                        plain_window_open.set(false);
                     }
+                ),
+            ) {
+                FlexView(
+                    .align_items = AlignItems::Center,
+                    .justify_content = JustifyContent::Center,
+                    .bg_color = Some(Color::RGB(RGBColor::from_rgb(247, 244, 238))),
+                    .view(.flex_grow = 1.0),
+                ) {
+                    Text("This window has no window-specific menu bar.")
+                    Text(computed!([status] || format!("Status: {}", status.get())))
                 }
             }
         }
