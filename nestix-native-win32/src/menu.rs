@@ -185,23 +185,46 @@ impl MenuData {
     }
 
     fn activate(&self, id: usize) -> bool {
+        let Some(action) = self.action_for(id) else {
+            return false;
+        };
+        action();
+        true
+    }
+
+    fn action_for(&self, id: usize) -> Option<Shared<dyn Fn()>> {
         for entry in self.entries.borrow().iter() {
             match &entry.kind {
                 EntryKind::Item {
                     id: entry_id,
                     action,
                 } if *entry_id == id => {
-                    action();
-                    return true;
+                    return Some(action.clone());
                 }
-                EntryKind::Submenu(menu) if menu.activate(id) => return true,
+                EntryKind::Submenu(menu) => {
+                    if let Some(action) = menu.action_for(id) {
+                        return Some(action);
+                    }
+                }
                 _ => {}
             }
         }
-        false
+        None
     }
 
     fn activate_shortcut(&self, key: usize, modifiers: ShortcutModifiers) -> bool {
+        let Some(action) = self.action_for_shortcut(key, modifiers) else {
+            return false;
+        };
+        action();
+        true
+    }
+
+    fn action_for_shortcut(
+        &self,
+        key: usize,
+        modifiers: ShortcutModifiers,
+    ) -> Option<Shared<dyn Fn()>> {
         for entry in self.entries.borrow().iter() {
             if !entry.visible.get() || !entry.enabled.get() {
                 continue;
@@ -213,14 +236,17 @@ impl MenuData {
                             && shortcut_key_code(shortcut.key()) == Some(key)
                     }) =>
                 {
-                    action();
-                    return true;
+                    return Some(action.clone());
                 }
-                EntryKind::Submenu(menu) if menu.activate_shortcut(key, modifiers) => return true,
+                EntryKind::Submenu(menu) => {
+                    if let Some(action) = menu.action_for_shortcut(key, modifiers) {
+                        return Some(action);
+                    }
+                }
                 _ => {}
             }
         }
-        false
+        None
     }
 }
 
@@ -451,7 +477,6 @@ fn place_entry(element: &Element, menu: Rc<MenuData>, entry: Rc<Entry>) {
 }
 
 fn common_effects(
-    element: &Element,
     menu: Rc<MenuData>,
     entry: Rc<Entry>,
     label: PropValue<String>,
@@ -485,7 +510,6 @@ pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
     });
     place_entry(element, parent.clone(), entry.clone());
     common_effects(
-        element,
         parent,
         entry,
         props.label.clone(),
@@ -523,7 +547,6 @@ pub fn MenuItem(props: &MenuItemProps, element: &Element) {
     });
     place_entry(element, menu.clone(), entry.clone());
     common_effects(
-        element,
         menu,
         entry,
         props.label.clone(),
@@ -562,7 +585,6 @@ pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
     *entry_slot.borrow_mut() = Rc::downgrade(&entry);
     place_entry(element, menu.clone(), entry.clone());
     common_effects(
-        element,
         menu.clone(),
         entry.clone(),
         props.label.clone(),
@@ -615,7 +637,6 @@ pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
     *entry_slot.borrow_mut() = Rc::downgrade(&entry);
     place_entry(element, menu.clone(), entry.clone());
     common_effects(
-        element,
         menu.clone(),
         entry.clone(),
         props.label.clone(),
@@ -820,5 +841,49 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
             yield $(children.get())
             yield $(menu.get())
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn activation_releases_menu_borrows_before_running_action() {
+        let menu = new_menu(true);
+        let submenu = new_menu(true);
+        let weak_menu = Rc::downgrade(&menu);
+        let weak_submenu = Rc::downgrade(&submenu);
+
+        submenu.entries.borrow_mut().push(Rc::new(Entry {
+            kind: EntryKind::Item {
+                id: 1,
+                action: callback!(
+                    [weak_menu, weak_submenu] || {
+                        weak_menu.upgrade().unwrap().entries.borrow_mut().clear();
+                        weak_submenu.upgrade().unwrap().entries.borrow_mut().clear();
+                    }
+                ),
+            },
+            label: RefCell::new("Quit".into()),
+            enabled: Cell::new(true),
+            visible: Cell::new(true),
+            checked: Cell::new(false),
+            shortcut: Cell::new(None),
+            group: RefCell::new(None),
+        }));
+        menu.entries.borrow_mut().push(Rc::new(Entry {
+            kind: EntryKind::Submenu(submenu.clone()),
+            label: RefCell::new("Application".into()),
+            enabled: Cell::new(true),
+            visible: Cell::new(true),
+            checked: Cell::new(false),
+            shortcut: Cell::new(None),
+            group: RefCell::new(None),
+        }));
+
+        assert!(menu.activate(1));
+        assert!(menu.entries.borrow().is_empty());
+        assert!(submenu.entries.borrow().is_empty());
     }
 }

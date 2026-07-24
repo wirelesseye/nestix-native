@@ -10,12 +10,16 @@ use taffy::{Size, Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
-        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, SelectObject},
+        Graphics::Gdi::{
+            DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, RDW_ALLCHILDREN, RDW_ERASE,
+            RDW_INVALIDATE, RedrawWindow, SelectObject,
+        },
+        System::SystemServices::SS_SIMPLE,
         UI::{
             Controls::WC_STATIC,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, SWP_NOCOPYBITS, SWP_NOZORDER, SendMessageW,
-                SetWindowPos, SetWindowTextW, WINDOW_EX_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos,
+                SetWindowTextW, WINDOW_EX_STYLE, WINDOW_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -46,7 +50,7 @@ pub fn Text(props: &TextProps, element: &Element) {
             WINDOW_EX_STYLE::default(),
             WC_STATIC,
             &text,
-            WS_VISIBLE | WS_CHILD,
+            WS_VISIBLE | WS_CHILD | WINDOW_STYLE(SS_SIMPLE.0),
             0,
             0,
             0,
@@ -135,6 +139,7 @@ pub fn Text(props: &TextProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
+            parent_context,
             style_props,
             props.text,
             props.font.font_family,
@@ -160,11 +165,6 @@ pub fn Text(props: &TextProps, element: &Element) {
             let string = HSTRING::from(text.get());
             unsafe {
                 SetWindowTextW(hwnd, &string).unwrap();
-                // SetWindowTextW invalidates a static control without requesting
-                // background erasure. Text is painted transparently, so force an
-                // erased repaint to prevent pixels from the previous value from
-                // showing through.
-                InvalidateRect(Some(hwnd), None, true).unwrap();
             }
 
             let mut size: SIZE = SIZE::default();
@@ -205,6 +205,20 @@ pub fn Text(props: &TextProps, element: &Element) {
                 ..prev
             });
             tree_context.refresh();
+
+            // Text is painted transparently, so erasing the child cannot restore
+            // pixels from its previous value. Repaint its parent background and
+            // children after the new text bounds have been applied.
+            unsafe {
+                RedrawWindow(
+                    Some(parent_context.parent_hwnd),
+                    None,
+                    None,
+                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN,
+                )
+                .ok()
+                .unwrap();
+            }
         }
     );
 
@@ -284,13 +298,9 @@ pub fn Text(props: &TextProps, element: &Element) {
                         point.y,
                         size.width,
                         size.height,
-                        // Text changes can resize and move this control in the
-                        // same layout pass. Do not copy pixels from its old client
-                        // area into the new bounds.
-                        SWP_NOZORDER | SWP_NOCOPYBITS,
+                        SWP_NOZORDER,
                     )
                     .unwrap();
-                    InvalidateRect(Some(hwnd), None, true).unwrap();
                 }
             }
         }
