@@ -64,6 +64,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         | NSWindowStyleMask::Titled;
     ns_window.setStyleMask(style_mask);
     apply_title_bar_mode(&ns_window, props.title_bar_mode.get());
+    root_context.ns_application.activate();
     ns_window.makeKeyAndOrderFront(None);
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
 
