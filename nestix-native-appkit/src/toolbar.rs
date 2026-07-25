@@ -1,8 +1,13 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    rc::Rc,
+};
 
 use nestix::{
-    Element, Layout, PropValue, Shared, closure, component, components::ContextProvider, layout,
-    props, scoped_effect,
+    Element, Layout, PropValue, Shared, closure, component,
+    components::{ContextProvider, Fragment},
+    layout, props, scoped_effect,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
@@ -121,9 +126,10 @@ struct ToolbarRegistration {
 
 #[derive(Clone)]
 struct ToolbarContext {
-    toolbar: Retained<NSToolbar>,
+    toolbar: Rc<RefCell<Option<Retained<NSToolbar>>>>,
     registrations: Rc<RefCell<Vec<ToolbarRegistration>>>,
     items: Rc<RefCell<HashMap<String, ToolbarItemDefinition>>>,
+    active: Rc<Cell<bool>>,
 }
 
 impl ToolbarContext {
@@ -150,6 +156,9 @@ impl ToolbarContext {
     }
 
     fn unregister_item(&self, identifier: &str) {
+        if !self.active.get() {
+            return;
+        }
         self.items.borrow_mut().remove(identifier);
     }
 
@@ -162,10 +171,15 @@ impl ToolbarContext {
             },
             index,
         );
-        self.sync();
+        if self.active.get() {
+            self.sync();
+        }
     }
 
     fn remove(&self, key: &str) {
+        if !self.active.get() {
+            return;
+        }
         self.registrations
             .borrow_mut()
             .retain(|registration| registration.key != key);
@@ -173,9 +187,19 @@ impl ToolbarContext {
     }
 
     fn sync(&self) {
-        let current_count = self.toolbar.items().len();
+        if !self.active.get() {
+            return;
+        }
+
+        let toolbar = self
+            .toolbar
+            .borrow()
+            .as_ref()
+            .expect("mounted toolbar context must retain its native toolbar")
+            .clone();
+        let current_count = toolbar.items().len();
         for index in (0..current_count).rev() {
-            self.toolbar.removeItemAtIndex(index as _);
+            toolbar.removeItemAtIndex(index as _);
         }
         for definition in self.items.borrow().values() {
             definition.instances.borrow_mut().clear();
@@ -189,9 +213,9 @@ impl ToolbarContext {
             if hidden {
                 continue;
             }
-            self.toolbar.insertItemWithItemIdentifier_atIndex(
+            toolbar.insertItemWithItemIdentifier_atIndex(
                 &NSString::from_str(&registration.identifier),
-                self.toolbar.items().len() as _,
+                toolbar.items().len() as _,
             );
         }
     }
@@ -234,11 +258,10 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
     );
 
     let mtm = MainThreadMarker::new().expect("AppKitToolbar must be mounted on the main thread");
-    let toolbar =
-        NSToolbar::initWithIdentifier(NSToolbar::alloc(mtm), &NSString::from_str(&identifier));
     let original_style = window.ns_window.toolbarStyle();
     let items = Rc::new(RefCell::new(HashMap::new()));
     let registrations = Rc::new(RefCell::new(Vec::new()));
+    let active = Rc::new(Cell::new(true));
     let delegate = AppKitToolbarDelegate::new(
         mtm,
         AppKitToolbarDelegateState {
@@ -246,12 +269,16 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
             registrations: registrations.clone(),
         },
     );
+    let toolbar =
+        NSToolbar::initWithIdentifier(NSToolbar::alloc(mtm), &NSString::from_str(&identifier));
     toolbar.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
+    let toolbar_slot = Rc::new(RefCell::new(Some(toolbar.clone())));
 
     let context = ToolbarContext {
-        toolbar: toolbar.clone(),
+        toolbar: toolbar_slot.clone(),
         registrations,
         items,
+        active,
     };
 
     window.toolbar.set(Some(toolbar.clone()));
@@ -274,8 +301,10 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
     );
 
     element.on_unmount(closure!(
-        [window, toolbar, delegate, original_style] || {
-            toolbar.setDelegate(None);
+        [window, toolbar_slot, delegate, original_style] || {
+            let Some(toolbar) = toolbar_slot.borrow_mut().take() else {
+                return;
+            };
             if contains_toolbar(&window.toolbar.get(), &toolbar) {
                 window.toolbar.set(None);
             }
@@ -285,15 +314,28 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
                 window.ns_window.setToolbar(None);
                 window.ns_window.setToolbarStyle(original_style);
             }
+            toolbar.setDelegate(None);
             let _ = &delegate;
         }
     ));
 
     layout! {
         ContextProvider<ToolbarContext>(context) {
-            $(props.children.clone())
+            AppKitToolbarUnmountGuard
+            Fragment(.children = props.children.clone())
         }
     }
+}
+
+/// Marks the toolbar inactive before its declarative items unmount. Nestix
+/// tears down siblings in layout order, so this guard must remain the first
+/// child provided by `AppKitToolbar`.
+#[component]
+fn AppKitToolbarUnmountGuard(_: &(), element: &Element) {
+    let context = element
+        .context::<ToolbarContext>()
+        .expect("AppKitToolbarUnmountGuard must be mounted beneath AppKitToolbar");
+    element.on_unmount(closure!([context] || context.active.set(false)));
 }
 
 /// Adds an actionable native item to an [`AppKitToolbar`].
