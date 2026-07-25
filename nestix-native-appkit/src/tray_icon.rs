@@ -27,6 +27,7 @@ struct TrayIconState {
     status_item: Option<Retained<NSStatusItem>>,
     menu: State<Option<Retained<NSMenu>>>,
     menu_presentation_pending: bool,
+    handler: Retained<TrayIconHandler>,
 }
 
 impl TrayIconState {
@@ -192,20 +193,24 @@ fn process_name() -> String {
 pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let menu = create_state(None::<Retained<NSMenu>>);
-    let state = Rc::new(RefCell::new(TrayIconState {
-        status_bar: NSStatusBar::systemStatusBar(),
-        status_item: None,
-        menu: menu.clone(),
-        menu_presentation_pending: false,
-    }));
-    let handler = TrayIconHandler::new(
-        mtm,
-        TrayIconHandlerState {
-            tray: Rc::downgrade(&state),
-            on_activate: props.on_activate.clone(),
-            on_secondary: props.on_secondary.clone(),
-        },
-    );
+    let state = Rc::new_cyclic(|state| {
+        let handler = TrayIconHandler::new(
+            mtm,
+            TrayIconHandlerState {
+                tray: state.clone(),
+                on_activate: props.on_activate.clone(),
+                on_secondary: props.on_secondary.clone(),
+            },
+        );
+        RefCell::new(TrayIconState {
+            status_bar: NSStatusBar::systemStatusBar(),
+            status_item: None,
+            menu: menu.clone(),
+            menu_presentation_pending: false,
+            handler,
+        })
+    });
+    let handler = state.borrow().handler.clone();
 
     scoped_effect!(
         [
