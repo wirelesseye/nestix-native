@@ -72,6 +72,13 @@ pub struct AppKitToolbarProps {
     /// Stable identifier used by AppKit to identify this toolbar.
     pub identifier: String,
 
+    /// Identifier of the item that AppKit should display as selected.
+    ///
+    /// The matching item must have [`AppKitToolbarItemProps::selectable`] set.
+    /// Pass a reactive value to keep toolbar selection synchronized with
+    /// application navigation state. `None` clears the selection.
+    pub selected_identifier: Option<String>,
+
     #[props(default = true)]
     pub visible: bool,
 
@@ -107,6 +114,13 @@ pub struct AppKitToolbarItemProps {
     #[props(default)]
     pub bordered: bool,
 
+    /// Whether AppKit may select and highlight this item.
+    ///
+    /// Clicking a selectable item updates AppKit's native selection. Use
+    /// [`Self::on_click`] to update the corresponding application page state.
+    #[props(default)]
+    pub selectable: bool,
+
     pub on_click: Option<Shared<dyn Fn()>>,
 }
 
@@ -129,6 +143,7 @@ struct ToolbarContext {
     toolbar: Rc<RefCell<Option<Retained<NSToolbar>>>>,
     registrations: Rc<RefCell<Vec<ToolbarRegistration>>>,
     items: Rc<RefCell<HashMap<String, ToolbarItemDefinition>>>,
+    selected_identifier: PropValue<Option<String>>,
     active: Rc<Cell<bool>>,
 }
 
@@ -218,6 +233,7 @@ impl ToolbarContext {
                 toolbar.items().len() as _,
             );
         }
+        update_selected_identifier(&toolbar, self.selected_identifier.get());
     }
 }
 
@@ -226,6 +242,7 @@ struct ToolbarItemDefinition {
     create: Shared<dyn Fn() -> Retained<NSToolbarItem>>,
     instances: Rc<RefCell<Vec<Retained<NSToolbarItem>>>>,
     hidden: PropValue<bool>,
+    selectable: PropValue<bool>,
 }
 
 fn place_registration(
@@ -278,6 +295,7 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
         toolbar: toolbar_slot.clone(),
         registrations,
         items,
+        selected_identifier: props.selected_identifier.clone(),
         active,
     };
 
@@ -297,6 +315,11 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
     scoped_effect!(
         [window, props.style] || {
             window.ns_window.setToolbarStyle(style.get().to_native());
+        }
+    );
+    scoped_effect!(
+        [toolbar, props.selected_identifier] || {
+            update_selected_identifier(&toolbar, selected_identifier.get());
         }
     );
 
@@ -387,6 +410,7 @@ pub fn AppKitToolbarItem(props: &AppKitToolbarItemProps, element: &Element) {
             create,
             instances: instances.clone(),
             hidden: props.hidden.clone(),
+            selectable: props.selectable.clone(),
         },
     );
 
@@ -435,6 +459,15 @@ pub fn AppKitToolbarItem(props: &AppKitToolbarItemProps, element: &Element) {
         }
     );
     scoped_effect!(
+        [context, props.selectable] || {
+            let _ = selectable.get();
+            let Some(toolbar) = context.toolbar.borrow().as_ref().cloned() else {
+                return;
+            };
+            update_selected_identifier(&toolbar, context.selected_identifier.get());
+        }
+    );
+    scoped_effect!(
         [
             instances,
             props.symbol_name,
@@ -463,6 +496,11 @@ fn update_item_tool_tip(item: &NSToolbarItem, tool_tip: Option<String>) {
 fn update_item_state(item: &NSToolbarItem, disabled: bool, bordered: bool) {
     item.setEnabled(!disabled);
     item.setBordered(bordered);
+}
+
+fn update_selected_identifier(toolbar: &NSToolbar, identifier: Option<String>) {
+    let identifier = identifier.map(|identifier| NSString::from_str(&identifier));
+    toolbar.setSelectedItemIdentifier(identifier.as_deref());
 }
 
 fn update_item_image(
@@ -567,17 +605,48 @@ define_class!(
         ) -> Retained<NSArray<NSToolbarItemIdentifier>> {
             toolbar_identifiers(&self.ivars().registrations.borrow())
         }
+
+        #[unsafe(method_id(toolbarSelectableItemIdentifiers:))]
+        fn toolbar_selectable_item_identifiers(
+            &self,
+            _: &NSToolbar,
+        ) -> Retained<NSArray<NSToolbarItemIdentifier>> {
+            let items = self.ivars().items.borrow();
+            toolbar_identifiers_matching(&self.ivars().registrations.borrow(), |identifier| {
+                items
+                    .get(identifier)
+                    .is_some_and(|definition| definition.selectable.get())
+            })
+        }
     }
 );
 
 fn toolbar_identifiers(
     registrations: &[ToolbarRegistration],
 ) -> Retained<NSArray<NSToolbarItemIdentifier>> {
-    let identifiers = registrations
+    toolbar_identifiers_matching(registrations, |_| true)
+}
+
+fn toolbar_identifiers_matching(
+    registrations: &[ToolbarRegistration],
+    mut include: impl FnMut(&str) -> bool,
+) -> Retained<NSArray<NSToolbarItemIdentifier>> {
+    let identifiers = toolbar_identifier_values(registrations, |identifier| include(identifier))
         .iter()
-        .map(|registration| NSString::from_str(&registration.identifier))
+        .map(|identifier| NSString::from_str(identifier))
         .collect::<Vec<_>>();
     NSArray::from_retained_slice(&identifiers)
+}
+
+fn toolbar_identifier_values(
+    registrations: &[ToolbarRegistration],
+    mut include: impl FnMut(&str) -> bool,
+) -> Vec<String> {
+    registrations
+        .iter()
+        .filter(|registration| include(&registration.identifier))
+        .map(|registration| registration.identifier.clone())
+        .collect()
 }
 
 impl AppKitToolbarDelegate {
@@ -620,7 +689,7 @@ impl AppKitToolbarItemHandler {
 
 #[cfg(test)]
 mod tests {
-    use super::{ToolbarRegistration, place_registration};
+    use super::{ToolbarRegistration, place_registration, toolbar_identifier_values};
 
     fn registration(key: &str, identifier: &str) -> ToolbarRegistration {
         ToolbarRegistration {
@@ -660,5 +729,22 @@ mod tests {
         place_registration(&mut registrations, registration("two", "space"), None);
         assert_eq!(registrations.len(), 2);
         assert_eq!(registrations[0].identifier, registrations[1].identifier);
+    }
+
+    #[test]
+    fn selectable_identifiers_preserve_toolbar_order() {
+        let registrations = vec![
+            registration("one", "general"),
+            registration("two", "space"),
+            registration("three", "control"),
+            registration("four", "advanced"),
+        ];
+
+        assert_eq!(
+            toolbar_identifier_values(&registrations, |identifier| {
+                matches!(identifier, "general" | "advanced")
+            }),
+            ["general", "advanced"]
+        );
     }
 }
