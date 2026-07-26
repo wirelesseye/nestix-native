@@ -3,8 +3,8 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    AlignItems, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton, Root, Select,
-    SelectOption, Slider, StyleProvider, Switch, Text, Window, style,
+    AlignItems, BackendOverride, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton,
+    Root, Select, SelectOption, Slider, StyleProvider, Switch, Text, Window, style,
 };
 
 fn main() {
@@ -165,17 +165,20 @@ fn FormControlsApp() -> Element {
                             .flex_direction = FlexDirection::Row,
                             .align_items = AlignItems::Center,
                         ) {
-                            if cfg!(target_os = "windows") {
-                                Checkbox(
-                                    "Enable notifications",
-                                    .checked = notifications.clone(),
-                                    .on_checked_change = callback!(
-                                        [notifications] | checked | {
-                                            notifications.set(checked);
-                                        }
-                                    ),
-                                )
-                            } else {
+                            BackendOverride(
+                                "nestix-native-win32",
+                                .replacement = layout! {
+                                    Checkbox(
+                                        "Enable notifications",
+                                        .checked = notifications.clone(),
+                                        .on_checked_change = callback!(
+                                            [notifications] | checked | {
+                                                notifications.set(checked);
+                                            }
+                                        ),
+                                    )
+                                },
+                            ) {
                                 Text("Enable notifications", .class = "choice")
                                 Switch(
                                     .checked = notifications.clone(),

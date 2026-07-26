@@ -28,6 +28,7 @@ macro_rules! delegate {
     };
 }
 
+pub mod backend_override;
 pub mod button;
 pub mod checkbox;
 pub mod drag_drop;
@@ -47,6 +48,7 @@ pub mod text;
 pub mod tray_icon;
 pub mod window;
 
+pub use backend_override::*;
 pub use button::*;
 pub use checkbox::*;
 pub use drag_drop::*;
