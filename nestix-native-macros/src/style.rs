@@ -651,6 +651,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "justify_content" => expand_justify_content(value)?,
         "flex_wrap" => expand_flex_wrap(value)?,
         "gap" => expand_dimension(value)?,
+        "transition" => expand_transition(value)?,
         _ => Err(Error::new_spanned(
             prop.name,
             format!(
@@ -702,6 +703,7 @@ fn expand_property_variant(name: &str, span: Span) -> Result<Ident> {
         "justify_content" => "JustifyContent",
         "flex_wrap" => "FlexWrap",
         "gap" => "Gap",
+        "transition" => "Transition",
         _ => {
             return Err(Error::new(
                 span,
@@ -812,6 +814,127 @@ fn expand_dimension(value: StyleValueInput) -> Result<TokenStream2> {
     })?;
 
     Ok(quote!(#nestix_native_path::Dimension::from(#dimension)))
+}
+
+fn expand_transition(value: StyleValueInput) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    let mut transitions = Vec::new();
+    for item in value.split(',') {
+        let parts = item.split_whitespace().collect::<Vec<_>>();
+        if !(2..=3).contains(&parts.len()) {
+            return Err(Error::new(
+                Span::call_site(),
+                "transition entries must be `<property> <duration> [easing]`",
+            ));
+        }
+        let properties = transition_properties(parts[0])?;
+        let duration = if let Some(milliseconds) = parts[1].strip_suffix("ms") {
+            let value = milliseconds.parse::<f64>().map_err(|_| {
+                Error::new(
+                    Span::call_site(),
+                    "transition duration must be a non-negative number",
+                )
+            })?;
+            if !value.is_finite() || value < 0.0 {
+                return Err(Error::new(
+                    Span::call_site(),
+                    "transition duration must be a non-negative number",
+                ));
+            }
+            quote!(::std::time::Duration::from_secs_f64(#value / 1000.0))
+        } else if let Some(seconds) = parts[1].strip_suffix('s') {
+            let value = seconds.parse::<f64>().map_err(|_| {
+                Error::new(
+                    Span::call_site(),
+                    "transition duration must be a non-negative number",
+                )
+            })?;
+            if !value.is_finite() || value < 0.0 {
+                return Err(Error::new(
+                    Span::call_site(),
+                    "transition duration must be a non-negative number",
+                ));
+            }
+            quote!(::std::time::Duration::from_secs_f64(#value))
+        } else {
+            return Err(Error::new(
+                Span::call_site(),
+                "transition duration must use `ms` or `s`",
+            ));
+        };
+        let easing = match parts.get(2).copied().unwrap_or("ease_in_out") {
+            "linear" => quote!(#nestix_native_path::Easing::Linear),
+            "ease_in" | "ease-in" => quote!(#nestix_native_path::Easing::EaseIn),
+            "ease_out" | "ease-out" => quote!(#nestix_native_path::Easing::EaseOut),
+            "ease_in_out" | "ease-in-out" => quote!(#nestix_native_path::Easing::EaseInOut),
+            _ => {
+                return Err(Error::new(
+                    Span::call_site(),
+                    "transition easing must be linear, ease_in, ease_out, or ease_in_out",
+                ));
+            }
+        };
+        for property in properties {
+            let property = Ident::new(property, Span::call_site());
+            transitions.push(quote! {
+                #nestix_native_path::StyleTransition {
+                    property: #nestix_native_path::TransitionProperty::#property,
+                    animation: #nestix_native_path::AnimationSpec::new(#duration).easing(#easing),
+                }
+            });
+        }
+    }
+    Ok(quote!(::std::vec![#(#transitions),*]))
+}
+
+fn transition_properties(name: &str) -> Result<Vec<&'static str>> {
+    let properties = match name {
+        "left" => vec!["Left"],
+        "top" => vec!["Top"],
+        "width" => vec!["Width"],
+        "height" => vec!["Height"],
+        "margin" => vec!["MarginLeft", "MarginRight", "MarginTop", "MarginBottom"],
+        "margin_horizontal" | "margin-horizontal" => vec!["MarginLeft", "MarginRight"],
+        "margin_vertical" | "margin-vertical" => vec!["MarginTop", "MarginBottom"],
+        "margin_left" | "margin-left" => vec!["MarginLeft"],
+        "margin_right" | "margin-right" => vec!["MarginRight"],
+        "margin_top" | "margin-top" => vec!["MarginTop"],
+        "margin_bottom" | "margin-bottom" => vec!["MarginBottom"],
+        "padding" => vec!["PaddingLeft", "PaddingRight", "PaddingTop", "PaddingBottom"],
+        "padding_horizontal" | "padding-horizontal" => vec!["PaddingLeft", "PaddingRight"],
+        "padding_vertical" | "padding-vertical" => vec!["PaddingTop", "PaddingBottom"],
+        "padding_left" | "padding-left" => vec!["PaddingLeft"],
+        "padding_right" | "padding-right" => vec!["PaddingRight"],
+        "padding_top" | "padding-top" => vec!["PaddingTop"],
+        "padding_bottom" | "padding-bottom" => vec!["PaddingBottom"],
+        "gap" => vec!["Gap"],
+        "layout" => vec![
+            "Left",
+            "Top",
+            "Width",
+            "Height",
+            "MarginLeft",
+            "MarginRight",
+            "MarginTop",
+            "MarginBottom",
+            "PaddingLeft",
+            "PaddingRight",
+            "PaddingTop",
+            "PaddingBottom",
+            "Gap",
+        ],
+        _ => {
+            return Err(Error::new(
+                Span::call_site(),
+                format!("`{name}` is not an animatable transition property"),
+            ));
+        }
+    };
+    Ok(properties)
 }
 
 fn expand_f32(value: StyleValueInput) -> Result<TokenStream2> {

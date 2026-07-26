@@ -2,21 +2,23 @@ use std::rc::Rc;
 
 use nestix::{
     Element, Layout, PropValue, Readonly, Shared, State, callback, closure, component,
-    components::ContextProvider, create_state, layout, scoped_effect,
+    components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleScope, TitleBarMode, TreeContext, WindowProps,
+    AnimatedStyle, AnimationRuntime, Dimension as NativeDimension, StyleContext, StyleScope,
+    TitleBarMode, TreeContext, WindowProps,
     dpi::{self, LogicalSize},
+    matched_style, style_dimension,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
-    runtime::ProtocolObject,
+    runtime::ProtocolObject, sel,
 };
 use objc2_app_kit::{
     NSMenu, NSToolbar, NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask,
     NSWindowTitleVisibility,
 };
-use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString};
+use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString, NSTimer};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
 use crate::{contexts::ParentContext, root::RootContext};
@@ -24,6 +26,7 @@ use crate::{contexts::ParentContext, root::RootContext};
 pub struct WindowContext {
     pub ns_window: Retained<NSWindow>,
     pub scale_factor: Readonly<f64>,
+    pub animation: Rc<AnimationRuntime>,
     pub(crate) menu: State<Option<Retained<NSMenu>>>,
     pub(crate) toolbar: State<Option<Retained<NSToolbar>>>,
 }
@@ -37,16 +40,35 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let menu = create_state(None::<Retained<NSMenu>>);
     let toolbar = create_state(None::<Retained<NSToolbar>>);
     let root_context = element.context::<RootContext>().unwrap();
+    let style_context = element.context::<StyleContext>();
 
     let ns_window = unsafe { NSWindow::new(mtm) };
+    let tree_context = Rc::new(TreeContext::new());
+    let animation = Rc::new(AnimationRuntime::new());
+    let animation_timer_target = AnimationTimerTarget::new(
+        mtm,
+        AnimationTimerState {
+            animation: animation.clone(),
+            tree_context: tree_context.clone(),
+        },
+    );
+    let animation_timer = unsafe {
+        NSTimer::scheduledTimerWithTimeInterval_target_selector_userInfo_repeats(
+            1.0 / 60.0,
+            animation_timer_target.as_ref(),
+            sel!(tick:),
+            None,
+            true,
+        )
+    };
 
     let window_context = Rc::new(WindowContext {
         ns_window: ns_window.clone(),
         scale_factor: scale_factor.clone().into_readonly(),
+        animation: animation.clone(),
         menu: menu.clone(),
         toolbar,
     });
-    let tree_context = Rc::new(TreeContext::new());
 
     let window_delegate = WindowDelegate::new(
         mtm,
@@ -70,10 +92,16 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     // NSWindow does not retain its delegate.
     element.on_unmount(closure!(
-        [ns_window, window_delegate] || {
+        [
+            ns_window,
+            window_delegate,
+            animation_timer,
+            animation_timer_target
+        ] || {
+            animation_timer.invalidate();
             ns_window.setDelegate(None);
             ns_window.close();
-            let _ = &window_delegate;
+            let _ = (&window_delegate, &animation_timer_target);
         }
     ));
 
@@ -94,9 +122,48 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
 
+    let style_props = matched_style(
+        style_context,
+        element,
+        props.class.clone(),
+        &DEFAULT_CLASSES,
+    );
+    let target_size = computed!(
+        [style_props, props.width, props.height] || {
+            let mut style = style_props.get().unwrap_or_default();
+            style.width = Some(style_dimension(
+                Some(&style),
+                width.get().into(),
+                NativeDimension::from(800),
+                |style| style.width,
+            ));
+            style.height = Some(style_dimension(
+                Some(&style),
+                height.get().into(),
+                NativeDimension::from(600),
+                |style| style.height,
+            ));
+            Some(style)
+        }
+    );
+    let animated_size = Rc::new(AnimatedStyle::new(animation, target_size.get()));
+    let presented_size = animated_size.value();
     scoped_effect!(
-        [ns_window, props.width, props.height] || {
-            ns_window.setContentSize(NSSize::new(width.get(), height.get()));
+        [animated_size, target_size, scale_factor] || {
+            animated_size.set_target(target_size.get(), scale_factor.get());
+        }
+    );
+    scoped_effect!(
+        [ns_window, presented_size, scale_factor] || {
+            let style = presented_size.get().unwrap_or_default();
+            let current = ns_window
+                .contentView()
+                .map(|view| view.frame().size)
+                .unwrap_or_else(|| NSSize::new(800.0, 600.0));
+            ns_window.setContentSize(NSSize::new(
+                logical_length(style.width, current.width, scale_factor.get()),
+                logical_length(style.height, current.height, scale_factor.get()),
+            ));
         }
     );
 
@@ -105,7 +172,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     layout! {
         ContextProvider<WindowContext>(window_context) {
             ContextProvider<TreeContext>(tree_context.clone()) {
-                StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+                StyleScope(
+                    .class = props.class.clone(),
+                    .default_classes = DEFAULT_CLASSES,
+                    .effective_style = target_size,
+                ) {
                     ContextProvider<ParentContext>(
                         ParentContext {
                             add_child: Some(callback!([ns_window, tree_context] |object: &NSObject,
@@ -139,6 +210,46 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 }
             }
         }
+    }
+}
+
+fn logical_length(value: Option<NativeDimension>, fallback: f64, scale_factor: f64) -> f64 {
+    match value {
+        Some(NativeDimension::Length(value)) => value.to_logical::<f64>(scale_factor).0,
+        Some(NativeDimension::Auto) | None => fallback,
+    }
+}
+
+struct AnimationTimerState {
+    animation: Rc<AnimationRuntime>,
+    tree_context: Rc<TreeContext>,
+}
+
+define_class!(
+    #[unsafe(super(NSObject))]
+    #[thread_kind = MainThreadOnly]
+    #[name = "NestixAnimationTimerTarget"]
+    #[ivars = AnimationTimerState]
+    struct AnimationTimerTarget;
+
+    unsafe impl NSObjectProtocol for AnimationTimerTarget {}
+
+    impl AnimationTimerTarget {
+        #[unsafe(method(tick:))]
+        fn tick(&self, _: &NSTimer) {
+            if self.ivars().animation.is_active() {
+                self.ivars().tree_context.begin_batch();
+                self.ivars().animation.tick();
+                self.ivars().tree_context.end_batch();
+            }
+        }
+    }
+);
+
+impl AnimationTimerTarget {
+    fn new(mtm: MainThreadMarker, state: AnimationTimerState) -> Retained<Self> {
+        let this = Self::alloc(mtm).set_ivars(state);
+        unsafe { msg_send![super(this), init] }
     }
 }
 

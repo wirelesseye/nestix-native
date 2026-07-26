@@ -1,10 +1,11 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{
-    Appearance, ButtonProps, Dimension, Rect, StyleContext, TreeContext, matched_style,
-    resolve_font_props, style_align_self, style_appearance, style_dimension, style_flex_basis,
-    style_flex_grow, style_flex_shrink, style_margin, style_padding_with_default,
+    AnimatedStyle, Appearance, ButtonProps, Dimension, Rect, StyleContext, TreeContext,
+    matched_style, resolve_font_props, resolved_view_style, style_align_self, style_appearance,
+    style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
+    style_padding_with_default,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained, sel,
@@ -32,11 +33,22 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
-    let style_props = matched_style(
+    let matched_style_props = matched_style(
         style_context,
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
+    );
+    let target_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        target_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, target_style, window_context.scale_factor] || {
+            animated_style.set_target(target_style.get(), scale_factor.get());
+        }
     );
 
     let mtm = MainThreadMarker::new().unwrap();

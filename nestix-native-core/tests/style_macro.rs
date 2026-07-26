@@ -1,4 +1,5 @@
 use nestix_native_core::*;
+use std::time::Duration;
 
 #[test]
 fn style_macro_builds_class_rule() {
@@ -1115,4 +1116,31 @@ fn declarations_after_nested_rules_stay_on_the_parent_rule() {
     let panel = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
     assert_eq!(panel.bg_color, Some(Color::RED));
     assert_eq!(panel.text_color, Some(Color::BLUE));
+}
+
+#[test]
+fn transition_declarations_expand_layout_and_cascade() {
+    let sheet = style! {
+        .panel {
+            transition: layout 250ms ease_out;
+        }
+
+        .panel.fast {
+            transition: width 100ms linear;
+        }
+    };
+
+    let panel = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
+    assert_eq!(panel.transitions.len(), TransitionProperty::GEOMETRY.len());
+    assert_eq!(
+        panel.transition_for(TransitionProperty::Width),
+        Some(AnimationSpec::new(Duration::from_millis(250)).easing(Easing::EaseOut),),
+    );
+
+    let fast = sheet.matched_props(&MatchContext::new(ClassList::from("panel fast")));
+    assert_eq!(fast.transitions.len(), 1);
+    assert_eq!(
+        fast.transition_for(TransitionProperty::Width),
+        Some(AnimationSpec::new(Duration::from_millis(100)).easing(Easing::Linear)),
+    );
 }

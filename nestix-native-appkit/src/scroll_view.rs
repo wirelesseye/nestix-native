@@ -6,9 +6,9 @@ use nestix::{
 };
 use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 use nestix_native_core::{
-    Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext, matched_style,
-    resolved_view_style, style_align_self, style_dimension, style_flex_basis, style_flex_grow,
-    style_flex_shrink, style_margin,
+    AnimatedStyle, Dimension, ScrollViewProps, StyleContext, StyleScope, TreeContext,
+    matched_style, resolved_view_style, style_align_self, style_dimension, style_flex_basis,
+    style_flex_grow, style_flex_shrink, style_margin,
 };
 use objc2::MainThreadMarker;
 use objc2_app_kit::{NSScrollView, NSView};
@@ -25,13 +25,23 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     let window = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent = element.context::<ParentContext>().unwrap();
-    let styles = matched_style(
+    let matched_styles = matched_style(
         element.context::<StyleContext>(),
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
-    let effective_style = resolved_view_style(styles.clone(), &props.view);
+    let effective_style = resolved_view_style(matched_styles, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window.animation.clone(),
+        effective_style.get(),
+    ));
+    let styles = animated_style.value();
+    scoped_effect!(
+        [animated_style, effective_style, window.scale_factor] || {
+            animated_style.set_target(effective_style.get(), scale_factor.get());
+        }
+    );
     let mtm = MainThreadMarker::new().unwrap();
     let scroll = NSScrollView::new(mtm);
     scroll.setDrawsBackground(false);

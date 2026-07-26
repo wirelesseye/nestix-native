@@ -17,9 +17,88 @@ use nestix::{
 };
 
 use crate::{
-    AlignItems, Appearance, Color, Dimension, FlexDirection, FlexWrap, FontStyle, FontWeight,
-    JustifyContent, Rect, ResolvedFontProps,
+    AlignItems, AnimationSpec, Appearance, Color, Dimension, FlexDirection, FlexWrap, FontStyle,
+    FontWeight, JustifyContent, Rect, ResolvedFontProps,
 };
+
+/// A geometry property that can be transitioned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TransitionProperty {
+    Left,
+    Top,
+    Width,
+    Height,
+    MarginLeft,
+    MarginRight,
+    MarginTop,
+    MarginBottom,
+    PaddingLeft,
+    PaddingRight,
+    PaddingTop,
+    PaddingBottom,
+    Gap,
+}
+
+impl TransitionProperty {
+    pub const GEOMETRY: [Self; 13] = [
+        Self::Left,
+        Self::Top,
+        Self::Width,
+        Self::Height,
+        Self::MarginLeft,
+        Self::MarginRight,
+        Self::MarginTop,
+        Self::MarginBottom,
+        Self::PaddingLeft,
+        Self::PaddingRight,
+        Self::PaddingTop,
+        Self::PaddingBottom,
+        Self::Gap,
+    ];
+
+    pub(crate) fn dimension(self, style: &ResolvedStyle) -> Option<Dimension> {
+        match self {
+            Self::Left => style.left,
+            Self::Top => style.top,
+            Self::Width => style.width,
+            Self::Height => style.height,
+            Self::MarginLeft => style.margin_left,
+            Self::MarginRight => style.margin_right,
+            Self::MarginTop => style.margin_top,
+            Self::MarginBottom => style.margin_bottom,
+            Self::PaddingLeft => style.padding_left,
+            Self::PaddingRight => style.padding_right,
+            Self::PaddingTop => style.padding_top,
+            Self::PaddingBottom => style.padding_bottom,
+            Self::Gap => style.gap,
+        }
+    }
+
+    pub(crate) fn set_dimension(self, style: &mut ResolvedStyle, value: Dimension) {
+        *match self {
+            Self::Left => &mut style.left,
+            Self::Top => &mut style.top,
+            Self::Width => &mut style.width,
+            Self::Height => &mut style.height,
+            Self::MarginLeft => &mut style.margin_left,
+            Self::MarginRight => &mut style.margin_right,
+            Self::MarginTop => &mut style.margin_top,
+            Self::MarginBottom => &mut style.margin_bottom,
+            Self::PaddingLeft => &mut style.padding_left,
+            Self::PaddingRight => &mut style.padding_right,
+            Self::PaddingTop => &mut style.padding_top,
+            Self::PaddingBottom => &mut style.padding_bottom,
+            Self::Gap => &mut style.gap,
+        } = Some(value);
+    }
+}
+
+/// One property entry in a stylesheet transition declaration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StyleTransition {
+    pub property: TransitionProperty,
+    pub animation: AnimationSpec,
+}
 
 /// A whitespace-separated set of style class names.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -423,6 +502,11 @@ pub enum StyleProperty {
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
     Gap(StyleValue<Dimension>),
+    /// Geometry transitions applied when resolved targets change.
+    ///
+    /// **Available value**: a comma-separated list of `<property> <duration> [easing]`
+    /// entries, such as `width 200ms ease_out`, or the `layout` property shorthand.
+    Transition(StyleValue<Vec<StyleTransition>>),
 }
 
 impl StyleProperty {
@@ -462,6 +546,7 @@ impl StyleProperty {
             Self::JustifyContent(_) => StylePropertyName::JustifyContent,
             Self::FlexWrap(_) => StylePropertyName::FlexWrap,
             Self::Gap(_) => StylePropertyName::Gap,
+            Self::Transition(_) => StylePropertyName::Transition,
         }
     }
 
@@ -506,6 +591,7 @@ impl StyleProperty {
             Self::JustifyContent(value) => value.global(),
             Self::FlexWrap(value) => value.global(),
             Self::Gap(value) => value.global(),
+            Self::Transition(value) => value.global(),
         }
     }
 }
@@ -603,10 +689,19 @@ pub struct ResolvedStyle {
     pub flex_wrap: Option<FlexWrap>,
     /// Resolved spacing between flex children.
     pub gap: Option<Dimension>,
+    /// Transitions applied to changing geometry values.
+    pub transitions: Vec<StyleTransition>,
     custom: HashMap<String, String>,
 }
 
 impl ResolvedStyle {
+    pub fn transition_for(&self, property: TransitionProperty) -> Option<AnimationSpec> {
+        self.transitions
+            .iter()
+            .rev()
+            .find(|transition| transition.property == property)
+            .map(|transition| transition.animation)
+    }
     /// Extracts the resolved inherited font properties.
     pub fn font(&self) -> ResolvedFontProps {
         ResolvedFontProps {
@@ -658,6 +753,7 @@ impl ResolvedStyle {
             "justify_content" => self.justify_content.clone_from(&source.justify_content),
             "flex_wrap" => self.flex_wrap.clone_from(&source.flex_wrap),
             "gap" => self.gap.clone_from(&source.gap),
+            "transition" => self.transitions.clone_from(&source.transitions),
             _ => {}
         }
     }
@@ -853,6 +949,11 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::Gap(StyleValue::Value(dimension))) => {
                 self.gap = Some(dimension);
+            }
+            StyleDeclaration::Property(StyleProperty::Transition(StyleValue::Value(
+                transitions,
+            ))) => {
+                self.transitions = transitions;
             }
             StyleDeclaration::Property(_) => {
                 unreachable!("global values return before application")

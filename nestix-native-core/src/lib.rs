@@ -1,5 +1,6 @@
 //! Platform-independent native component props, styles, and backend contracts.
 
+pub mod animation;
 pub mod appearance;
 pub mod button;
 pub mod checkbox;
@@ -28,6 +29,7 @@ pub mod utils;
 pub mod view;
 pub mod window;
 
+pub use animation::*;
 pub use appearance::*;
 pub use button::*;
 pub use checkbox::*;

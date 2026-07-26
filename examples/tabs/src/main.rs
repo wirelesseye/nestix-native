@@ -4,7 +4,8 @@ use nestix::{
     props, unmount_root,
 };
 use nestix_native::{
-    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor, Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, computed_style, style,
+    AlignItems, Button, Color, FlexDirection, FlexView, ImageSource, ImageView, Input, RGBColor,
+    Root, ScrollView, StyleProvider, TabView, TabViewItem, Text, Window, computed_style, style,
 };
 
 const SAMPLE_IMAGE: &[u8] = include_bytes!("../../assets/sample.jpg");

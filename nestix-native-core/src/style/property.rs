@@ -35,6 +35,7 @@ pub(crate) enum StylePropertyName {
     JustifyContent,
     FlexWrap,
     Gap,
+    Transition,
 }
 
 impl StylePropertyName {
@@ -74,6 +75,7 @@ impl StylePropertyName {
             Self::JustifyContent => "justify_content",
             Self::FlexWrap => "flex_wrap",
             Self::Gap => "gap",
+            Self::Transition => "transition",
         }
     }
 
@@ -118,6 +120,7 @@ impl StylePropertyName {
             Self::JustifyContent => &["justify_content"],
             Self::FlexWrap => &["flex_wrap"],
             Self::Gap => &["gap"],
+            Self::Transition => &["transition"],
         }
     }
 

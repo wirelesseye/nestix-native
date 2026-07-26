@@ -1,6 +1,7 @@
 use env_logger::Env;
 use nestix::{
-    Element, callback, component, computed, create_state, layout, mount_root, scoped_effect, unmount_root,
+    Element, callback, component, computed, create_state, layout, mount_root, scoped_effect,
+    unmount_root,
 };
 use nestix_native::{
     AlignItems, CheckMenuItem, Color, FlexView, JustifyContent, Menu, MenuBar, MenuItem,

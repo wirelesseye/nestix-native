@@ -12,6 +12,8 @@ mod taffy {
         tree: RefCell<TaffyTree>,
         root_node: Cell<Option<NodeId>>,
         node_layouts: RefCell<HashMap<NodeId, State<taffy::Layout>>>,
+        batch_depth: Cell<usize>,
+        refresh_pending: Cell<bool>,
     }
 
     /// Parent-local native child order and its Taffy projection.
@@ -64,6 +66,8 @@ mod taffy {
                 tree: RefCell::new(TaffyTree::new()),
                 root_node: Cell::new(None),
                 node_layouts: RefCell::new(HashMap::new()),
+                batch_depth: Cell::new(0),
+                refresh_pending: Cell::new(false),
             }
         }
 
@@ -129,8 +133,27 @@ mod taffy {
         }
 
         pub fn refresh(&self) {
+            if self.batch_depth.get() > 0 {
+                self.refresh_pending.set(true);
+                return;
+            }
             if let Some(root_node) = self.root_node() {
                 self.update_node(root_node);
+            }
+        }
+
+        /// Defers refreshes until the matching [`Self::end_batch`] call.
+        pub fn begin_batch(&self) {
+            self.batch_depth.set(self.batch_depth.get() + 1);
+        }
+
+        /// Ends a refresh batch and performs at most one pending layout pass.
+        pub fn end_batch(&self) {
+            let depth = self.batch_depth.get();
+            assert!(depth > 0, "layout batch underflow");
+            self.batch_depth.set(depth - 1);
+            if depth == 1 && self.refresh_pending.replace(false) {
+                self.refresh();
             }
         }
 
