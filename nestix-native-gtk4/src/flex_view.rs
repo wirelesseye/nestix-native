@@ -9,10 +9,10 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    ChildOrder, Dimension, FlexViewProps, StyleContext, StyleScope, TreeContext, matched_style,
-    resolved_flex_view_style, style_align_items, style_align_self, style_dimension,
-    style_flex_basis, style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap,
-    style_gap, style_justify_content, style_margin, style_padding,
+    ChildOrder, FlexViewProps, Length, StyleContext, StyleScope, TreeContext, WithAuto,
+    matched_style, resolved_flex_view_style, style_align_items, style_align_self, style_flex_basis,
+    style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap,
+    style_justify_content, style_length_with_auto, style_margin, style_padding,
     utils::{gap_to_taffy, inset_to_taffy, margin_to_taffy, padding_to_taffy},
 };
 use taffy::{NodeId, Size, Style};
@@ -123,25 +123,26 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
-            let width = style_dimension(
+            let width = style_length_with_auto(
                 style_props.as_ref(),
                 width.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.width,
             );
-            let height = style_dimension(
+            let height = style_length_with_auto(
                 style_props.as_ref(),
                 height.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.height,
             );
             let left =
-                style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |style| {
+                style_length_with_auto(style_props.as_ref(), left.get(), WithAuto::Auto, |style| {
                     style.left
                 });
-            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |style| {
-                style.top
-            });
+            let top =
+                style_length_with_auto(style_props.as_ref(), top.get(), WithAuto::Auto, |style| {
+                    style.top
+                });
             let gap = gap_to_taffy(style_gap(style_props.as_ref(), gap.get()), scale_factor);
             tree_context.update_style(node_id, |prev| Style {
                 size: if parent_node.is_some() {

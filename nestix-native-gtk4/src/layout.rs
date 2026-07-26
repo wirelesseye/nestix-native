@@ -1,8 +1,8 @@
 use gtk4::{Orientation, Widget, prelude::*};
 use nestix::{Computed, Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
-    Dimension, ResolvedStyle, TreeContext, ViewProps, style_align_self, style_dimension,
-    style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
+    Length, ResolvedStyle, TreeContext, ViewProps, WithAuto, style_align_self, style_flex_basis,
+    style_flex_grow, style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
@@ -96,30 +96,30 @@ fn mount_leaf_inner(
         ] || {
             let _ = content_revision.get();
             let style_props = style_props.get();
-            let width = style_dimension(
+            let width = style_length_with_auto(
                 style_props.as_ref(),
                 width.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.width,
             );
-            let height = style_dimension(
+            let height = style_length_with_auto(
                 style_props.as_ref(),
                 height.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.height,
             );
             let (_, natural_width, _, _) = widget.measure(Orientation::Horizontal, -1);
             let (_, natural_height, _, _) = widget.measure(Orientation::Vertical, natural_width);
             let width = match width {
-                Dimension::Auto if !intrinsic_auto_width => taffy::Dimension::auto(),
-                Dimension::Auto => taffy::Dimension::from_length(natural_width as f32),
-                Dimension::Length(value) => {
+                WithAuto::Auto if !intrinsic_auto_width => taffy::Dimension::auto(),
+                WithAuto::Auto => taffy::Dimension::from_length(natural_width as f32),
+                WithAuto::Value(value) => {
                     taffy::Dimension::from_length(value.to_logical::<f32>(scale_factor.get()))
                 }
             };
             let height = match height {
-                Dimension::Auto => natural_height as f32,
-                Dimension::Length(value) => value.to_logical::<f32>(scale_factor.get()).into(),
+                WithAuto::Auto => natural_height as f32,
+                WithAuto::Value(value) => value.to_logical::<f32>(scale_factor.get()).into(),
             };
             tree_context.update_style(node_id, |prev| Style {
                 size: Size {
@@ -143,12 +143,13 @@ fn mount_leaf_inner(
         ] || {
             let style_props = style_props.get();
             let left =
-                style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |style| {
+                style_length_with_auto(style_props.as_ref(), left.get(), WithAuto::Auto, |style| {
                     style.left
                 });
-            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |style| {
-                style.top
-            });
+            let top =
+                style_length_with_auto(style_props.as_ref(), top.get(), WithAuto::Auto, |style| {
+                    style.top
+                });
             tree_context.update_style(node_id, |prev| Style {
                 inset: inset_to_taffy(left, top, scale_factor.get()),
                 ..prev

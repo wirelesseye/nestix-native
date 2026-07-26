@@ -24,7 +24,7 @@ fn style_macro_supports_gap() {
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("stack")));
 
-    assert_eq!(props.gap, Some(Dimension::from(12.0)));
+    assert_eq!(props.gap, Some(WithAuto::from(12.0)));
 }
 
 #[test]
@@ -125,11 +125,11 @@ fn global_values_resolve_against_parent_style() {
     let mut parent = ResolvedStyle::default();
     parent.bg_color = Some(Color::RED);
     parent.font_size = Some(18.0);
-    parent.width = Some(Dimension::from(240.0));
-    parent.margin_left = Some(Dimension::from(12.0));
-    parent.margin_right = Some(Dimension::from(12.0));
-    parent.margin_top = Some(Dimension::from(12.0));
-    parent.margin_bottom = Some(Dimension::from(12.0));
+    parent.width = Some(WithAuto::from(240.0));
+    parent.margin_left = Some(WithAuto::from(12.0));
+    parent.margin_right = Some(WithAuto::from(12.0));
+    parent.margin_top = Some(WithAuto::from(12.0));
+    parent.margin_bottom = Some(WithAuto::from(12.0));
     let sheet = style! {
         .child {
             bg_color: initial;
@@ -145,11 +145,11 @@ fn global_values_resolve_against_parent_style() {
 
     assert_eq!(child.bg_color, None);
     assert_eq!(child.font_size, Some(18.0));
-    assert_eq!(child.width, Some(Dimension::from(240.0)));
+    assert_eq!(child.width, Some(WithAuto::from(240.0)));
     assert_eq!(child.margin_left, None);
-    assert_eq!(child.margin_right, Some(Dimension::from(12.0)));
-    assert_eq!(child.margin_top, Some(Dimension::from(12.0)));
-    assert_eq!(child.margin_bottom, Some(Dimension::from(12.0)));
+    assert_eq!(child.margin_right, Some(WithAuto::from(12.0)));
+    assert_eq!(child.margin_top, Some(WithAuto::from(12.0)));
+    assert_eq!(child.margin_bottom, Some(WithAuto::from(12.0)));
 }
 
 #[test]
@@ -204,7 +204,7 @@ fn initial_blocks_natural_inheritance_and_unset_resets_non_inherited_props() {
     let mut parent = ResolvedStyle::default();
     parent.font_family = Some("Avenir".to_string());
     parent.text_color = Some(Color::BLUE);
-    parent.width = Some(Dimension::from(300.0));
+    parent.width = Some(WithAuto::from(300.0));
     let sheet = style! {
         .initial_font {
             font_family: initial;
@@ -257,7 +257,7 @@ fn inherit_without_parent_uses_initial_value() {
 #[test]
 fn global_values_participate_in_specificity_and_source_order() {
     let mut parent = ResolvedStyle::default();
-    parent.width = Some(Dimension::from(180.0));
+    parent.width = Some(WithAuto::from(180.0));
     let sheet = style! {
         .panel.selected {
             width: inherit;
@@ -272,11 +272,11 @@ fn global_values_participate_in_specificity_and_source_order() {
         &MatchContext::new(ClassList::from("panel selected")),
         Some(&parent),
     );
-    assert_eq!(selected.width, Some(Dimension::from(180.0)));
+    assert_eq!(selected.width, Some(WithAuto::from(180.0)));
 
     let panel = sheet
         .matched_props_with_parent(&MatchContext::new(ClassList::from("panel")), Some(&parent));
-    assert_eq!(panel.width, Some(Dimension::from(90.0)));
+    assert_eq!(panel.width, Some(WithAuto::from(90.0)));
 }
 
 #[test]
@@ -300,11 +300,11 @@ fn inherited_style_uses_parent_inline_view_value() {
     let matched = nestix::computed!(
         [] || {
             let mut style = ResolvedStyle::default();
-            style.width = Some(Dimension::from(100.0));
+            style.width = Some(WithAuto::from(100.0));
             Some(style)
         }
     );
-    let view = nestix::build_props!(ViewProps(.width = Dimension::from(260.0)));
+    let view = nestix::build_props!(ViewProps(.width = WithAuto::from(260.0)));
     let parent = resolved_view_style(matched, &view).get().unwrap();
     let sheet = style! {
         .child {
@@ -315,8 +315,8 @@ fn inherited_style_uses_parent_inline_view_value() {
     let child = sheet
         .matched_props_with_parent(&MatchContext::new(ClassList::from("child")), Some(&parent));
 
-    assert_eq!(parent.width, Some(Dimension::from(260.0)));
-    assert_eq!(child.width, Some(Dimension::from(260.0)));
+    assert_eq!(parent.width, Some(WithAuto::from(260.0)));
+    assert_eq!(child.width, Some(WithAuto::from(260.0)));
 }
 
 #[test]
@@ -346,37 +346,37 @@ fn button_defaults_to_native_appearance_and_auto_padding() {
     assert_eq!(button.appearance.get(), Appearance::Native);
     assert!(!button.disabled.get());
     assert!(disabled_button.disabled.get());
-    assert_eq!(padding.top, Dimension::Auto);
-    assert_eq!(padding.right, Dimension::Auto);
-    assert_eq!(padding.bottom, Dimension::Auto);
-    assert_eq!(padding.left, Dimension::Auto);
-    assert_eq!(container_padding.top, Dimension::from(0));
-    assert_eq!(container_padding.right, Dimension::from(0));
-    assert_eq!(container_padding.bottom, Dimension::from(0));
-    assert_eq!(container_padding.left, Dimension::from(0));
+    assert_eq!(padding.top, WithAuto::Auto);
+    assert_eq!(padding.right, WithAuto::Auto);
+    assert_eq!(padding.bottom, WithAuto::Auto);
+    assert_eq!(padding.left, WithAuto::Auto);
+    assert_eq!(container_padding.top, WithAuto::from(0));
+    assert_eq!(container_padding.right, WithAuto::from(0));
+    assert_eq!(container_padding.bottom, WithAuto::from(0));
+    assert_eq!(container_padding.left, WithAuto::from(0));
 }
 
 #[test]
 fn button_accepts_nested_padding_and_styles_override_auto_edges() {
     let button = nestix::build_props!(ButtonProps(
         .appearance = Appearance::Auto,
-        .container(.padding_horizontal = Dimension::from(12))
+        .container(.padding_horizontal = WithAuto::from(12))
     ));
     let inline = button.container.padding().get();
     let default_button = nestix::build_props!(ButtonProps());
     let mut style = ResolvedStyle::default();
-    style.padding_top = Some(Dimension::from(8));
+    style.padding_top = Some(WithAuto::from(8));
     let resolved = style_padding_with_default(
         Some(&style),
         default_button.container.padding().get(),
-        Dimension::Auto,
+        WithAuto::Auto,
     );
 
     assert_eq!(button.appearance.get(), Appearance::Auto);
-    assert_eq!(inline.left, Dimension::from(12));
-    assert_eq!(inline.right, Dimension::from(12));
-    assert_eq!(resolved.top, Dimension::from(8));
-    assert_eq!(resolved.bottom, Dimension::Auto);
+    assert_eq!(inline.left, WithAuto::from(12));
+    assert_eq!(inline.right, WithAuto::from(12));
+    assert_eq!(resolved.top, WithAuto::from(8));
+    assert_eq!(resolved.bottom, WithAuto::Auto);
 }
 
 #[test]
@@ -709,7 +709,7 @@ fn style_macro_embeds_style_sheets_in_source_order() {
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter")));
 
     assert_eq!(props.bg_color, Some(Color::BLUE));
-    assert_eq!(props.width, Some(Dimension::from(320.0)));
+    assert_eq!(props.width, Some(WithAuto::from(320.0)));
 }
 
 #[test]
@@ -816,16 +816,16 @@ fn style_macro_supports_view_props() {
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
 
-    assert_eq!(props.left, Some(Dimension::from(1.0)));
-    assert_eq!(props.top, Some(Dimension::from(2.0)));
-    assert_eq!(props.width, Some(Dimension::from(320.0)));
-    assert_eq!(props.height, Some(Dimension::Auto));
-    assert_eq!(props.margin_left, Some(Dimension::from(3.0)));
-    assert_eq!(props.margin_right, Some(Dimension::from(4.0)));
-    assert_eq!(props.margin_top, Some(Dimension::from(5.0)));
-    assert_eq!(props.margin_bottom, Some(Dimension::from(6.0)));
+    assert_eq!(props.left, Some(WithAuto::from(1.0)));
+    assert_eq!(props.top, Some(WithAuto::from(2.0)));
+    assert_eq!(props.width, Some(WithAuto::from(320.0)));
+    assert_eq!(props.height, Some(WithAuto::Auto));
+    assert_eq!(props.margin_left, Some(WithAuto::from(3.0)));
+    assert_eq!(props.margin_right, Some(WithAuto::from(4.0)));
+    assert_eq!(props.margin_top, Some(WithAuto::from(5.0)));
+    assert_eq!(props.margin_bottom, Some(WithAuto::from(6.0)));
     assert_eq!(props.flex_grow, Some(2.0));
-    assert_eq!(props.flex_basis, Some(Dimension::from(25.0)));
+    assert_eq!(props.flex_basis, Some(WithAuto::from(25.0)));
     assert_eq!(props.flex_shrink, Some(3.0));
     assert_eq!(props.align_self, Some(AlignItems::Center));
 }
@@ -851,10 +851,10 @@ fn style_macro_supports_flex_view_props() {
     assert_eq!(props.align_items, Some(AlignItems::Stretch));
     assert_eq!(props.justify_content, Some(JustifyContent::SpaceBetween));
     assert_eq!(props.flex_wrap, Some(FlexWrap::Wrap));
-    assert_eq!(props.padding_left, Some(Dimension::from(3.0)));
-    assert_eq!(props.padding_right, Some(Dimension::from(4.0)));
-    assert_eq!(props.padding_top, Some(Dimension::from(5.0)));
-    assert_eq!(props.padding_bottom, Some(Dimension::from(6.0)));
+    assert_eq!(props.padding_left, Some(WithAuto::from(3.0)));
+    assert_eq!(props.padding_right, Some(WithAuto::from(4.0)));
+    assert_eq!(props.padding_top, Some(WithAuto::from(5.0)));
+    assert_eq!(props.padding_bottom, Some(WithAuto::from(6.0)));
 }
 
 #[test]
@@ -872,10 +872,10 @@ fn style_margin_shorthand_expands_and_cascades_per_edge() {
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel selected")));
 
-    assert_eq!(props.margin_top, Some(Dimension::from(8.0)));
-    assert_eq!(props.margin_bottom, Some(Dimension::from(8.0)));
-    assert_eq!(props.margin_left, Some(Dimension::from(16.0)));
-    assert_eq!(props.margin_right, Some(Dimension::from(24.0)));
+    assert_eq!(props.margin_top, Some(WithAuto::from(8.0)));
+    assert_eq!(props.margin_bottom, Some(WithAuto::from(8.0)));
+    assert_eq!(props.margin_left, Some(WithAuto::from(16.0)));
+    assert_eq!(props.margin_right, Some(WithAuto::from(24.0)));
 }
 
 #[test]
@@ -885,7 +885,7 @@ fn style_margin_shorthand_evaluates_inserted_value_once() {
         .panel {
             margin: $({
                 calls += 1;
-                Dimension::from(8.0)
+                WithAuto::from(8.0)
             });
         }
     };
@@ -893,10 +893,10 @@ fn style_margin_shorthand_evaluates_inserted_value_once() {
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
 
     assert_eq!(calls, 1);
-    assert_eq!(props.margin_top, Some(Dimension::from(8.0)));
-    assert_eq!(props.margin_right, Some(Dimension::from(8.0)));
-    assert_eq!(props.margin_bottom, Some(Dimension::from(8.0)));
-    assert_eq!(props.margin_left, Some(Dimension::from(8.0)));
+    assert_eq!(props.margin_top, Some(WithAuto::from(8.0)));
+    assert_eq!(props.margin_right, Some(WithAuto::from(8.0)));
+    assert_eq!(props.margin_bottom, Some(WithAuto::from(8.0)));
+    assert_eq!(props.margin_left, Some(WithAuto::from(8.0)));
 }
 
 #[test]
@@ -914,10 +914,10 @@ fn style_padding_shorthand_expands_and_cascades_per_edge() {
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel selected")));
 
-    assert_eq!(props.padding_top, Some(Dimension::from(8.0)));
-    assert_eq!(props.padding_bottom, Some(Dimension::from(8.0)));
-    assert_eq!(props.padding_left, Some(Dimension::from(16.0)));
-    assert_eq!(props.padding_right, Some(Dimension::from(24.0)));
+    assert_eq!(props.padding_top, Some(WithAuto::from(8.0)));
+    assert_eq!(props.padding_bottom, Some(WithAuto::from(8.0)));
+    assert_eq!(props.padding_left, Some(WithAuto::from(16.0)));
+    assert_eq!(props.padding_right, Some(WithAuto::from(24.0)));
 }
 
 #[test]
@@ -927,7 +927,7 @@ fn style_padding_shorthand_evaluates_inserted_value_once() {
         .panel {
             padding: $({
                 calls += 1;
-                Dimension::from(8.0)
+                WithAuto::from(8.0)
             });
         }
     };
@@ -935,10 +935,10 @@ fn style_padding_shorthand_evaluates_inserted_value_once() {
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
 
     assert_eq!(calls, 1);
-    assert_eq!(props.padding_top, Some(Dimension::from(8.0)));
-    assert_eq!(props.padding_right, Some(Dimension::from(8.0)));
-    assert_eq!(props.padding_bottom, Some(Dimension::from(8.0)));
-    assert_eq!(props.padding_left, Some(Dimension::from(8.0)));
+    assert_eq!(props.padding_top, Some(WithAuto::from(8.0)));
+    assert_eq!(props.padding_right, Some(WithAuto::from(8.0)));
+    assert_eq!(props.padding_bottom, Some(WithAuto::from(8.0)));
+    assert_eq!(props.padding_left, Some(WithAuto::from(8.0)));
 }
 
 #[test]

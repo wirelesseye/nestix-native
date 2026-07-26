@@ -1,7 +1,7 @@
 use nestix::{Computed, Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
-    Dimension, ResolvedStyle, TreeContext, ViewProps, style_align_self, style_dimension,
-    style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
+    ResolvedStyle, TreeContext, ViewProps, WithAuto, style_align_self, style_flex_basis,
+    style_flex_grow, style_flex_shrink, style_length_with_auto, style_margin,
 };
 use objc2::rc::Retained;
 use objc2_app_kit::NSView;
@@ -74,27 +74,27 @@ pub(crate) fn mount(
             let _ = content_revision.get();
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
-            let width = style_dimension(
+            let width = style_length_with_auto(
                 style_props.as_ref(),
                 width.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.width,
             );
-            let height = style_dimension(
+            let height = style_length_with_auto(
                 style_props.as_ref(),
                 height.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.height,
             );
             let intrinsic_size =
                 (width.is_auto() || height.is_auto()).then(|| view.intrinsicContentSize());
             let width = match width {
-                Dimension::Auto => intrinsic_size.unwrap().width as f32,
-                Dimension::Length(value) => value.to_logical::<f32>(scale_factor).into(),
+                WithAuto::Auto => intrinsic_size.unwrap().width as f32,
+                WithAuto::Value(value) => value.to_logical::<f32>(scale_factor).into(),
             };
             let height = match height {
-                Dimension::Auto => intrinsic_size.unwrap().height as f32,
-                Dimension::Length(value) => value.to_logical::<f32>(scale_factor).into(),
+                WithAuto::Auto => intrinsic_size.unwrap().height as f32,
+                WithAuto::Value(value) => value.to_logical::<f32>(scale_factor).into(),
             };
 
             if parent_node.is_some() {
@@ -120,12 +120,13 @@ pub(crate) fn mount(
         ] || {
             let style_props = style_props.get();
             let left =
-                style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |style| {
+                style_length_with_auto(style_props.as_ref(), left.get(), WithAuto::Auto, |style| {
                     style.left
                 });
-            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |style| {
-                style.top
-            });
+            let top =
+                style_length_with_auto(style_props.as_ref(), top.get(), WithAuto::Auto, |style| {
+                    style.top
+                });
             tree_context.update_style(node_id, |prev| Style {
                 inset: inset_to_taffy(left, top, scale_factor.get()),
                 ..prev

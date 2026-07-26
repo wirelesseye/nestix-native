@@ -5,10 +5,10 @@ use nestix::{
     components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    AnimatedStyle, AnimationRuntime, Dimension as NativeDimension, StyleContext, StyleScope,
-    TitleBarMode, TreeContext, WindowProps,
+    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
+    WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{self, LogicalSize},
-    matched_style, style_dimension,
+    matched_style, style_length_with_auto,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
@@ -152,16 +152,16 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let target_size = computed!(
         [style_props, props.width, props.height] || {
             let mut style = style_props.get().unwrap_or_default();
-            style.width = Some(style_dimension(
+            style.width = Some(style_length_with_auto(
                 Some(&style),
                 width.get().into(),
-                NativeDimension::from(800),
+                NativeLengthWithAuto::from(800),
                 |style| style.width,
             ));
-            style.height = Some(style_dimension(
+            style.height = Some(style_length_with_auto(
                 Some(&style),
                 height.get().into(),
-                NativeDimension::from(600),
+                NativeLengthWithAuto::from(600),
                 |style| style.height,
             ));
             Some(style)
@@ -234,10 +234,14 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     }
 }
 
-fn logical_length(value: Option<NativeDimension>, fallback: f64, scale_factor: f64) -> f64 {
+fn logical_length(
+    value: Option<NativeLengthWithAuto<Length>>,
+    fallback: f64,
+    scale_factor: f64,
+) -> f64 {
     match value {
-        Some(NativeDimension::Length(value)) => value.to_logical::<f64>(scale_factor).0,
-        Some(NativeDimension::Auto) | None => fallback,
+        Some(NativeLengthWithAuto::Value(value)) => value.to_logical::<f64>(scale_factor).0,
+        Some(NativeLengthWithAuto::Auto) | None => fallback,
     }
 }
 

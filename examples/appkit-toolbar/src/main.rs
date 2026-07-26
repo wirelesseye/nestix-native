@@ -3,7 +3,7 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    Button, Dimension, FlexView, Root, StyleProvider, Text, TitleBarMode, Window, computed_style,
+    Button, FlexView, Length, Root, StyleProvider, Text, TitleBarMode, Window, computed_style,
 };
 use nestix_native_appkit::{
     AppKitToolbar, AppKitToolbarDisplayMode, AppKitToolbarFlexibleSpace, AppKitToolbarItem,
@@ -45,9 +45,9 @@ fn AppKitToolbarExample() -> Element {
     let padding_top = computed!(
         [title_bar_mode]
             || if title_bar_mode.get() == TitleBarMode::Overlay {
-                Dimension::from(65)
+                Length::logical(80).into()
             } else {
-                Dimension::from(15)
+                Length::logical(15).into()
             }
     );
 

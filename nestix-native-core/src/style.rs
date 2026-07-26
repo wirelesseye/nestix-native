@@ -17,8 +17,8 @@ use nestix::{
 };
 
 use crate::{
-    AlignItems, AnimationSpec, Appearance, Color, Dimension, FlexDirection, FlexWrap, FontStyle,
-    FontWeight, JustifyContent, Rect, ResolvedFontProps,
+    AlignItems, AnimationSpec, Appearance, Color, FlexDirection, FlexWrap, FontStyle, FontWeight,
+    JustifyContent, Length, Rect, ResolvedFontProps, WithAuto,
 };
 
 /// A geometry property that can be transitioned.
@@ -56,7 +56,7 @@ impl TransitionProperty {
         Self::Gap,
     ];
 
-    pub(crate) fn dimension(self, style: &ResolvedStyle) -> Option<Dimension> {
+    pub(crate) fn length_with_auto(self, style: &ResolvedStyle) -> Option<WithAuto<Length>> {
         match self {
             Self::Left => style.left,
             Self::Top => style.top,
@@ -74,7 +74,7 @@ impl TransitionProperty {
         }
     }
 
-    pub(crate) fn set_dimension(self, style: &mut ResolvedStyle, value: Dimension) {
+    pub(crate) fn set_length_with_auto(self, style: &mut ResolvedStyle, value: WithAuto<Length>) {
         *match self {
             Self::Left => &mut style.left,
             Self::Top => &mut style.top,
@@ -394,75 +394,75 @@ pub enum StyleProperty {
     /// Horizontal position offset from the left edge of the containing block.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Left(StyleValue<Dimension>),
+    Left(StyleValue<WithAuto<Length>>),
     /// Vertical position offset from the top edge of the containing block.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Top(StyleValue<Dimension>),
+    Top(StyleValue<WithAuto<Length>>),
     /// Preferred layout width.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Width(StyleValue<Dimension>),
+    Width(StyleValue<WithAuto<Length>>),
     /// Preferred layout height.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Height(StyleValue<Dimension>),
+    Height(StyleValue<WithAuto<Length>>),
     /// Margin applied to all four edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Margin(StyleValue<Dimension>),
+    Margin(StyleValue<WithAuto<Length>>),
     /// Margin applied to the left and right edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginHorizontal(StyleValue<Dimension>),
+    MarginHorizontal(StyleValue<WithAuto<Length>>),
     /// Margin applied to the top and bottom edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginVertical(StyleValue<Dimension>),
+    MarginVertical(StyleValue<WithAuto<Length>>),
     /// Margin applied to the left edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginLeft(StyleValue<Dimension>),
+    MarginLeft(StyleValue<WithAuto<Length>>),
     /// Margin applied to the right edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginRight(StyleValue<Dimension>),
+    MarginRight(StyleValue<WithAuto<Length>>),
     /// Margin applied to the top edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginTop(StyleValue<Dimension>),
+    MarginTop(StyleValue<WithAuto<Length>>),
     /// Margin applied to the bottom edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    MarginBottom(StyleValue<Dimension>),
+    MarginBottom(StyleValue<WithAuto<Length>>),
     /// Padding applied to all four edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Padding(StyleValue<Dimension>),
+    Padding(StyleValue<WithAuto<Length>>),
     /// Padding applied to the left and right edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingHorizontal(StyleValue<Dimension>),
+    PaddingHorizontal(StyleValue<WithAuto<Length>>),
     /// Padding applied to the top and bottom edges.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingVertical(StyleValue<Dimension>),
+    PaddingVertical(StyleValue<WithAuto<Length>>),
     /// Padding applied to the left edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingLeft(StyleValue<Dimension>),
+    PaddingLeft(StyleValue<WithAuto<Length>>),
     /// Padding applied to the right edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingRight(StyleValue<Dimension>),
+    PaddingRight(StyleValue<WithAuto<Length>>),
     /// Padding applied to the top edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingTop(StyleValue<Dimension>),
+    PaddingTop(StyleValue<WithAuto<Length>>),
     /// Padding applied to the bottom edge.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    PaddingBottom(StyleValue<Dimension>),
+    PaddingBottom(StyleValue<WithAuto<Length>>),
     /// Flex grow factor used when distributing free space.
     ///
     /// **Available value**: a number.
@@ -470,7 +470,7 @@ pub enum StyleProperty {
     /// Initial main size of the flex item.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    FlexBasis(StyleValue<Dimension>),
+    FlexBasis(StyleValue<WithAuto<Length>>),
     /// Flex shrink factor used when distributing negative free space.
     ///
     /// **Available value**: a number.
@@ -501,7 +501,7 @@ pub enum StyleProperty {
     /// Spacing between this element's flex children.
     ///
     /// **Available value**: `auto`, or a pixel value such as `30px`.
-    Gap(StyleValue<Dimension>),
+    Gap(StyleValue<WithAuto<Length>>),
     /// Geometry transitions applied when resolved targets change.
     ///
     /// **Available value**: a comma-separated list of `<property> <duration> [easing]`
@@ -648,33 +648,33 @@ pub struct ResolvedStyle {
     /// Resolved foreground text color.
     pub text_color: Option<Color>,
     /// Resolved left offset.
-    pub left: Option<Dimension>,
+    pub left: Option<WithAuto<Length>>,
     /// Resolved top offset.
-    pub top: Option<Dimension>,
+    pub top: Option<WithAuto<Length>>,
     /// Resolved width.
-    pub width: Option<Dimension>,
+    pub width: Option<WithAuto<Length>>,
     /// Resolved height.
-    pub height: Option<Dimension>,
+    pub height: Option<WithAuto<Length>>,
     /// Resolved left margin.
-    pub margin_left: Option<Dimension>,
+    pub margin_left: Option<WithAuto<Length>>,
     /// Resolved right margin.
-    pub margin_right: Option<Dimension>,
+    pub margin_right: Option<WithAuto<Length>>,
     /// Resolved top margin.
-    pub margin_top: Option<Dimension>,
+    pub margin_top: Option<WithAuto<Length>>,
     /// Resolved bottom margin.
-    pub margin_bottom: Option<Dimension>,
+    pub margin_bottom: Option<WithAuto<Length>>,
     /// Resolved left padding.
-    pub padding_left: Option<Dimension>,
+    pub padding_left: Option<WithAuto<Length>>,
     /// Resolved right padding.
-    pub padding_right: Option<Dimension>,
+    pub padding_right: Option<WithAuto<Length>>,
     /// Resolved top padding.
-    pub padding_top: Option<Dimension>,
+    pub padding_top: Option<WithAuto<Length>>,
     /// Resolved bottom padding.
-    pub padding_bottom: Option<Dimension>,
+    pub padding_bottom: Option<WithAuto<Length>>,
     /// Resolved flex grow factor.
     pub flex_grow: Option<f32>,
     /// Resolved flex basis.
-    pub flex_basis: Option<Dimension>,
+    pub flex_basis: Option<WithAuto<Length>>,
     /// Resolved flex shrink factor.
     pub flex_shrink: Option<f32>,
     /// Resolved cross-axis alignment override.
@@ -688,7 +688,7 @@ pub struct ResolvedStyle {
     /// Resolved flex wrapping mode.
     pub flex_wrap: Option<FlexWrap>,
     /// Resolved spacing between flex children.
-    pub gap: Option<Dimension>,
+    pub gap: Option<WithAuto<Length>>,
     /// Transitions applied to changing geometry values.
     pub transitions: Vec<StyleTransition>,
     custom: HashMap<String, String>,
@@ -833,87 +833,103 @@ impl ResolvedStyle {
             StyleDeclaration::Property(StyleProperty::TextColor(StyleValue::Value(color))) => {
                 self.text_color = Some(color);
             }
-            StyleDeclaration::Property(StyleProperty::Left(StyleValue::Value(dimension))) => {
-                self.left = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Left(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.left = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::Top(StyleValue::Value(dimension))) => {
-                self.top = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Top(StyleValue::Value(length_with_auto))) => {
+                self.top = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::Width(StyleValue::Value(dimension))) => {
-                self.width = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Width(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.width = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::Height(StyleValue::Value(dimension))) => {
-                self.height = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Height(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.height = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::Margin(StyleValue::Value(dimension))) => {
-                self.margin_left = Some(dimension.clone());
-                self.margin_right = Some(dimension.clone());
-                self.margin_top = Some(dimension.clone());
-                self.margin_bottom = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Margin(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.margin_left = Some(length_with_auto.clone());
+                self.margin_right = Some(length_with_auto.clone());
+                self.margin_top = Some(length_with_auto.clone());
+                self.margin_bottom = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::MarginHorizontal(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.margin_left = Some(dimension.clone());
-                self.margin_right = Some(dimension);
+                self.margin_left = Some(length_with_auto.clone());
+                self.margin_right = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::MarginVertical(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.margin_top = Some(dimension.clone());
-                self.margin_bottom = Some(dimension);
+                self.margin_top = Some(length_with_auto.clone());
+                self.margin_bottom = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::MarginLeft(StyleValue::Value(dimension))) => {
-                self.margin_left = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::MarginLeft(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.margin_left = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::MarginRight(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.margin_right = Some(dimension);
+                self.margin_right = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::MarginTop(StyleValue::Value(dimension))) => {
-                self.margin_top = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::MarginTop(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.margin_top = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::MarginBottom(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.margin_bottom = Some(dimension);
+                self.margin_bottom = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::Padding(StyleValue::Value(dimension))) => {
-                self.padding_left = Some(dimension.clone());
-                self.padding_right = Some(dimension.clone());
-                self.padding_top = Some(dimension.clone());
-                self.padding_bottom = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Padding(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.padding_left = Some(length_with_auto.clone());
+                self.padding_right = Some(length_with_auto.clone());
+                self.padding_top = Some(length_with_auto.clone());
+                self.padding_bottom = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::PaddingHorizontal(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.padding_left = Some(dimension.clone());
-                self.padding_right = Some(dimension);
+                self.padding_left = Some(length_with_auto.clone());
+                self.padding_right = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::PaddingVertical(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.padding_top = Some(dimension.clone());
-                self.padding_bottom = Some(dimension);
+                self.padding_top = Some(length_with_auto.clone());
+                self.padding_bottom = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::PaddingLeft(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.padding_left = Some(dimension);
+                self.padding_left = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::PaddingRight(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.padding_right = Some(dimension);
+                self.padding_right = Some(length_with_auto);
             }
-            StyleDeclaration::Property(StyleProperty::PaddingTop(StyleValue::Value(dimension))) => {
-                self.padding_top = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::PaddingTop(StyleValue::Value(
+                length_with_auto,
+            ))) => {
+                self.padding_top = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::PaddingBottom(StyleValue::Value(
-                dimension,
+                length_with_auto,
             ))) => {
-                self.padding_bottom = Some(dimension);
+                self.padding_bottom = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::FlexGrow(StyleValue::Value(flex_grow))) => {
                 self.flex_grow = Some(flex_grow);
@@ -947,8 +963,8 @@ impl ResolvedStyle {
             StyleDeclaration::Property(StyleProperty::FlexWrap(StyleValue::Value(flex_wrap))) => {
                 self.flex_wrap = Some(flex_wrap);
             }
-            StyleDeclaration::Property(StyleProperty::Gap(StyleValue::Value(dimension))) => {
-                self.gap = Some(dimension);
+            StyleDeclaration::Property(StyleProperty::Gap(StyleValue::Value(length_with_auto))) => {
+                self.gap = Some(length_with_auto);
             }
             StyleDeclaration::Property(StyleProperty::Transition(StyleValue::Value(
                 transitions,
@@ -1121,15 +1137,15 @@ fn inline_or_style<T: Copy + PartialEq>(inline: T, default: T, style: Option<T>)
     }
 }
 
-/// Resolves an inline dimension against a style-derived value.
+/// Resolves an inline auto-or-explicit length against a style-derived value.
 ///
 /// The inline value wins unless it equals `default`.
-pub fn style_dimension(
+pub fn style_length_with_auto(
     style: Option<&ResolvedStyle>,
-    inline: Dimension,
-    default: Dimension,
-    f: impl FnOnce(&ResolvedStyle) -> Option<Dimension>,
-) -> Dimension {
+    inline: WithAuto<Length>,
+    default: WithAuto<Length>,
+    f: impl FnOnce(&ResolvedStyle) -> Option<WithAuto<Length>>,
+) -> WithAuto<Length> {
     inline_or_style(inline, default, style.and_then(f))
 }
 
@@ -1148,8 +1164,11 @@ pub fn style_flex_grow(style: Option<&ResolvedStyle>, inline: f32) -> f32 {
 }
 
 /// Resolves the effective flex basis.
-pub fn style_flex_basis(style: Option<&ResolvedStyle>, inline: Dimension) -> Dimension {
-    style_dimension(style, inline, Dimension::Auto, |style| {
+pub fn style_flex_basis(
+    style: Option<&ResolvedStyle>,
+    inline: WithAuto<Length>,
+) -> WithAuto<Length> {
+    style_length_with_auto(style, inline, WithAuto::Auto, |style| {
         style.flex_basis.clone()
     })
 }
@@ -1208,37 +1227,43 @@ pub fn style_flex_wrap(style: Option<&ResolvedStyle>, inline: FlexWrap) -> FlexW
 }
 
 /// Resolves the effective gap between flex children.
-pub fn style_gap(style: Option<&ResolvedStyle>, inline: Dimension) -> Dimension {
-    style_dimension(style, inline, Dimension::from(0), |style| style.gap)
+pub fn style_gap(style: Option<&ResolvedStyle>, inline: WithAuto<Length>) -> WithAuto<Length> {
+    style_length_with_auto(style, inline, WithAuto::from(0), |style| style.gap)
 }
 
 /// Resolves the effective margin on all four edges.
-pub fn style_margin(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
-    let zero = Dimension::from(0);
+pub fn style_margin(
+    style: Option<&ResolvedStyle>,
+    inline: Rect<WithAuto<Length>>,
+) -> Rect<WithAuto<Length>> {
+    let zero = WithAuto::from(0);
     Rect {
-        top: style_dimension(style, inline.top, zero, |style| style.margin_top),
-        bottom: style_dimension(style, inline.bottom, zero, |style| style.margin_bottom),
-        left: style_dimension(style, inline.left, zero, |style| style.margin_left),
-        right: style_dimension(style, inline.right, zero, |style| style.margin_right),
+        top: style_length_with_auto(style, inline.top, zero, |style| style.margin_top),
+        bottom: style_length_with_auto(style, inline.bottom, zero, |style| style.margin_bottom),
+        left: style_length_with_auto(style, inline.left, zero, |style| style.margin_left),
+        right: style_length_with_auto(style, inline.right, zero, |style| style.margin_right),
     }
 }
 
 /// Resolves the effective padding on all four edges using zero as the default.
-pub fn style_padding(style: Option<&ResolvedStyle>, inline: Rect<Dimension>) -> Rect<Dimension> {
-    style_padding_with_default(style, inline, Dimension::from(0))
+pub fn style_padding(
+    style: Option<&ResolvedStyle>,
+    inline: Rect<WithAuto<Length>>,
+) -> Rect<WithAuto<Length>> {
+    style_padding_with_default(style, inline, WithAuto::from(0))
 }
 
 /// Resolves the effective padding using a caller-provided inline default.
 pub fn style_padding_with_default(
     style: Option<&ResolvedStyle>,
-    inline: Rect<Dimension>,
-    default: Dimension,
-) -> Rect<Dimension> {
+    inline: Rect<WithAuto<Length>>,
+    default: WithAuto<Length>,
+) -> Rect<WithAuto<Length>> {
     Rect {
-        top: style_dimension(style, inline.top, default, |style| style.padding_top),
-        bottom: style_dimension(style, inline.bottom, default, |style| style.padding_bottom),
-        left: style_dimension(style, inline.left, default, |style| style.padding_left),
-        right: style_dimension(style, inline.right, default, |style| style.padding_right),
+        top: style_length_with_auto(style, inline.top, default, |style| style.padding_top),
+        bottom: style_length_with_auto(style, inline.bottom, default, |style| style.padding_bottom),
+        left: style_length_with_auto(style, inline.left, default, |style| style.padding_left),
+        right: style_length_with_auto(style, inline.right, default, |style| style.padding_right),
     }
 }
 

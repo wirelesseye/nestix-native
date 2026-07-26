@@ -624,33 +624,33 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "font_weight" => expand_font_weight(value)?,
         "font_style" => expand_font_style(value)?,
         "text_color" => expand_color(value)?,
-        "left" => expand_dimension(value)?,
-        "top" => expand_dimension(value)?,
-        "width" => expand_dimension(value)?,
-        "height" => expand_dimension(value)?,
-        "margin" => expand_dimension(value)?,
-        "margin_horizontal" => expand_dimension(value)?,
-        "margin_vertical" => expand_dimension(value)?,
-        "margin_left" => expand_dimension(value)?,
-        "margin_right" => expand_dimension(value)?,
-        "margin_top" => expand_dimension(value)?,
-        "margin_bottom" => expand_dimension(value)?,
-        "padding" => expand_dimension(value)?,
-        "padding_horizontal" => expand_dimension(value)?,
-        "padding_vertical" => expand_dimension(value)?,
-        "padding_left" => expand_dimension(value)?,
-        "padding_right" => expand_dimension(value)?,
-        "padding_top" => expand_dimension(value)?,
-        "padding_bottom" => expand_dimension(value)?,
+        "left" => expand_length_with_auto(value)?,
+        "top" => expand_length_with_auto(value)?,
+        "width" => expand_length_with_auto(value)?,
+        "height" => expand_length_with_auto(value)?,
+        "margin" => expand_length_with_auto(value)?,
+        "margin_horizontal" => expand_length_with_auto(value)?,
+        "margin_vertical" => expand_length_with_auto(value)?,
+        "margin_left" => expand_length_with_auto(value)?,
+        "margin_right" => expand_length_with_auto(value)?,
+        "margin_top" => expand_length_with_auto(value)?,
+        "margin_bottom" => expand_length_with_auto(value)?,
+        "padding" => expand_length_with_auto(value)?,
+        "padding_horizontal" => expand_length_with_auto(value)?,
+        "padding_vertical" => expand_length_with_auto(value)?,
+        "padding_left" => expand_length_with_auto(value)?,
+        "padding_right" => expand_length_with_auto(value)?,
+        "padding_top" => expand_length_with_auto(value)?,
+        "padding_bottom" => expand_length_with_auto(value)?,
         "flex_grow" => expand_f32(value)?,
-        "flex_basis" => expand_dimension(value)?,
+        "flex_basis" => expand_length_with_auto(value)?,
         "flex_shrink" => expand_f32(value)?,
         "align_self" => expand_align_items(value)?,
         "flex_direction" => expand_flex_direction(value)?,
         "align_items" => expand_align_items(value)?,
         "justify_content" => expand_justify_content(value)?,
         "flex_wrap" => expand_flex_wrap(value)?,
-        "gap" => expand_dimension(value)?,
+        "gap" => expand_length_with_auto(value)?,
         "transition" => expand_transition(value)?,
         _ => Err(Error::new_spanned(
             prop.name,
@@ -788,7 +788,7 @@ fn expand_color(value: StyleValueInput) -> Result<TokenStream2> {
     })
 }
 
-fn expand_dimension(value: StyleValueInput) -> Result<TokenStream2> {
+fn expand_length_with_auto(value: StyleValueInput) -> Result<TokenStream2> {
     let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
@@ -796,24 +796,26 @@ fn expand_dimension(value: StyleValueInput) -> Result<TokenStream2> {
     };
 
     if value == "auto" {
-        return Ok(quote!(#nestix_native_path::Dimension::Auto));
+        return Ok(quote!(#nestix_native_path::WithAuto::Auto));
     }
 
     let Some(value) = value.strip_suffix("px") else {
         return Err(Error::new(
             proc_macro2::Span::call_site(),
-            "dimension values must be `auto`, `{number}px`, or an inserted Dimension",
+            "length values must be `auto`, `{number}px`, or an inserted WithAuto<Length>",
         ));
     };
 
-    let dimension = value.parse::<f64>().map_err(|_| {
+    let length = value.parse::<f64>().map_err(|_| {
         Error::new(
             proc_macro2::Span::call_site(),
-            "dimension values must be `auto`, `{number}px`, or an inserted Dimension",
+            "length values must be `auto`, `{number}px`, or an inserted WithAuto<Length>",
         )
     })?;
 
-    Ok(quote!(#nestix_native_path::Dimension::from(#dimension)))
+    Ok(quote!(#nestix_native_path::WithAuto::from(
+        #nestix_native_path::Length::logical(#length)
+    )))
 }
 
 fn expand_transition(value: StyleValueInput) -> Result<TokenStream2> {

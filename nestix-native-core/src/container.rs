@@ -1,7 +1,6 @@
-use dpi::LogicalUnit;
 use nestix::{Computed, PropValue, computed, props};
 
-use crate::{Dimension, Rect};
+use crate::{Length, Rect, WithAuto};
 
 /// Padding properties shared by container-like controls.
 #[props(
@@ -14,28 +13,28 @@ use crate::{Dimension, Rect};
 #[derive(Debug, Clone)]
 pub struct ContainerProps {
     /// Padding on the left edge.
-    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
-    pub padding_left: Dimension,
+    #[props(default = WithAuto::Value(Length::logical(0)))]
+    pub padding_left: WithAuto<Length>,
     /// Padding on the right edge.
-    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
-    pub padding_right: Dimension,
+    #[props(default = WithAuto::Value(Length::logical(0)))]
+    pub padding_right: WithAuto<Length>,
     /// Padding on the top edge.
-    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
-    pub padding_top: Dimension,
+    #[props(default = WithAuto::Value(Length::logical(0)))]
+    pub padding_top: WithAuto<Length>,
     /// Padding on the bottom edge.
-    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
-    pub padding_bottom: Dimension,
+    #[props(default = WithAuto::Value(Length::logical(0)))]
+    pub padding_bottom: WithAuto<Length>,
 }
 
 impl ContainerProps {
     pub(crate) fn auto_padding() -> Self {
         Self::builder()
-            .padding(PropValue::from_plain(Dimension::Auto))
+            .padding(PropValue::from_plain(WithAuto::Auto))
             .build()
     }
 
     /// Returns the four reactive padding values as a rectangle.
-    pub fn padding(&self) -> Computed<Rect<Dimension>> {
+    pub fn padding(&self) -> Computed<Rect<WithAuto<Length>>> {
         computed!([this: self] || {
             let top = this.padding_top.get();
             let bottom = this.padding_bottom.get();

@@ -1,8 +1,8 @@
 use nestix::{Computed, Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
-    Dimension, ResolvedStyle, TreeContext, ViewProps,
+    Length, ResolvedStyle, TreeContext, ViewProps, WithAuto,
     dpi::{LogicalPosition, LogicalSize},
-    style_align_self, style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink,
+    style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink, style_length_with_auto,
     style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
@@ -75,16 +75,19 @@ pub(crate) fn mount(
             let style = style_props.get();
             let intrinsic = intrinsic_size.get();
             let width =
-                match style_dimension(style.as_ref(), width.get(), Dimension::Auto, |s| s.width) {
-                    Dimension::Auto => intrinsic.width,
-                    Dimension::Length(value) => value.to_logical::<f32>(scale).0,
+                match style_length_with_auto(style.as_ref(), width.get(), WithAuto::Auto, |s| {
+                    s.width
+                }) {
+                    WithAuto::Auto => intrinsic.width,
+                    WithAuto::Value(value) => value.to_logical::<f32>(scale).0,
                 };
-            let height = match style_dimension(style.as_ref(), height.get(), Dimension::Auto, |s| {
-                s.height
-            }) {
-                Dimension::Auto => intrinsic.height,
-                Dimension::Length(value) => value.to_logical::<f32>(scale).0,
-            };
+            let height =
+                match style_length_with_auto(style.as_ref(), height.get(), WithAuto::Auto, |s| {
+                    s.height
+                }) {
+                    WithAuto::Auto => intrinsic.height,
+                    WithAuto::Value(value) => value.to_logical::<f32>(scale).0,
+                };
             tree_context.update_style(node_id, |prev| Style {
                 size: Size {
                     width: taffy::Dimension::from_length(width),
@@ -105,8 +108,9 @@ pub(crate) fn mount(
             props.top
         ] || {
             let style = style_props.get();
-            let left = style_dimension(style.as_ref(), left.get(), Dimension::Auto, |s| s.left);
-            let top = style_dimension(style.as_ref(), top.get(), Dimension::Auto, |s| s.top);
+            let left =
+                style_length_with_auto(style.as_ref(), left.get(), WithAuto::Auto, |s| s.left);
+            let top = style_length_with_auto(style.as_ref(), top.get(), WithAuto::Auto, |s| s.top);
             tree_context.update_style(node_id, |prev| Style {
                 inset: inset_to_taffy(left, top, scale_factor.get()),
                 ..prev

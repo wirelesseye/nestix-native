@@ -1,11 +1,11 @@
 use nestix::computed;
 
-use crate::{Dimension, FlexViewProps, ViewProps};
+use crate::{FlexViewProps, ViewProps, WithAuto};
 
 use super::{
-    ResolvedStyle, style_align_items, style_align_self, style_dimension, style_flex_basis,
-    style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap,
-    style_justify_content,
+    ResolvedStyle, style_align_items, style_align_self, style_flex_basis, style_flex_direction,
+    style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap, style_justify_content,
+    style_length_with_auto,
 };
 
 /// Resolves the common view props once so the same effective values can be
@@ -31,52 +31,52 @@ pub fn resolved_view_style(
             props.align_self
         ] || {
             let mut resolved = style.get().unwrap_or_default();
-            resolved.left = Some(style_dimension(
+            resolved.left = Some(style_length_with_auto(
                 Some(&resolved),
                 left.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.left,
             ));
-            resolved.top = Some(style_dimension(
+            resolved.top = Some(style_length_with_auto(
                 Some(&resolved),
                 top.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.top,
             ));
-            resolved.width = Some(style_dimension(
+            resolved.width = Some(style_length_with_auto(
                 Some(&resolved),
                 width.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.width,
             ));
-            resolved.height = Some(style_dimension(
+            resolved.height = Some(style_length_with_auto(
                 Some(&resolved),
                 height.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.height,
             ));
-            resolved.margin_left = Some(style_dimension(
+            resolved.margin_left = Some(style_length_with_auto(
                 Some(&resolved),
                 margin_left.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.margin_left,
             ));
-            resolved.margin_right = Some(style_dimension(
+            resolved.margin_right = Some(style_length_with_auto(
                 Some(&resolved),
                 margin_right.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.margin_right,
             ));
-            resolved.margin_top = Some(style_dimension(
+            resolved.margin_top = Some(style_length_with_auto(
                 Some(&resolved),
                 margin_top.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.margin_top,
             ));
-            resolved.margin_bottom = Some(style_dimension(
+            resolved.margin_bottom = Some(style_length_with_auto(
                 Some(&resolved),
                 margin_bottom.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.margin_bottom,
             ));
             resolved.flex_grow = Some(style_flex_grow(Some(&resolved), flex_grow.get()));
@@ -119,28 +119,28 @@ pub fn resolved_flex_view_style(
             ));
             resolved.flex_wrap = Some(style_flex_wrap(Some(&resolved), flex_wrap.get()));
             resolved.gap = Some(style_gap(Some(&resolved), gap.get()));
-            resolved.padding_left = Some(style_dimension(
+            resolved.padding_left = Some(style_length_with_auto(
                 Some(&resolved),
                 padding_left.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.padding_left,
             ));
-            resolved.padding_right = Some(style_dimension(
+            resolved.padding_right = Some(style_length_with_auto(
                 Some(&resolved),
                 padding_right.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.padding_right,
             ));
-            resolved.padding_top = Some(style_dimension(
+            resolved.padding_top = Some(style_length_with_auto(
                 Some(&resolved),
                 padding_top.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.padding_top,
             ));
-            resolved.padding_bottom = Some(style_dimension(
+            resolved.padding_bottom = Some(style_length_with_auto(
                 Some(&resolved),
                 padding_bottom.get(),
-                Dimension::from(0),
+                WithAuto::from(0),
                 |style| style.padding_bottom,
             ));
             resolved.bg_color = bg_color.get().or(resolved.bg_color);

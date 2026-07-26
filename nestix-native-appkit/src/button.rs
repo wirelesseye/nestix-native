@@ -2,9 +2,9 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{
-    AnimatedStyle, Appearance, ButtonProps, Dimension, Rect, StyleContext, TreeContext,
+    AnimatedStyle, Appearance, ButtonProps, Length, Rect, StyleContext, TreeContext, WithAuto,
     matched_style, resolve_font_props, resolved_view_style, style_align_self, style_appearance,
-    style_dimension, style_flex_basis, style_flex_grow, style_flex_shrink, style_margin,
+    style_flex_basis, style_flex_grow, style_flex_shrink, style_length_with_auto, style_margin,
     style_padding_with_default,
 };
 use objc2::{
@@ -137,7 +137,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
             let padding =
-                style_padding_with_default(style_props.as_ref(), padding.get(), Dimension::Auto);
+                style_padding_with_default(style_props.as_ref(), padding.get(), WithAuto::Auto);
             let appearance = style_appearance(style_props.as_ref(), appearance.get());
             let native_appearance = uses_native_appearance(appearance, padding);
             button.setBordered(native_appearance);
@@ -158,16 +158,16 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             } else {
                 button.setContentTintColor(original_color.as_deref());
             }
-            let width = style_dimension(
+            let width = style_length_with_auto(
                 style_props.as_ref(),
                 width.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.width,
             );
-            let height = style_dimension(
+            let height = style_length_with_auto(
                 style_props.as_ref(),
                 height.get(),
-                Dimension::Auto,
+                WithAuto::Auto,
                 |style| style.height,
             );
 
@@ -184,20 +184,20 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 logical_padding(padding, scale_factor)
             };
             let width = match width {
-                Dimension::Auto => {
+                WithAuto::Auto => {
                     intrinsic_size.unwrap().width as f32
                         + rendered_padding.left
                         + rendered_padding.right
                 }
-                Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
+                WithAuto::Value(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
             let height = match height {
-                Dimension::Auto => {
+                WithAuto::Auto => {
                     intrinsic_size.unwrap().height as f32
                         + rendered_padding.top
                         + rendered_padding.bottom
                 }
-                Dimension::Length(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
+                WithAuto::Value(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
             };
 
             if parent_node.is_some() {
@@ -225,12 +225,13 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
             let left =
-                style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |style| {
+                style_length_with_auto(style_props.as_ref(), left.get(), WithAuto::Auto, |style| {
                     style.left
                 });
-            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |style| {
-                style.top
-            });
+            let top =
+                style_length_with_auto(style_props.as_ref(), top.get(), WithAuto::Auto, |style| {
+                    style.top
+                });
 
             tree_context.update_style(node_id, |prev| Style {
                 inset: inset_to_taffy(left, top, scale_factor),
@@ -290,21 +291,21 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 }
 
-fn uses_native_appearance(appearance: Appearance, padding: Rect<Dimension>) -> bool {
+fn uses_native_appearance(appearance: Appearance, padding: Rect<WithAuto<Length>>) -> bool {
     match appearance {
         Appearance::Native => true,
         Appearance::None => false,
         Appearance::Auto => [padding.top, padding.bottom, padding.left, padding.right]
             .into_iter()
-            .all(|dimension| dimension == Dimension::Auto),
+            .all(|length_with_auto| length_with_auto == WithAuto::Auto),
     }
 }
 
-fn logical_padding(padding: Rect<Dimension>, scale_factor: f64) -> Rect<f32> {
-    fn logical(dimension: Dimension, scale_factor: f64) -> f32 {
-        match dimension {
-            Dimension::Auto => 0.0,
-            Dimension::Length(value) => value.to_logical::<f32>(scale_factor).0,
+fn logical_padding(padding: Rect<WithAuto<Length>>, scale_factor: f64) -> Rect<f32> {
+    fn logical(length_with_auto: WithAuto<Length>, scale_factor: f64) -> f32 {
+        match length_with_auto {
+            WithAuto::Auto => 0.0,
+            WithAuto::Value(value) => value.to_logical::<f32>(scale_factor).0,
         }
     }
 
@@ -343,9 +344,8 @@ define_class!(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nestix_native_core::dpi::PhysicalUnit;
 
-    fn padding(value: Dimension) -> Rect<Dimension> {
+    fn padding(value: WithAuto<Length>) -> Rect<WithAuto<Length>> {
         Rect {
             top: value,
             bottom: value,
@@ -358,11 +358,11 @@ mod tests {
     fn native_and_none_force_their_requested_appearance() {
         assert!(uses_native_appearance(
             Appearance::Native,
-            padding(Dimension::from(8))
+            padding(WithAuto::from(8))
         ));
         assert!(!uses_native_appearance(
             Appearance::None,
-            padding(Dimension::Auto)
+            padding(WithAuto::Auto)
         ));
     }
 
@@ -370,22 +370,22 @@ mod tests {
     fn auto_uses_native_appearance_only_for_unspecified_padding() {
         assert!(uses_native_appearance(
             Appearance::Auto,
-            padding(Dimension::Auto)
+            padding(WithAuto::Auto)
         ));
 
         for value in [
-            Dimension::from(8),
-            Dimension::from(0),
-            Dimension::from(-8),
-            Dimension::Length(PhysicalUnit::new(8).into()),
+            WithAuto::from(8),
+            WithAuto::from(0),
+            WithAuto::from(-8),
+            WithAuto::Value(Length::physical(8)),
         ] {
             assert!(!uses_native_appearance(
                 Appearance::Auto,
                 Rect {
-                    top: Dimension::Auto,
-                    bottom: Dimension::Auto,
+                    top: WithAuto::Auto,
+                    bottom: WithAuto::Auto,
                     left: value,
-                    right: Dimension::Auto,
+                    right: WithAuto::Auto,
                 }
             ));
         }
@@ -395,10 +395,10 @@ mod tests {
     fn logical_padding_maps_auto_to_zero_and_scales_physical_values() {
         let padding = logical_padding(
             Rect {
-                top: Dimension::Auto,
-                bottom: Dimension::from(-2),
-                left: Dimension::Length(PhysicalUnit::new(8).into()),
-                right: Dimension::from(3),
+                top: WithAuto::Auto,
+                bottom: WithAuto::from(-2),
+                left: WithAuto::Value(Length::physical(8)),
+                right: WithAuto::from(3),
             },
             2.0,
         );

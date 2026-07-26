@@ -1,7 +1,6 @@
-use dpi::LogicalUnit;
 use nestix::{Layout, props};
 
-use crate::{ClassList, Color, ContainerProps, Dimension, ViewProps};
+use crate::{ClassList, Color, ContainerProps, Length, ViewProps, WithAuto};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlexDirection {
@@ -133,8 +132,8 @@ pub struct FlexViewProps {
     pub flex_wrap: FlexWrap,
 
     /// Spacing between adjacent children.
-    #[props(default = Dimension::Length(LogicalUnit::new(0).into()))]
-    pub gap: Dimension,
+    #[props(default = WithAuto::Value(Length::logical(0)))]
+    pub gap: WithAuto<Length>,
 
     /// Optional background fill color.
     pub bg_color: Option<Color>,

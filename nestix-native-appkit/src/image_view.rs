@@ -2,9 +2,9 @@ use std::{cell::RefCell, rc::Rc};
 
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    AnimatedStyle, ContentFit, Dimension, ImageSource, ImageViewProps, StyleContext, TreeContext,
-    matched_style, resolved_view_style, style_align_self, style_dimension, style_flex_basis,
-    style_flex_grow, style_flex_shrink, style_margin,
+    AnimatedStyle, ContentFit, ImageSource, ImageViewProps, StyleContext, TreeContext, WithAuto,
+    matched_style, resolved_view_style, style_align_self, style_flex_basis, style_flex_grow,
+    style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use objc2::{AnyThread, MainThreadMarker};
@@ -142,11 +142,12 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
 
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
-            let width = style_dimension(style_props.as_ref(), width.get(), Dimension::Auto, |s| {
-                s.width
-            });
+            let width =
+                style_length_with_auto(style_props.as_ref(), width.get(), WithAuto::Auto, |s| {
+                    s.width
+                });
             let height =
-                style_dimension(style_props.as_ref(), height.get(), Dimension::Auto, |s| {
+                style_length_with_auto(style_props.as_ref(), height.get(), WithAuto::Auto, |s| {
                     s.height
                 });
             let width_is_auto = width.is_auto();
@@ -157,18 +158,18 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
                 1.0
             };
             let (width, height) = match (width, height) {
-                (Dimension::Auto, Dimension::Auto) => {
+                (WithAuto::Auto, WithAuto::Auto) => {
                     (intrinsic.width as f32, intrinsic.height as f32)
                 }
-                (Dimension::Length(width), Dimension::Auto) => {
+                (WithAuto::Value(width), WithAuto::Auto) => {
                     let width = width.to_logical::<f32>(scale_factor).0;
                     (width, width / ratio as f32)
                 }
-                (Dimension::Auto, Dimension::Length(height)) => {
+                (WithAuto::Auto, WithAuto::Value(height)) => {
                     let height = height.to_logical::<f32>(scale_factor).0;
                     (height * ratio as f32, height)
                 }
-                (Dimension::Length(width), Dimension::Length(height)) => (
+                (WithAuto::Value(width), WithAuto::Value(height)) => (
                     width.to_logical::<f32>(scale_factor).0,
                     height.to_logical::<f32>(scale_factor).0,
                 ),
@@ -180,7 +181,7 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
                         width: taffy::Dimension::from_length(width),
                         height: taffy::Dimension::from_length(height),
                     },
-                    // Intrinsic image dimensions provide the preferred size,
+                    // Intrinsic image sizes provide the preferred size,
                     // but an auto-sized image must not make its flex parent
                     // wider or taller than the available space.
                     max_size: Size {
@@ -214,10 +215,12 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
-            let left = style_dimension(style_props.as_ref(), left.get(), Dimension::Auto, |s| {
-                s.left
-            });
-            let top = style_dimension(style_props.as_ref(), top.get(), Dimension::Auto, |s| s.top);
+            let left =
+                style_length_with_auto(style_props.as_ref(), left.get(), WithAuto::Auto, |s| {
+                    s.left
+                });
+            let top =
+                style_length_with_auto(style_props.as_ref(), top.get(), WithAuto::Auto, |s| s.top);
             tree_context.update_style(node_id, |prev| Style {
                 inset: inset_to_taffy(left, top, scale_factor),
                 ..prev

@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use gtk4::prelude::*;
 use nestix::{Element, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
-    Appearance, ButtonProps, Dimension, FontStyle, Rect, StyleContext, matched_style,
+    Appearance, ButtonProps, FontStyle, Length, Rect, StyleContext, WithAuto, matched_style,
     resolve_font_props, style_appearance, style_padding_with_default,
 };
 
@@ -73,7 +73,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
                 text_color.get(),
             );
             let padding =
-                style_padding_with_default(style_props.as_ref(), padding.get(), Dimension::Auto);
+                style_padding_with_default(style_props.as_ref(), padding.get(), WithAuto::Auto);
             let appearance = style_appearance(style_props.as_ref(), appearance.get());
             let native_appearance = uses_native_appearance(appearance, padding);
             let mut declarations = Vec::new();
@@ -144,21 +144,21 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 }
 
-fn uses_native_appearance(appearance: Appearance, padding: Rect<Dimension>) -> bool {
+fn uses_native_appearance(appearance: Appearance, padding: Rect<WithAuto<Length>>) -> bool {
     match appearance {
         Appearance::Native => true,
         Appearance::None => false,
         Appearance::Auto => [padding.top, padding.right, padding.bottom, padding.left]
             .into_iter()
-            .all(|dimension| dimension == Dimension::Auto),
+            .all(|length_with_auto| length_with_auto == WithAuto::Auto),
     }
 }
 
-fn logical_padding(padding: Rect<Dimension>, scale_factor: f64) -> Rect<f32> {
-    fn logical(dimension: Dimension, scale_factor: f64) -> f32 {
-        match dimension {
-            Dimension::Auto => 0.0,
-            Dimension::Length(value) => value.to_logical::<f32>(scale_factor).into(),
+fn logical_padding(padding: Rect<WithAuto<Length>>, scale_factor: f64) -> Rect<f32> {
+    fn logical(length_with_auto: WithAuto<Length>, scale_factor: f64) -> f32 {
+        match length_with_auto {
+            WithAuto::Auto => 0.0,
+            WithAuto::Value(value) => value.to_logical::<f32>(scale_factor).into(),
         }
     }
 
@@ -184,15 +184,15 @@ mod tests {
     #[test]
     fn auto_appearance_is_native_only_for_auto_padding() {
         let auto = Rect {
-            top: Dimension::Auto,
-            right: Dimension::Auto,
-            bottom: Dimension::Auto,
-            left: Dimension::Auto,
+            top: WithAuto::Auto,
+            right: WithAuto::Auto,
+            bottom: WithAuto::Auto,
+            left: WithAuto::Auto,
         };
         assert!(uses_native_appearance(Appearance::Auto, auto));
 
         let custom = Rect {
-            left: Dimension::from(4),
+            left: WithAuto::from(4),
             ..auto
         };
         assert!(!uses_native_appearance(Appearance::Auto, custom));

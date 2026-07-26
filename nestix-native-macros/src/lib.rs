@@ -62,8 +62,8 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 /// style-participating siblings; transparent component wrappers do not add a
 /// position.
 ///
-/// Dimension literals must be `auto` or a pixel value such as `30px`.
-/// Bare numeric dimensions such as `margin: 30;` are rejected. Built-in values
+/// WithAuto<Length> literals must be `auto` or a pixel value such as `30px`.
+/// Bare numeric sizes such as `margin: 30;` are rejected. Built-in values
 /// are parsed as their Rust types, while custom properties must use a `--`
 /// prefix and are stored as strings.
 /// Font family, size, weight, style, and text color are inherited by nested
@@ -90,7 +90,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 /// let styles = nestix::computed!([bg_color] || style! {
 ///     .counter {
 ///         bg_color: $(bg_color.get());
-///         width: $(Dimension::from(240.0));
+///         width: $(WithAuto::from(240.0));
 ///         --label: $(format!("count-{}", 1));
 ///     }
 /// });

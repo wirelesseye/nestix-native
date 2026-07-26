@@ -8,7 +8,7 @@ use std::{
 
 use nestix::{Shared, State, create_state, untrack};
 
-use crate::{Dimension, ResolvedStyle, TransitionProperty};
+use crate::{Length, ResolvedStyle, TransitionProperty, WithAuto};
 
 /// Timing curve used by an animation.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -312,8 +312,8 @@ impl AnimatedStyle {
         let mut presentation = target.clone();
 
         for property in TransitionProperty::GEOMETRY {
-            let from = property.dimension(&current);
-            let to = property.dimension(&target);
+            let from = property.length_with_auto(&current);
+            let to = property.length_with_auto(&target);
             let spec = transaction
                 .as_ref()
                 .map(|(spec, _)| *spec)
@@ -323,18 +323,18 @@ impl AnimatedStyle {
                 continue;
             };
             let (Some(from), Some(to)) = (
-                logical_dimension(from, scale_factor),
-                logical_dimension(to, scale_factor),
+                logical_length_with_auto(from, scale_factor),
+                logical_length_with_auto(to, scale_factor),
             ) else {
                 self.runtime.cancel((self.owner, property));
                 continue;
             };
-            property.set_dimension(&mut presentation, Dimension::from(from));
+            property.set_length_with_auto(&mut presentation, WithAuto::from(from));
             let state = self.value.clone();
             let update: Rc<dyn Fn(f64)> = Rc::new(move |value| {
                 state.mutate(|style| {
                     if let Some(style) = style {
-                        property.set_dimension(style, Dimension::from(value));
+                        property.set_length_with_auto(style, WithAuto::from(value));
                     }
                 });
             });
@@ -359,10 +359,10 @@ impl Drop for AnimatedStyle {
     }
 }
 
-fn logical_dimension(value: Dimension, scale_factor: f64) -> Option<f64> {
+fn logical_length_with_auto(value: WithAuto<Length>, scale_factor: f64) -> Option<f64> {
     match value {
-        Dimension::Auto => None,
-        Dimension::Length(value) => Some(value.to_logical::<f64>(scale_factor).0),
+        WithAuto::Auto => None,
+        WithAuto::Value(value) => Some(value.to_logical::<f64>(scale_factor).0),
     }
 }
 
@@ -461,7 +461,7 @@ mod tests {
             animation: AnimationSpec::new(Duration::from_millis(100)),
         };
         let mut initial = ResolvedStyle::default();
-        initial.width = Some(Dimension::from(0));
+        initial.width = Some(WithAuto::from(0));
         initial.transitions = vec![transition];
         let target = create_state(Some(initial));
         let animated = Rc::new(AnimatedStyle::new(runtime.clone(), target.get()));
@@ -477,7 +477,7 @@ mod tests {
         });
 
         let mut next = ResolvedStyle::default();
-        next.width = Some(Dimension::from(10));
+        next.width = Some(WithAuto::from(10));
         next.transitions = vec![transition];
         target.set(Some(next));
         assert_eq!(runs.get(), 2);
@@ -486,7 +486,7 @@ mod tests {
         assert_eq!(runs.get(), 2);
         assert_eq!(
             animated.value().get().and_then(|style| style.width),
-            Some(Dimension::from(5)),
+            Some(WithAuto::from(5)),
         );
         effect_handle.cancel();
     }
