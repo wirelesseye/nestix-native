@@ -41,13 +41,13 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 /// let styles = style! {
 ///     .counter, .__Button {
 ///         bg_color: #FFFFFF;
-///         width: 120px;
-///         margin: 8px;
-///         margin_left: 16px;
+///         width: 120 px;
+///         margin: 8 px;
+///         margin_left: 16 px;
 ///         flex_grow: 1;
 ///         align_self: center;
 ///         font_family: "Helvetica Neue";
-///         font_size: 14px;
+///         font_size: 14 px;
 ///         font_weight: semi-bold;
 ///         font_style: italic;
 ///         text_color: black;
@@ -62,7 +62,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 /// style-participating siblings; transparent component wrappers do not add a
 /// position.
 ///
-/// WithAuto<Length> literals must be `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+/// WithAuto<Length> literals must be `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
 /// Bare numeric sizes such as `margin: 30;` are rejected. Built-in values
 /// are parsed as their Rust types, while custom properties must use a `--`
 /// prefix and are stored as strings.
@@ -109,7 +109,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 ///
 /// let styles = style! {
 ///     .counter {
-///         width: 240px;
+///         width: 240 px;
 ///     }
 ///
 ///     $(base)
@@ -126,7 +126,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 /// # use nestix_native_core::*;
 /// let styles = style! {
 ///     .panel, .dialog {
-///         padding: 12px;
+///         padding: 12 px;
 ///
 ///         &.selected {
 ///             bg_color: blue;
@@ -138,7 +138,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 ///
 ///         .actions {
 ///             > .button {
-///                 margin_left: 8px;
+///                 margin_left: 8 px;
 ///             }
 ///         }
 ///     }

@@ -36,31 +36,31 @@ fn AnimationApp() -> Element {
         }
 
         .root {
-            padding: 28px;
-            gap: 22px;
+            padding: 28 px;
+            gap: 22 px;
             bg_color: #F2F4F8;
         }
 
         .stage {
-            height: 210px;
-            padding: 18px;
+            height: 210 px;
+            padding: 18 px;
             bg_color: #FFFFFF;
         }
 
         .card {
-            width: 150px;
-            height: 92px;
-            margin_left: 0px;
-            padding: 16px;
+            width: 150 px;
+            height: 92 px;
+            margin_left: 0 px;
+            padding: 16 px;
             bg_color: #3767D6;
             transition: layout 500ms ease_in_out;
         }
 
         .card.expanded {
-            width: 330px;
-            height: 150px;
-            margin_left: 210px;
-            padding: 28px;
+            width: 330 px;
+            height: 150 px;
+            margin_left: 210 px;
+            padding: 28 px;
         }
 
         .card_text {
@@ -68,7 +68,7 @@ fn AnimationApp() -> Element {
         }
 
         .controls {
-            gap: 12px;
+            gap: 12 px;
         }
     };
 

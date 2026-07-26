@@ -377,7 +377,7 @@ pub enum StyleProperty {
     FontFamily(StyleValue<String>),
     /// Font size in logical pixels. This property is inherited.
     ///
-    /// **Available value**: pixels such as `14px`, or a font-relative value such as `1.2 em`.
+    /// **Available value**: pixels such as `14 px`, or a font-relative value such as `1.2 em`.
     FontSize(StyleValue<Length>),
     /// Font weight. This property is inherited.
     ///
@@ -396,75 +396,75 @@ pub enum StyleProperty {
     TextColor(StyleValue<Color>),
     /// Horizontal position offset from the left edge of the containing block.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Left(StyleValue<WithAuto<Length>>),
     /// Vertical position offset from the top edge of the containing block.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Top(StyleValue<WithAuto<Length>>),
     /// Preferred layout width.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Width(StyleValue<WithAuto<Length>>),
     /// Preferred layout height.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Height(StyleValue<WithAuto<Length>>),
     /// Margin applied to all four edges.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Margin(StyleValue<WithAuto<Length>>),
     /// Margin applied to the left and right edges.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     MarginHorizontal(StyleValue<WithAuto<Length>>),
     /// Margin applied to the top and bottom edges.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     MarginVertical(StyleValue<WithAuto<Length>>),
     /// Margin applied to the left edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     MarginLeft(StyleValue<WithAuto<Length>>),
     /// Margin applied to the right edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     MarginRight(StyleValue<WithAuto<Length>>),
     /// Margin applied to the top edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     MarginTop(StyleValue<WithAuto<Length>>),
     /// Margin applied to the bottom edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     MarginBottom(StyleValue<WithAuto<Length>>),
     /// Padding applied to all four edges.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Padding(StyleValue<WithAuto<Length>>),
     /// Padding applied to the left and right edges.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     PaddingHorizontal(StyleValue<WithAuto<Length>>),
     /// Padding applied to the top and bottom edges.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     PaddingVertical(StyleValue<WithAuto<Length>>),
     /// Padding applied to the left edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     PaddingLeft(StyleValue<WithAuto<Length>>),
     /// Padding applied to the right edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     PaddingRight(StyleValue<WithAuto<Length>>),
     /// Padding applied to the top edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     PaddingTop(StyleValue<WithAuto<Length>>),
     /// Padding applied to the bottom edge.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     PaddingBottom(StyleValue<WithAuto<Length>>),
     /// Flex grow factor used when distributing free space.
     ///
@@ -472,7 +472,7 @@ pub enum StyleProperty {
     FlexGrow(StyleValue<f32>),
     /// Initial main size of the flex item.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     FlexBasis(StyleValue<WithAuto<Length>>),
     /// Flex shrink factor used when distributing negative free space.
     ///
@@ -503,7 +503,7 @@ pub enum StyleProperty {
     FlexWrap(StyleValue<FlexWrap>),
     /// Spacing between this element's flex children.
     ///
-    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
+    /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
     Gap(StyleValue<WithAuto<Length>>),
     /// Geometry transitions applied when resolved targets change.
     ///

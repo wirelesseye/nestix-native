@@ -55,9 +55,9 @@ fn AppKitToolbarExample() -> Element {
         []
         .content {
             padding_top: $(padding_top.get());
-            padding_bottom: 15px;
-            padding_horizontal: 15px;
-            gap: 10px;
+            padding_bottom: 15 px;
+            padding_horizontal: 15 px;
+            gap: 10 px;
         }
     );
     let toolbar_page = page.clone();
