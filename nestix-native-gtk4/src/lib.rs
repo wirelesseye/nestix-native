@@ -3,6 +3,7 @@ pub mod checkbox;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
+pub mod menu;
 pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
@@ -22,6 +23,7 @@ pub use checkbox::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
+pub use menu::*;
 pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
@@ -80,6 +82,49 @@ impl Backend for Gtk4Backend {
 
     fn create_slider(&self, props: nestix_native_core::SliderProps) -> Option<nestix::Element> {
         Some(create_element::<Slider>(props))
+    }
+
+    fn create_menu(&self, props: nestix_native_core::MenuProps) -> Option<nestix::Element> {
+        Some(create_element::<Menu>(props))
+    }
+
+    fn create_submenu(&self, props: nestix_native_core::SubmenuProps) -> Option<nestix::Element> {
+        Some(create_element::<Submenu>(props))
+    }
+
+    fn create_menu_item(
+        &self,
+        props: nestix_native_core::MenuItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<MenuItem>(props))
+    }
+
+    fn create_check_menu_item(
+        &self,
+        props: nestix_native_core::CheckMenuItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<CheckMenuItem>(props))
+    }
+
+    fn create_radio_menu_item(
+        &self,
+        props: nestix_native_core::RadioMenuItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<RadioMenuItem>(props))
+    }
+
+    fn create_menu_separator(
+        &self,
+        props: nestix_native_core::MenuSeparatorProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<MenuSeparator>(props))
+    }
+
+    fn create_context_menu(
+        &self,
+        props: nestix_native_core::ContextMenuProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<ContextMenu>(props))
     }
 
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<nestix::Element> {
