@@ -1,14 +1,14 @@
-use std::{cell::Cell, rc::Rc, sync::Once};
+use std::{rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, callback, component, components::ContextProvider,
+    Element, Layout, PropValue, Readonly, Shared, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     StyleScope, TitleBarMode, TreeContext, WindowProps,
     dpi::{LogicalSize, PhysicalSize, Size},
 };
-use taffy::{NodeId, Style, prelude::FromLength};
+use taffy::{Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{COLORREF, HMODULE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
@@ -23,7 +23,13 @@ use windows::{
     core::{HSTRING, PCWSTR, w},
 };
 
-use crate::{AppState, contexts::ParentContext, font::colorref, root::shared_app_state};
+use crate::{
+    AppState,
+    contexts::ParentContext,
+    font::colorref,
+    root::shared_app_state,
+    surface::{VisualSurface, handle_surface_message},
+};
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeWindow");
@@ -34,7 +40,6 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
             hCursor: LoadCursorW(None, IDC_ARROW).unwrap(),
             hInstance: hinstance.into(),
             lpszClassName: WINDOW_CLASSNAME,
-            style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(window_proc),
             hbrBackground: HBRUSH((COLOR_BTNFACE.0 + 1) as _),
             ..Default::default()
@@ -69,9 +74,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     let title = HSTRING::from(props.title.get());
     let mut window_style = if props.visible.get() {
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE | WS_CLIPCHILDREN
     } else {
-        WS_OVERLAPPEDWINDOW
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN
     };
     if !props.resizable.get() {
         window_style &= !(WS_THICKFRAME | WS_MAXIMIZEBOX);
@@ -97,15 +102,24 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         scale_factor: scale_factor.clone().into_readonly(),
         hwnd,
     });
+    let surface = VisualSurface::new(hwnd, tree_context.clone(), None);
 
     let window_state = Rc::new(WindowState {
         bg_brush: unsafe { GetSysColorBrush(COLOR_BTNFACE) },
         tree_context: tree_context.clone(),
-        root_view: Cell::new(None),
+        _surface: surface.clone(),
         on_resize: props.on_resize.clone(),
         on_close_requested: props.on_close_requested.clone(),
     });
     app_state.add_window(hwnd, window_state.clone());
+
+    let refresh_request_revision = tree_context.refresh_request_revision();
+    scoped_effect!(
+        [surface, refresh_request_revision, scale_factor] || {
+            refresh_request_revision.get();
+            surface.schedule_sync(scale_factor.get());
+        }
+    );
 
     element.on_unmount(move || unsafe {
         DestroyWindow(hwnd).unwrap();
@@ -177,45 +191,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
                     ContextProvider<ParentContext>(
                         ParentContext {
-                            parent_hwnd: hwnd,
-                            add_child: Some(callback!([] |child_hwnd: HWND,
-                            child_node: Option<NodeId> | {
-                                tree_context.set_root_node(child_node);
-                                window_state.root_view.set(Some(child_hwnd));
-                                let mut client_rect: RECT = RECT::default();
-                                unsafe {
-                                    GetClientRect(hwnd, &mut client_rect).unwrap();
-                                }
-                                let width = client_rect.right - client_rect.left;
-                                let height = client_rect.bottom - client_rect.top;
-                                unsafe {
-                                    SetWindowPos(
-                                        child_hwnd,
-                                        None,
-                                        0,
-                                        0,
-                                        width,
-                                        height,
-                                        SWP_NOZORDER,
-                                    )
-                                    .unwrap();
-                                }
-                                let size: LogicalSize<f32> =
-                                    PhysicalSize::new(width, height).to_logical(scale_factor.get());
-                                if let Some(child_node) = child_node {
-                                    tree_context.update_style(child_node, |prev| Style {
-                                        size: taffy::Size {
-                                            width: taffy::Dimension::from_length(size.width),
-                                            height: taffy::Dimension::from_length(size.height),
-                                        },
-                                        ..prev
-                                    });
-                                    tree_context.refresh();
-                                }
-                            })),
-                            insert_child: None,
-                            remove_child: None,
-                            parent_node: None
+                            surface: surface.clone(),
+                            parent_visual: None,
+                            parent_node: None,
                         },
                     ) {
                         $(props.children.clone().map(|element| Layout::from(element.clone())))
@@ -269,7 +247,7 @@ fn get_scale_factor_for_window(hwnd: HWND) -> Option<f64> {
 pub(crate) struct WindowState {
     bg_brush: HBRUSH,
     tree_context: Rc<TreeContext>,
-    root_view: Cell<Option<HWND>>,
+    _surface: Rc<VisualSurface>,
     on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
 }
@@ -325,6 +303,9 @@ unsafe fn apply_resizable(hwnd: HWND, resizable: bool) {
 }
 
 extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    if let Some(result) = handle_surface_message(hwnd, msg, wparam, lparam) {
+        return result;
+    }
     unsafe {
         match msg {
             WM_KEYDOWN | WM_SYSKEYDOWN => {
@@ -368,10 +349,6 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 
                     let width = client_rect.right - client_rect.left;
                     let height = client_rect.bottom - client_rect.top;
-
-                    if let Some(root_view) = window_state.root_view.get() {
-                        SetWindowPos(root_view, None, 0, 0, width, height, SWP_NOZORDER).unwrap();
-                    }
 
                     if let Some(root_node) = window_state.tree_context.root_node() {
                         let scale_factor = get_scale_factor_for_window(hwnd).unwrap();

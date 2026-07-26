@@ -72,7 +72,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
             0,
             0,
             200,
-            Some(parent.parent_hwnd),
+            Some(parent.surface.hwnd()),
             None,
             None,
             None,

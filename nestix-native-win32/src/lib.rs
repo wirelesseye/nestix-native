@@ -38,6 +38,7 @@ pub mod window;
 mod contexts;
 mod font;
 mod native_control;
+mod surface;
 mod utils;
 
 pub use button::*;

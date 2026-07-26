@@ -18,6 +18,7 @@ use nestix_native_core::{
 use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
+        Graphics::Gdi::ScreenToClient,
         UI::{
             Input::KeyboardAndMouse::{
                 GetKeyState, VK_BACK, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1,
@@ -37,11 +38,13 @@ use windows::{
     core::HSTRING,
 };
 
+use crate::surface::{VisualHandle, visual_handle};
+
 static NEXT_ID: AtomicUsize = AtomicUsize::new(1);
 const SUBCLASS_ID: usize = 0x4e_65_73_74_69_78;
 
 thread_local! {
-    static TARGETS: RefCell<HashMap<*mut std::ffi::c_void, Weak<MenuData>>> = RefCell::new(HashMap::new());
+    static TARGETS: RefCell<HashMap<*mut std::ffi::c_void, Vec<(VisualHandle, Weak<MenuData>)>>> = RefCell::new(HashMap::new());
     static MENU_BARS: RefCell<HashMap<*mut std::ffi::c_void, Weak<MenuData>>> = RefCell::new(HashMap::new());
 }
 
@@ -760,7 +763,25 @@ unsafe extern "system" fn context_subclass(
     _data: usize,
 ) -> LRESULT {
     if msg == WM_CONTEXTMENU {
-        let menu = TARGETS.with_borrow(|targets| targets.get(&hwnd.0).and_then(Weak::upgrade));
+        let mut point = POINT {
+            x: (lparam.0 as i16) as i32,
+            y: ((lparam.0 >> 16) as i16) as i32,
+        };
+        let keyboard = point.x == -1 && point.y == -1;
+        if !keyboard {
+            let _ = unsafe { ScreenToClient(hwnd, &mut point) };
+        }
+        let menu = TARGETS.with_borrow(|targets| {
+            targets
+                .get(&hwnd.0)?
+                .iter()
+                .rev()
+                .find_map(|(visual, menu)| {
+                    (keyboard || visual.contains_client_point(point))
+                        .then(|| menu.upgrade())
+                        .flatten()
+                })
+        });
         if let Some(menu) = menu {
             show_menu(&menu, hwnd, ContextMenuPosition::Cursor);
             return LRESULT(0);
@@ -775,7 +796,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let menu = create_state(None::<Rc<MenuData>>);
     let target = create_state(None::<Shared<dyn Any>>);
     let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
-    let registered_hwnd = Rc::new(Cell::new(None::<HWND>));
+    let registered_target = Rc::new(RefCell::new(None::<(HWND, Weak<MenuData>)>));
     let context = Rc::new(ContextMenuContext {
         menu: menu.clone(),
         target: target.clone(),
@@ -793,34 +814,50 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
             target,
             props.controller,
             registration,
-            registered_hwnd
+            registered_target
         ] || {
             registration.borrow_mut().take();
-            if let Some(old) = registered_hwnd.take() {
-                TARGETS.with_borrow_mut(|targets| {
-                    targets.remove(&old.0);
+            if let Some((old, old_menu)) = registered_target.borrow_mut().take() {
+                let last = TARGETS.with_borrow_mut(|targets| {
+                    let Some(entries) = targets.get_mut(&old.0) else {
+                        return false;
+                    };
+                    entries.retain(|(_, menu)| !Weak::ptr_eq(menu, &old_menu));
+                    if entries.is_empty() {
+                        targets.remove(&old.0);
+                        true
+                    } else {
+                        false
+                    }
                 });
-                unsafe {
-                    let _ = RemoveWindowSubclass(old, Some(context_subclass), SUBCLASS_ID);
+                if last {
+                    unsafe {
+                        let _ = RemoveWindowSubclass(old, Some(context_subclass), SUBCLASS_ID);
+                    }
                 }
             }
             if let (Some(menu), Some(handle)) = (menu.get(), target.get())
-                && let Some(hwnd) = handle.downcast_ref::<HWND>()
+                && let Some(visual) = visual_handle(&handle)
             {
-                TARGETS.with_borrow_mut(|targets| {
-                    targets.insert(hwnd.0, Rc::downgrade(&menu));
+                let hwnd = visual.hwnd();
+                let weak_menu = Rc::downgrade(&menu);
+                let first = TARGETS.with_borrow_mut(|targets| {
+                    let entries = targets.entry(hwnd.0).or_default();
+                    let first = entries.is_empty();
+                    entries.push((visual, weak_menu.clone()));
+                    first
                 });
-                unsafe {
-                    let _ = SetWindowSubclass(*hwnd, Some(context_subclass), SUBCLASS_ID, 0);
+                if first {
+                    unsafe {
+                        let _ = SetWindowSubclass(hwnd, Some(context_subclass), SUBCLASS_ID, 0);
+                    }
                 }
-                registered_hwnd.set(Some(*hwnd));
+                registered_target.borrow_mut().replace((hwnd, weak_menu));
                 if let Some(controller) = controller.get() {
                     registration
                         .borrow_mut()
                         .replace(controller.bind(ContextMenuPresenter {
-                            show: callback!(
-                                [menu, hwnd] | position | show_menu(&menu, hwnd, position)
-                            ),
+                            show: callback!([menu] | position | show_menu(&menu, hwnd, position)),
                             dismiss: callback!(
                                 [] || unsafe {
                                     let _ = EndMenu();
@@ -832,14 +869,25 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         }
     );
     element.on_unmount(closure!(
-        [registration, registered_hwnd] || {
+        [registration, registered_target] || {
             registration.borrow_mut().take();
-            if let Some(hwnd) = registered_hwnd.take() {
-                TARGETS.with_borrow_mut(|targets| {
-                    targets.remove(&hwnd.0);
+            if let Some((hwnd, menu)) = registered_target.borrow_mut().take() {
+                let last = TARGETS.with_borrow_mut(|targets| {
+                    let Some(entries) = targets.get_mut(&hwnd.0) else {
+                        return false;
+                    };
+                    entries.retain(|(_, entry)| !Weak::ptr_eq(entry, &menu));
+                    if entries.is_empty() {
+                        targets.remove(&hwnd.0);
+                        true
+                    } else {
+                        false
+                    }
                 });
-                unsafe {
-                    let _ = RemoveWindowSubclass(hwnd, Some(context_subclass), SUBCLASS_ID);
+                if last {
+                    unsafe {
+                        let _ = RemoveWindowSubclass(hwnd, Some(context_subclass), SUBCLASS_ID);
+                    }
                 }
             }
         }

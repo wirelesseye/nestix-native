@@ -67,7 +67,7 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
             0,
             0,
             0,
-            Some(parent.parent_hwnd),
+            Some(parent.surface.hwnd()),
             None,
             None,
             None,

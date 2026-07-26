@@ -1,12 +1,11 @@
 use std::{cell::RefCell, collections::HashMap, mem::size_of, rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, callback, closure, component, components::ContextProvider, layout,
-    scoped_effect,
+    Element, Layout, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    ChildOrder, ScrollViewProps, StyleContext, StyleScope, TreeContext, WithAuto,
-    dpi::{LogicalPosition, LogicalSize},
+    ScrollViewProps, StyleContext, StyleScope, TreeContext, WithAuto,
+    dpi::LogicalSize,
     matched_style, resolved_view_style, style_align_self, style_flex_basis, style_flex_grow,
     style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
@@ -17,18 +16,22 @@ use windows::{
         Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, WPARAM},
         System::LibraryLoader::GetModuleHandleW,
         UI::WindowsAndMessaging::{
-            CS_HREDRAW, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow, GetClientRect,
-            IDC_ARROW, LoadCursorW, RegisterClassW, SB_BOTTOM, SB_ENDSCROLL, SB_HORZ, SB_LINEDOWN,
-            SB_LINEUP, SB_PAGEDOWN, SB_PAGEUP, SB_THUMBPOSITION, SB_THUMBTRACK, SB_TOP, SB_VERT,
-            SCROLLBAR_CONSTANTS, SCROLLINFO, SIF_ALL, SIF_PAGE, SIF_POS, SIF_RANGE, SIF_TRACKPOS,
-            SWP_NOZORDER, SetWindowPos, WINDOW_EX_STYLE, WM_HSCROLL, WM_MOUSEHWHEEL, WM_MOUSEWHEEL,
-            WM_SIZE, WM_VSCROLL, WNDCLASSW, WS_CHILD, WS_HSCROLL, WS_VISIBLE, WS_VSCROLL,
+            CreateWindowExW, DefWindowProcW, DestroyWindow, GetClientRect, IDC_ARROW, LoadCursorW,
+            RegisterClassW, SB_BOTTOM, SB_ENDSCROLL, SB_HORZ, SB_LINEDOWN, SB_LINEUP, SB_PAGEDOWN,
+            SB_PAGEUP, SB_THUMBPOSITION, SB_THUMBTRACK, SB_TOP, SB_VERT, SCROLLBAR_CONSTANTS,
+            SCROLLINFO, SIF_ALL, SIF_PAGE, SIF_POS, SIF_RANGE, SIF_TRACKPOS, SWP_NOZORDER,
+            SetWindowPos, WINDOW_EX_STYLE, WM_HSCROLL, WM_MOUSEHWHEEL, WM_MOUSEWHEEL, WM_SIZE,
+            WM_VSCROLL, WNDCLASSW, WS_CHILD, WS_CLIPCHILDREN, WS_HSCROLL, WS_VISIBLE, WS_VSCROLL,
         },
     },
     core::{BOOL, PCWSTR, w},
 };
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{
+    WindowContext,
+    contexts::ParentContext,
+    surface::{VisualSurface, create_child_surface},
+};
 
 #[link(name = "user32")]
 unsafe extern "system" {
@@ -44,6 +47,7 @@ unsafe extern "system" {
 #[derive(Clone)]
 struct ScrollState {
     content: HWND,
+    _surface: Rc<VisualSurface>,
     content_width: i32,
     content_height: i32,
     viewport_width: i32,
@@ -74,7 +78,6 @@ fn window_classname(hinstance: HINSTANCE) -> PCWSTR {
             hCursor: LoadCursorW(None, IDC_ARROW).unwrap(),
             hInstance: hinstance,
             lpszClassName: CLASSNAME,
-            style: CS_HREDRAW | CS_VREDRAW,
             lpfnWndProc: Some(window_proc),
             ..Default::default()
         });
@@ -97,7 +100,6 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
         &DEFAULT_CLASSES,
     );
     let effective_style = resolved_view_style(styles.clone(), &props.view);
-    let child_order = Rc::new(RefCell::new(ChildOrder::<HWND>::new()));
     let subtree = Rc::new(TreeContext::new());
     let subtree_root = subtree.create_node(false);
     subtree.set_root_node(Some(subtree_root));
@@ -107,35 +109,20 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             WINDOW_EX_STYLE::default(),
             window_classname(hinstance.into()),
             None,
-            WS_CHILD | WS_VISIBLE | WS_HSCROLL | WS_VSCROLL,
+            WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_HSCROLL | WS_VSCROLL,
             0,
             0,
             0,
             0,
-            Some(parent.parent_hwnd),
+            Some(parent.surface.hwnd()),
             None,
             Some(hinstance.into()),
             None,
         )
         .unwrap()
     };
-    let content = unsafe {
-        CreateWindowExW(
-            WINDOW_EX_STYLE::default(),
-            w!("STATIC"),
-            None,
-            WS_CHILD | WS_VISIBLE,
-            0,
-            0,
-            0,
-            0,
-            Some(hwnd),
-            None,
-            Some(hinstance.into()),
-            None,
-        )
-        .unwrap()
-    };
+    let content = create_child_surface(hwnd).unwrap();
+    let content_surface = VisualSurface::new(content, subtree.clone(), Some(subtree_root));
     unsafe {
         let _ = ShowScrollBar(hwnd, SB_HORZ, false.into());
         let _ = ShowScrollBar(hwnd, SB_VERT, false.into());
@@ -145,6 +132,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             hwnd.0,
             ScrollState {
                 content,
+                _surface: content_surface.clone(),
                 content_width: 0,
                 content_height: 0,
                 viewport_width: 0,
@@ -165,19 +153,30 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     });
     element.provide_handle(hwnd);
     let node = tree_context.create_node(false);
+    let visual = parent.mount_native(node, hwnd);
+
+    let refresh_request_revision = subtree.refresh_request_revision();
+    scoped_effect!(
+        [
+            content_surface,
+            refresh_request_revision,
+            window.scale_factor
+        ] || {
+            refresh_request_revision.get();
+            content_surface.schedule_sync(scale_factor.get());
+        }
+    );
 
     element.on_place(closure!(
-        [parent] | placement | {
-            parent.place_child(hwnd, Some(node), placement);
+        [parent, visual] | placement | {
+            parent.place_child(&visual, placement);
         }
     ));
     element.on_unmount(closure!(
-        [parent] || {
+        [parent, visual] || {
             SCROLL_STATES.with_borrow_mut(|states| states.remove(&hwnd.0));
             unsafe { DestroyWindow(hwnd).unwrap() };
-            if let Some(remove) = &parent.remove_child {
-                remove(hwnd, Some(node));
-            }
+            parent.remove_child(&visual);
         }
     ));
 
@@ -252,34 +251,15 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [window.scale_factor, tree_context, parent.parent_node] || {
-            if parent_node.is_some()
-                && let Some(value) = tree_context.layout(node)
-            {
-                let scale = scale_factor.get();
-                let point =
-                    LogicalPosition::new(value.location.x, value.location.y).to_physical(scale);
-                let size = LogicalSize::new(value.size.width, value.size.height).to_physical(scale);
-                unsafe {
-                    SetWindowPos(
-                        hwnd,
-                        None,
-                        point.x,
-                        point.y,
-                        size.width,
-                        size.height,
-                        SWP_NOZORDER,
-                    )
-                    .unwrap()
-                };
-                SCROLL_STATES.with_borrow_mut(|states| {
-                    if let Some(state) = states.get_mut(&hwnd.0) {
-                        state.scale_factor = scale;
-                        update_scrollbars(hwnd, state);
-                    }
-                });
-                sync_subtree_viewport(hwnd);
-            }
+        [window.scale_factor] || {
+            let scale = scale_factor.get();
+            SCROLL_STATES.with_borrow_mut(|states| {
+                if let Some(state) = states.get_mut(&hwnd.0) {
+                    state.scale_factor = scale;
+                    update_scrollbars(hwnd, state);
+                }
+            });
+            sync_subtree_viewport(hwnd);
         }
     );
 
@@ -309,35 +289,9 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             ContextProvider<TreeContext>(subtree.clone()) {
                 ContextProvider<ParentContext>(
                     ParentContext {
-                        parent_hwnd: content,
-                        add_child: Some(callback!([subtree, child_order] |child: HWND,
-                        child_node: Option<NodeId> | {
-                            let predecessor = child_order.borrow().last_key();
-                            child_order
-                                .borrow_mut()
-                                .place(child, child_node, predecessor);
-                            let nodes = child_order.borrow().taffy_nodes();
-                            subtree.set_children(subtree_root, &nodes);
-                            subtree.refresh();
-                        })),
-                        insert_child: Some(callback!([subtree, child_order] |child: HWND,
-                        child_node: Option<NodeId>,
-                        predecessor: Option<HWND> | {
-                            child_order
-                                .borrow_mut()
-                                .place(child, child_node, predecessor);
-                            let nodes = child_order.borrow().taffy_nodes();
-                            subtree.set_children(subtree_root, &nodes);
-                            subtree.refresh();
-                        })),
-                        remove_child: Some(callback!([subtree, child_order] |child: HWND,
-                        _: Option<NodeId> | {
-                            child_order.borrow_mut().remove(child);
-                            let nodes = child_order.borrow().taffy_nodes();
-                            subtree.set_children(subtree_root, &nodes);
-                            subtree.refresh();
-                        })),
-                        parent_node: Some(subtree_root)
+                        surface: content_surface.clone(),
+                        parent_visual: None,
+                        parent_node: Some(subtree_root),
                     },
                 ) {
                     $(props.children.clone().map(|element| Layout::from(element.clone())))

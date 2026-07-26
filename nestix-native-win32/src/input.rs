@@ -1,7 +1,7 @@
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
     InputProps, StyleContext, TreeContext, WithAuto,
-    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    dpi::PhysicalUnit,
     matched_style, style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink,
     style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
@@ -15,9 +15,8 @@ use windows::{
             Controls::WC_EDIT,
             WindowsAndMessaging::{
                 CreateWindowExW, DestroyWindow, EN_CHANGE, ES_AUTOHSCROLL, GetWindowTextLengthW,
-                GetWindowTextW, SWP_NOZORDER, SendMessageW, SetWindowPos, SetWindowTextW,
-                WINDOW_EX_STYLE, WINDOW_STYLE, WM_COMMAND, WM_SETFONT, WS_BORDER, WS_CHILD,
-                WS_TABSTOP, WS_VISIBLE,
+                GetWindowTextW, SendMessageW, SetWindowTextW, WINDOW_EX_STYLE, WINDOW_STYLE,
+                WM_COMMAND, WM_SETFONT, WS_BORDER, WS_CHILD, WS_TABSTOP, WS_VISIBLE,
             },
         },
     },
@@ -54,7 +53,7 @@ pub fn Input(props: &InputProps, element: &Element) {
             0,
             0,
             0,
-            Some(parent_context.parent_hwnd),
+            Some(parent_context.surface.hwnd()),
             None,
             None,
             None,
@@ -64,9 +63,10 @@ pub fn Input(props: &InputProps, element: &Element) {
     element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(true);
+    let visual = parent_context.mount_native(node_id, hwnd);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            parent_context.place_child(hwnd, Some(node_id), placement);
+        [parent_context, visual] | placement | {
+            parent_context.place_child(&visual, placement);
         }
     ));
 
@@ -84,13 +84,11 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
 
     element.on_unmount(closure!(
-        [parent_context] || {
+        [parent_context, visual] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
-            if let Some(remove_child) = &parent_context.remove_child {
-                remove_child(hwnd, Some(node_id));
-            }
+            parent_context.remove_child(&visual);
             app_state.remove_control_handler(hwnd);
         }
     ));
@@ -251,31 +249,6 @@ pub fn Input(props: &InputProps, element: &Element) {
             });
 
             tree_context.refresh();
-        }
-    );
-
-    scoped_effect!(
-        [window_context.scale_factor, tree_context] || {
-            if let Some(layout) = tree_context.layout(node_id) {
-                let scale_factor = scale_factor.get();
-                let point = LogicalPosition::new(layout.location.x, layout.location.y)
-                    .to_physical(scale_factor);
-                let size = LogicalSize::new(layout.size.width, layout.size.height)
-                    .to_physical(scale_factor);
-
-                unsafe {
-                    SetWindowPos(
-                        hwnd,
-                        None,
-                        point.x,
-                        point.y,
-                        size.width,
-                        size.height,
-                        SWP_NOZORDER,
-                    )
-                    .unwrap();
-                }
-            }
         }
     );
 }

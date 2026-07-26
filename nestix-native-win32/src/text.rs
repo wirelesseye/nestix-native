@@ -1,7 +1,7 @@
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
     StyleContext, TextProps, TreeContext, WithAuto,
-    dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
+    dpi::PhysicalUnit,
     matched_style, resolve_font_props, style_align_self, style_flex_basis, style_flex_grow,
     style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
@@ -11,15 +11,14 @@ use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{
-            DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, RDW_ALLCHILDREN, RDW_ERASE,
-            RDW_INVALIDATE, RedrawWindow, ReleaseDC, SelectObject,
+            DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, ReleaseDC, SelectObject,
         },
-        System::SystemServices::SS_SIMPLE,
+        System::SystemServices::SS_LEFTNOWORDWRAP,
         UI::{
             Controls::WC_STATIC,
             WindowsAndMessaging::{
-                CreateWindowExW, DestroyWindow, SWP_NOZORDER, SendMessageW, SetWindowPos,
-                SetWindowTextW, WINDOW_EX_STYLE, WINDOW_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
+                CreateWindowExW, DestroyWindow, SendMessageW, SetWindowTextW, WINDOW_EX_STYLE,
+                WINDOW_STYLE, WM_SETFONT, WS_CHILD, WS_VISIBLE,
             },
         },
     },
@@ -51,12 +50,12 @@ pub fn Text(props: &TextProps, element: &Element) {
             WINDOW_EX_STYLE::default(),
             WC_STATIC,
             &text,
-            WS_VISIBLE | WS_CHILD | WINDOW_STYLE(SS_SIMPLE.0),
+            WS_VISIBLE | WS_CHILD | WINDOW_STYLE(SS_LEFTNOWORDWRAP.0),
             0,
             0,
             0,
             0,
-            Some(parent_context.parent_hwnd),
+            Some(parent_context.surface.hwnd()),
             None,
             None,
             None,
@@ -66,21 +65,20 @@ pub fn Text(props: &TextProps, element: &Element) {
     element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(false);
+    let visual = parent_context.mount_native(node_id, hwnd);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            parent_context.place_child(hwnd, Some(node_id), placement);
+        [parent_context, visual] | placement | {
+            parent_context.place_child(&visual, placement);
         }
     ));
 
     element.on_unmount(closure!(
-        [parent_context, app_state] || {
+        [parent_context, visual, app_state] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
             app_state.set_control_text_color(hwnd, None);
-            if let Some(remove_child) = &parent_context.remove_child {
-                remove_child(hwnd, Some(node_id));
-            }
+            parent_context.remove_child(&visual);
         }
     ));
 
@@ -129,7 +127,7 @@ pub fn Text(props: &TextProps, element: &Element) {
                 Some(WPARAM(
                     resolved_font(&font_props, scale_factor.get()).0 as _,
                 )),
-                Some(LPARAM(1)), // redraw
+                Some(LPARAM(0)),
             );
             app_state.set_control_text_color(hwnd, font_props.text_color);
             InvalidateRect(Some(hwnd), None, true).unwrap();
@@ -140,7 +138,6 @@ pub fn Text(props: &TextProps, element: &Element) {
         [
             window_context.scale_factor,
             tree_context,
-            parent_context,
             style_props,
             props.text,
             props.font.font_family,
@@ -208,19 +205,10 @@ pub fn Text(props: &TextProps, element: &Element) {
                 ..prev
             });
             tree_context.refresh();
-
-            // Text is painted transparently, so erasing the child cannot restore
-            // pixels from its previous value. Repaint its parent background and
-            // children after the new text bounds have been applied.
+            // Erase and repaint only this static control. Surface synchronization
+            // covers any exposed area when its bounds change.
             unsafe {
-                RedrawWindow(
-                    Some(parent_context.parent_hwnd),
-                    None,
-                    None,
-                    RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN,
-                )
-                .ok()
-                .unwrap();
+                InvalidateRect(Some(hwnd), None, true).unwrap();
             }
         }
     );
@@ -282,31 +270,6 @@ pub fn Text(props: &TextProps, element: &Element) {
             });
 
             tree_context.refresh();
-        }
-    );
-
-    scoped_effect!(
-        [window_context.scale_factor, tree_context] || {
-            if let Some(layout) = tree_context.layout(node_id) {
-                let scale_factor = scale_factor.get();
-                let point = LogicalPosition::new(layout.location.x, layout.location.y)
-                    .to_physical(scale_factor);
-                let size = LogicalSize::new(layout.size.width, layout.size.height)
-                    .to_physical(scale_factor);
-
-                unsafe {
-                    SetWindowPos(
-                        hwnd,
-                        None,
-                        point.x,
-                        point.y,
-                        size.width,
-                        size.height,
-                        SWP_NOZORDER,
-                    )
-                    .unwrap();
-                }
-            }
         }
     );
 }

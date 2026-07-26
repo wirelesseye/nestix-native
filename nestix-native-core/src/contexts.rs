@@ -5,13 +5,16 @@ mod taffy {
         collections::HashMap,
     };
 
-    use nestix::{State, create_state};
+    use nestix::{Readonly, State, create_state};
     use taffy::{NodeId, Size, Style, TaffyTree};
 
     pub struct TreeContext {
         tree: RefCell<TaffyTree>,
         root_node: Cell<Option<NodeId>>,
         node_layouts: RefCell<HashMap<NodeId, State<taffy::Layout>>>,
+        layout_revision: State<u64>,
+        refresh_request_revision: State<u64>,
+        defer_refreshes: Cell<bool>,
         batch_depth: Cell<usize>,
         refresh_pending: Cell<bool>,
     }
@@ -66,6 +69,9 @@ mod taffy {
                 tree: RefCell::new(TaffyTree::new()),
                 root_node: Cell::new(None),
                 node_layouts: RefCell::new(HashMap::new()),
+                layout_revision: create_state(0),
+                refresh_request_revision: create_state(0),
+                defer_refreshes: Cell::new(false),
                 batch_depth: Cell::new(0),
                 refresh_pending: Cell::new(false),
             }
@@ -115,6 +121,21 @@ mod taffy {
             state.set(layout);
         }
 
+        /// Returns a signal incremented after each completed layout pass.
+        pub fn layout_revision(&self) -> Readonly<u64> {
+            self.layout_revision.clone().into_readonly()
+        }
+
+        /// Signal incremented when a deferred layout pass is first requested.
+        pub fn refresh_request_revision(&self) -> Readonly<u64> {
+            self.refresh_request_revision.clone().into_readonly()
+        }
+
+        /// Defers layout computation until [`Self::flush_refresh`] is called.
+        pub fn set_defer_refreshes(&self, defer: bool) {
+            self.defer_refreshes.set(defer);
+        }
+
         /// Signal getter
         pub fn layout(&self, node: NodeId) -> Option<taffy::Layout> {
             self.node_layouts
@@ -133,8 +154,21 @@ mod taffy {
         }
 
         pub fn refresh(&self) {
-            if self.batch_depth.get() > 0 {
-                self.refresh_pending.set(true);
+            if self.batch_depth.get() > 0 || self.defer_refreshes.get() {
+                if !self.refresh_pending.replace(true) && self.defer_refreshes.get() {
+                    self.refresh_request_revision
+                        .update(|revision| revision.wrapping_add(1));
+                }
+                return;
+            }
+            if let Some(root_node) = self.root_node() {
+                self.update_node(root_node);
+            }
+        }
+
+        /// Performs a pending deferred layout pass, if any.
+        pub fn flush_refresh(&self) {
+            if !self.refresh_pending.replace(false) {
                 return;
             }
             if let Some(root_node) = self.root_node() {
@@ -153,7 +187,11 @@ mod taffy {
             assert!(depth > 0, "layout batch underflow");
             self.batch_depth.set(depth - 1);
             if depth == 1 && self.refresh_pending.replace(false) {
-                self.refresh();
+                if self.defer_refreshes.get() {
+                    self.refresh_pending.set(true);
+                } else {
+                    self.refresh();
+                }
             }
         }
 
@@ -163,6 +201,8 @@ mod taffy {
                 tree.compute_layout(node, Size::max_content()).unwrap();
             }
             self.update_node_recursive(node);
+            self.layout_revision
+                .update(|revision| revision.wrapping_add(1));
         }
 
         fn update_node_recursive(&self, node: NodeId) {
@@ -204,6 +244,44 @@ mod taffy {
             assert_eq!(order.taffy_nodes(), vec![second, first]);
             order.remove("second");
             assert_eq!(order.taffy_nodes(), vec![first]);
+        }
+
+        #[test]
+        fn layout_revision_advances_once_per_completed_pass() {
+            let context = TreeContext::new();
+            let root = context.create_node(false);
+            context.set_root_node(Some(root));
+            let revision = context.layout_revision();
+
+            context.refresh();
+            assert_eq!(revision.get(), 1);
+
+            context.begin_batch();
+            context.refresh();
+            context.refresh();
+            assert_eq!(revision.get(), 1);
+            context.end_batch();
+            assert_eq!(revision.get(), 2);
+        }
+
+        #[test]
+        fn deferred_refreshes_coalesce_until_flushed() {
+            let context = TreeContext::new();
+            let root = context.create_node(false);
+            context.set_root_node(Some(root));
+            context.set_defer_refreshes(true);
+            let request_revision = context.refresh_request_revision();
+            let layout_revision = context.layout_revision();
+
+            context.refresh();
+            context.refresh();
+            assert_eq!(request_revision.get(), 1);
+            assert_eq!(layout_revision.get(), 0);
+
+            context.flush_refresh();
+            assert_eq!(layout_revision.get(), 1);
+            context.flush_refresh();
+            assert_eq!(layout_revision.get(), 1);
         }
     }
 }

@@ -1,7 +1,7 @@
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
     Appearance, ButtonProps, Length, Rect, StyleContext, TreeContext, WithAuto,
-    dpi::{LogicalPosition, LogicalSize, LogicalUnit, PhysicalUnit},
+    dpi::{LogicalUnit, PhysicalUnit},
     matched_style, resolve_font_props, style_align_self, style_appearance, style_flex_basis,
     style_flex_grow, style_flex_shrink, style_length_with_auto, style_margin,
     style_padding_with_default,
@@ -68,7 +68,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             0,
             0,
             0,
-            Some(parent_context.parent_hwnd),
+            Some(parent_context.surface.hwnd()),
             None,
             None,
             None,
@@ -78,9 +78,10 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(false);
+    let visual = parent_context.mount_native(node_id, hwnd);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            parent_context.place_child(hwnd, Some(node_id), placement);
+        [parent_context, visual] | placement | {
+            parent_context.place_child(&visual, placement);
         }
     ));
 
@@ -116,13 +117,11 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
 
     element.on_unmount(closure!(
-        [parent_context, app_state] || {
+        [parent_context, visual, app_state] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
-            if let Some(remove_child) = &parent_context.remove_child {
-                remove_child(hwnd, Some(node_id));
-            }
+            parent_context.remove_child(&visual);
             app_state.remove_control_handler(hwnd);
             app_state.set_control_text_color(hwnd, None);
         }
@@ -342,31 +341,6 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             });
 
             tree_context.refresh();
-        }
-    );
-
-    scoped_effect!(
-        [window_context.scale_factor, tree_context] || {
-            if let Some(layout) = tree_context.layout(node_id) {
-                let scale_factor = scale_factor.get();
-                let point = LogicalPosition::new(layout.location.x, layout.location.y)
-                    .to_physical(scale_factor);
-                let size = LogicalSize::new(layout.size.width, layout.size.height)
-                    .to_physical(scale_factor);
-
-                unsafe {
-                    SetWindowPos(
-                        hwnd,
-                        None,
-                        point.x,
-                        point.y,
-                        size.width,
-                        size.height,
-                        SWP_NOZORDER,
-                    )
-                    .unwrap();
-                }
-            }
         }
     );
 }

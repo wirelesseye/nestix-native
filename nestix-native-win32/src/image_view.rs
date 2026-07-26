@@ -8,10 +8,9 @@ use std::{
 
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    ContentFit, ImageSource, ImageViewProps, StyleContext, TreeContext, WithAuto,
-    dpi::{LogicalPosition, LogicalSize},
-    matched_style, style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink,
-    style_length_with_auto, style_margin,
+    ContentFit, ImageSource, ImageViewProps, StyleContext, TreeContext, WithAuto, matched_style,
+    style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink, style_length_with_auto,
+    style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{
@@ -253,7 +252,7 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
             0,
             0,
             0,
-            Some(parent_context.parent_hwnd),
+            Some(parent_context.surface.hwnd()),
             None,
             Some(hinstance.into()),
             Some(raw_state),
@@ -262,20 +261,19 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
     };
     element.provide_handle(hwnd);
     let node_id = tree_context.create_node(true);
+    let visual = parent_context.mount_native(node_id, hwnd);
 
     element.on_place(closure!(
-        [parent_context] | placement | {
-            parent_context.place_child(hwnd, Some(node_id), placement);
+        [parent_context, visual] | placement | {
+            parent_context.place_child(&visual, placement);
         }
     ));
     element.on_unmount(closure!(
-        [parent_context] || {
+        [parent_context, visual] || {
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
-            if let Some(remove) = &parent_context.remove_child {
-                remove(hwnd, Some(node_id));
-            }
+            parent_context.remove_child(&visual);
         }
     ));
 
@@ -425,29 +423,6 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
                 ..prev
             });
             tree_context.refresh();
-        }
-    );
-    scoped_effect!(
-        [window_context.scale_factor, tree_context] || {
-            if let Some(layout) = tree_context.layout(node_id) {
-                let point = LogicalPosition::new(layout.location.x, layout.location.y)
-                    .to_physical(scale_factor.get());
-                let size = LogicalSize::new(layout.size.width, layout.size.height)
-                    .to_physical(scale_factor.get());
-                unsafe {
-                    SetWindowPos(
-                        hwnd,
-                        None,
-                        point.x,
-                        point.y,
-                        size.width,
-                        size.height,
-                        SWP_NOZORDER,
-                    )
-                    .unwrap();
-                    let _ = InvalidateRect(Some(hwnd), None, true);
-                }
-            }
         }
     );
 }

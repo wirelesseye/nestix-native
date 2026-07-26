@@ -1,16 +1,13 @@
 use nestix::{Computed, Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
     ResolvedStyle, TreeContext, ViewProps, WithAuto,
-    dpi::{LogicalPosition, LogicalSize},
+    dpi::LogicalSize,
     style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink, style_length_with_auto,
     style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
-use windows::Win32::{
-    Foundation::HWND,
-    UI::WindowsAndMessaging::{DestroyWindow, SWP_NOZORDER, SetWindowPos},
-};
+use windows::Win32::{Foundation::HWND, UI::WindowsAndMessaging::DestroyWindow};
 
 use crate::{WindowContext, contexts::ParentContext};
 
@@ -27,17 +24,16 @@ pub(crate) fn mount(
 
     element.provide_handle(hwnd);
     let node_id = tree_context.create_node(true);
+    let visual = parent_context.mount_native(node_id, hwnd);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            parent_context.place_child(hwnd, Some(node_id), placement);
+        [parent_context, visual] | placement | {
+            parent_context.place_child(&visual, placement);
         }
     ));
     element.on_unmount(closure!(
-        [parent_context] || {
+        [parent_context, visual] || {
             unsafe { DestroyWindow(hwnd).unwrap() };
-            if let Some(remove_child) = &parent_context.remove_child {
-                remove_child(hwnd, Some(node_id));
-            }
+            parent_context.remove_child(&visual);
         }
     ));
 
@@ -146,29 +142,6 @@ pub(crate) fn mount(
                 ..prev
             });
             tree_context.refresh();
-        }
-    );
-
-    scoped_effect!(
-        [window_context.scale_factor, tree_context] || {
-            if let Some(layout) = tree_context.layout(node_id) {
-                let point = LogicalPosition::new(layout.location.x, layout.location.y)
-                    .to_physical(scale_factor.get());
-                let size = LogicalSize::new(layout.size.width, layout.size.height)
-                    .to_physical(scale_factor.get());
-                unsafe {
-                    SetWindowPos(
-                        hwnd,
-                        None,
-                        point.x,
-                        point.y,
-                        size.width,
-                        size.height,
-                        SWP_NOZORDER,
-                    )
-                    .unwrap();
-                }
-            }
         }
     );
 

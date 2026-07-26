@@ -7,12 +7,12 @@ use nestix::{
 use nestix_native_core::{
     StyleContext, StyleScope, TabViewItemProps, TabViewProps, TreeContext,
     WithAuto as NativeLengthWithAuto,
-    dpi::{LogicalPosition, LogicalSize, PhysicalSize},
+    dpi::{LogicalSize, PhysicalSize},
     matched_style, resolved_view_style, style_align_self, style_flex_basis, style_flex_grow,
     style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
-use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
+use taffy::{Dimension, Size, Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, RECT, WPARAM},
@@ -32,7 +32,12 @@ use windows::{
     core::PWSTR,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font};
+use crate::{
+    AppState, WindowContext,
+    contexts::ParentContext,
+    font::ui_font,
+    surface::{VisualSurface, create_child_surface},
+};
 
 fn init_common_controls() {
     static ONCE: Once = Once::new();
@@ -47,6 +52,7 @@ fn init_common_controls() {
 }
 
 struct TabViewContext {
+    hwnd: HWND,
     current_selected: State<Option<String>>,
     tab_ids: RefCell<Vec<String>>,
     pages: RefCell<Vec<(HWND, Rc<TreeContext>)>>,
@@ -83,7 +89,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             0,
             0,
             0,
-            Some(parent_context.parent_hwnd),
+            Some(parent_context.surface.hwnd()),
             None,
             None,
             None,
@@ -93,16 +99,33 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     element.provide_handle(hwnd);
 
     let node_id = tree_context.create_node(true);
+    let visual = parent_context.mount_native(node_id, hwnd);
     element.on_place(closure!(
-        [parent_context] | placement | {
-            parent_context.place_child(hwnd, Some(node_id), placement);
+        [parent_context, visual] | placement | {
+            parent_context.place_child(&visual, placement);
         }
     ));
 
     let tab_view_context = Rc::new(TabViewContext {
+        hwnd,
         current_selected: current_selected.clone(),
         tab_ids: RefCell::new(Vec::new()),
         pages: RefCell::new(Vec::new()),
+    });
+    let weak_tab_view_context = Rc::downgrade(&tab_view_context);
+    let after_sync_id = parent_context.surface.add_after_sync(move |scale_factor| {
+        let Some(tab_view_context) = weak_tab_view_context.upgrade() else {
+            return;
+        };
+        let pages = tab_view_context.pages.borrow().clone();
+        for (page_hwnd, page_tree_context) in pages {
+            resize_tab_view_content(
+                &page_tree_context,
+                scale_factor,
+                tab_view_context.hwnd,
+                page_hwnd,
+            );
+        }
     });
 
     app_state.add_control_handler(
@@ -123,13 +146,12 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     );
 
     element.on_unmount(closure!(
-        [parent_context] || {
+        [parent_context, visual] || {
+            parent_context.surface.remove_after_sync(after_sync_id);
             unsafe {
                 DestroyWindow(hwnd).unwrap();
             }
-            if let Some(remove_child) = &parent_context.remove_child {
-                remove_child(hwnd, Some(node_id));
-            }
+            parent_context.remove_child(&visual);
             app_state.remove_control_handler(hwnd);
         }
     ));
@@ -271,47 +293,6 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     );
 
-    scoped_effect!(
-        [
-            window_context.scale_factor,
-            tree_context,
-            parent_context.parent_node,
-            tab_view_context,
-        ] || {
-            if parent_node.is_some() {
-                if let Some(layout) = tree_context.layout(node_id) {
-                    let scale_factor = scale_factor.get();
-                    let point = LogicalPosition::new(layout.location.x, layout.location.y)
-                        .to_physical(scale_factor);
-                    let size = LogicalSize::new(layout.size.width, layout.size.height)
-                        .to_physical(scale_factor);
-
-                    unsafe {
-                        SetWindowPos(
-                            hwnd,
-                            None,
-                            point.x,
-                            point.y,
-                            size.width,
-                            size.height,
-                            SWP_NOZORDER,
-                        )
-                        .unwrap();
-                    }
-
-                    // A tab page can be mounted while the tab control still has
-                    // its initial zero-sized window. Size every registered page
-                    // from the native control after the control receives its
-                    // computed layout, so no page can miss this first update.
-                    let pages = tab_view_context.pages.borrow().clone();
-                    for (page_hwnd, page_tree_context) in pages {
-                        resize_tab_view_content(&page_tree_context, scale_factor, hwnd, page_hwnd);
-                    }
-                }
-            }
-        }
-    );
-
     layout! {
         StyleScope(
             .class = props.class.clone(),
@@ -321,10 +302,8 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
             ContextProvider<TabViewContext>(tab_view_context) {
                 ContextProvider<ParentContext>(
                     ParentContext {
-                        parent_hwnd: hwnd,
-                        add_child: None,
-                        insert_child: None,
-                        remove_child: None,
+                        surface: parent_context.surface.clone(),
+                        parent_visual: Some(visual.id()),
                         parent_node: Some(node_id),
                     },
                 ) {
@@ -346,10 +325,32 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     let tab_view_context = element.context::<TabViewContext>().unwrap();
 
     let subtree_context = Rc::new(TreeContext::new());
-    let subtree_root = create_state(None);
+    let page_hwnd = create_child_surface(tab_view_context.hwnd).unwrap();
+    let page_surface = VisualSurface::new(page_hwnd, subtree_context.clone(), None);
+    tab_view_context
+        .pages
+        .borrow_mut()
+        .push((page_hwnd, subtree_context.clone()));
+    resize_tab_view_content(
+        &subtree_context,
+        window_context.scale_factor.get(),
+        tab_view_context.hwnd,
+        page_hwnd,
+    );
+    let refresh_request_revision = subtree_context.refresh_request_revision();
+    scoped_effect!(
+        [
+            page_surface,
+            refresh_request_revision,
+            window_context.scale_factor
+        ] || {
+            refresh_request_revision.get();
+            page_surface.schedule_sync(scale_factor.get());
+        }
+    );
 
     element.on_place(closure!(
-        [parent_context, tab_view_context, props.id, props.title] | placement | {
+        [tab_view_context, props.id, props.title] | placement | {
             let id = id.get();
             let existing_index = tab_view_context
                 .tab_ids
@@ -361,7 +362,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 tab_view_context.tab_ids.borrow_mut().remove(existing_index);
                 unsafe {
                     SendMessageW(
-                        parent_context.parent_hwnd,
+                        tab_view_context.hwnd,
                         TCM_DELETEITEM,
                         Some(WPARAM(existing_index)),
                         None,
@@ -372,12 +373,11 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
             let index = placement
                 .index
                 .unwrap_or_else(|| unsafe {
-                    SendMessageW(parent_context.parent_hwnd, TCM_GETITEMCOUNT, None, None).0
-                        as usize
+                    SendMessageW(tab_view_context.hwnd, TCM_GETITEMCOUNT, None, None).0 as usize
                 })
                 .min(tab_view_context.tab_ids.borrow().len());
 
-            insert_tab_item(parent_context.parent_hwnd, index, &title.get());
+            insert_tab_item(tab_view_context.hwnd, index, &title.get());
 
             tab_view_context
                 .tab_ids
@@ -390,7 +390,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
     ));
 
     element.on_unmount(closure!(
-        [parent_context, tab_view_context, props.id, subtree_root] || {
+        [tab_view_context, props.id] || {
             let id = id.get();
             let existing_index = tab_view_context
                 .tab_ids
@@ -402,7 +402,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 tab_view_context.tab_ids.borrow_mut().remove(existing_index);
                 unsafe {
                     SendMessageW(
-                        parent_context.parent_hwnd,
+                        tab_view_context.hwnd,
                         TCM_DELETEITEM,
                         Some(WPARAM(existing_index)),
                         None,
@@ -410,22 +410,18 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 }
             }
 
-            if let Some(subtree_root) = subtree_root.get() {
-                tab_view_context
-                    .pages
-                    .borrow_mut()
-                    .retain(|(page_hwnd, _)| *page_hwnd != subtree_root);
+            tab_view_context
+                .pages
+                .borrow_mut()
+                .retain(|(page, _)| *page != page_hwnd);
+            unsafe {
+                DestroyWindow(page_hwnd).unwrap();
             }
         }
     ));
 
     scoped_effect!(
-        [
-            parent_context.parent_hwnd,
-            tab_view_context,
-            props.id,
-            props.title
-        ] || {
+        [tab_view_context, props.id, props.title] || {
             let id = id.get();
             let index = tab_view_context
                 .tab_ids
@@ -434,22 +430,18 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 .position(|tab_id| *tab_id == id);
 
             if let Some(index) = index {
-                set_tab_item_title(parent_hwnd, index, &title.get());
+                set_tab_item_title(tab_view_context.hwnd, index, &title.get());
             }
         }
     );
 
     scoped_effect!(
-        [tab_view_context.current_selected, props.id, subtree_root]
+        [tab_view_context.current_selected, props.id]
             || unsafe {
                 if current_selected.get() == Some(id.get()) {
-                    if let Some(subtree_root) = subtree_root.get() {
-                        let _ = ShowWindow(subtree_root, SW_SHOW);
-                    }
+                    let _ = ShowWindow(page_hwnd, SW_SHOW);
                 } else {
-                    if let Some(subtree_root) = subtree_root.get() {
-                        let _ = ShowWindow(subtree_root, SW_HIDE);
-                    }
+                    let _ = ShowWindow(page_hwnd, SW_HIDE);
                 }
             }
     );
@@ -459,20 +451,17 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
             tree_context,
             subtree_context,
             parent_context.parent_node,
-            parent_context.parent_hwnd,
+            tab_view_context,
             window_context.scale_factor,
-            subtree_root,
         ] || {
             if let Some(parent_node) = parent_node {
                 if tree_context.layout(parent_node).is_some() {
-                    if let Some(subtree_root) = subtree_root.get() {
-                        resize_tab_view_content(
-                            &subtree_context,
-                            scale_factor.get(),
-                            parent_hwnd,
-                            subtree_root,
-                        );
-                    }
+                    resize_tab_view_content(
+                        &subtree_context,
+                        scale_factor.get(),
+                        tab_view_context.hwnd,
+                        page_hwnd,
+                    );
                 }
             }
         }
@@ -483,25 +472,9 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
             ContextProvider<TreeContext>(subtree_context.clone()) {
                 ContextProvider<ParentContext>(
                     ParentContext {
-                        parent_hwnd: parent_context.parent_hwnd,
-                        add_child: Some(callback!([window_context.scale_factor, tab_view_context] |child_hwnd: HWND,
-                        child_node: Option<NodeId> | {
-                            subtree_context.set_root_node(child_node);
-                            subtree_root.set(Some(child_hwnd));
-                            let mut pages = tab_view_context.pages.borrow_mut();
-                            pages.retain(|(page_hwnd, _)| *page_hwnd != child_hwnd);
-                            pages.push((child_hwnd, subtree_context.clone()));
-                            drop(pages);
-                            resize_tab_view_content(
-                                &subtree_context,
-                                scale_factor.get(),
-                                parent_context.parent_hwnd,
-                                child_hwnd,
-                            );
-                        })),
-                        insert_child: None,
-                        remove_child: None,
-                        parent_node: None
+                        surface: page_surface.clone(),
+                        parent_visual: None,
+                        parent_node: None,
                     },
                 ) {
                     $(props.children.clone().map(|element| Layout::from(element.clone())))

@@ -56,6 +56,8 @@ use windows::{
     core::{Error, HRESULT, HSTRING, Ref, implement},
 };
 
+use crate::surface::{VisualHandle, visual_handle};
+
 const SOURCE_SUBCLASS_ID: usize = 0x4e65737444726167;
 const FD_ATTRIBUTES: u32 = 0x0000_0004;
 const FD_FILESIZE: u32 = 0x0000_0040;
@@ -358,6 +360,7 @@ fn reader(data: IDataObject, types: DragDataTypes) -> DropDataReader {
 
 struct TargetState {
     hwnd: HWND,
+    visual: VisualHandle,
     enabled: PropValue<bool>,
     accepted: PropValue<DragDataTypes>,
     default_operation: PropValue<DragOperation>,
@@ -368,8 +371,30 @@ struct TargetState {
     current: RefCell<Option<(IDataObject, DragDataTypes, DragOperation)>>,
 }
 
-fn active_target(hwnd: HWND) -> Option<Rc<TargetState>> {
-    TARGETS.with_borrow(|all| all.get(&hwnd.0).and_then(|v| v.last()).cloned())
+fn active_target(hwnd: HWND, point: &POINTL) -> Option<Rc<TargetState>> {
+    let mut client = POINT {
+        x: point.x,
+        y: point.y,
+    };
+    unsafe {
+        let _ = ScreenToClient(hwnd, &mut client);
+    }
+    TARGETS.with_borrow(|all| {
+        all.get(&hwnd.0)?
+            .iter()
+            .rev()
+            .find(|state| state.visual.contains_client_point(client))
+            .cloned()
+    })
+}
+
+fn current_target(hwnd: HWND) -> Option<Rc<TargetState>> {
+    TARGETS.with_borrow(|all| {
+        all.get(&hwnd.0)?
+            .iter()
+            .find(|state| state.current.borrow().is_some())
+            .cloned()
+    })
 }
 
 fn offer(
@@ -390,10 +415,7 @@ fn offer(
     DragOffer {
         available_types: available_types(data).intersection(state.accepted.get()),
         allowed_operations: operations(allowed),
-        position: nestix_native_core::dpi::LogicalPosition::new(
-            client.x as f64 / scale,
-            client.y as f64 / scale,
-        ),
+        position: state.visual.relative_logical_position(client, scale),
         modifiers: modifiers(keys),
     }
 }
@@ -427,7 +449,7 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         point: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
-        let Some(state) = active_target(self.hwnd) else {
+        let Some(state) = active_target(self.hwnd, point) else {
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
@@ -449,16 +471,37 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         point: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
-        let Some(state) = active_target(self.hwnd) else {
+        let previous = current_target(self.hwnd);
+        let Some(state) = active_target(self.hwnd, point) else {
+            if let Some(previous) = previous {
+                previous.current.replace(None);
+                if let Some(f) = previous.on_leave.get() {
+                    f();
+                }
+            }
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
-        let Some((data, _, _)) = state.current.borrow().clone() else {
+        let Some((data, _, _)) = previous
+            .as_ref()
+            .and_then(|state| state.current.borrow().clone())
+        else {
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
         let value = offer(&state, &data, keys, point, unsafe { *effect });
-        let choice = decide(&state, &value, false);
+        let entering = previous
+            .as_ref()
+            .is_none_or(|previous| !Rc::ptr_eq(previous, &state));
+        if entering {
+            if let Some(previous) = previous {
+                previous.current.replace(None);
+                if let Some(f) = previous.on_leave.get() {
+                    f();
+                }
+            }
+        }
+        let choice = decide(&state, &value, entering);
         state
             .current
             .replace(choice.map(|op| (data, value.available_types, op)));
@@ -468,7 +511,7 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         Ok(())
     }
     fn DragLeave(&self) -> windows::core::Result<()> {
-        if let Some(state) = active_target(self.hwnd) {
+        if let Some(state) = current_target(self.hwnd) {
             state.current.replace(None);
             if let Some(f) = state.on_leave.get() {
                 f();
@@ -483,7 +526,7 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         point: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
-        let Some(state) = active_target(self.hwnd) else {
+        let Some(state) = active_target(self.hwnd, point) else {
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
@@ -591,11 +634,13 @@ pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
                     | {
                         registration.borrow_mut().take();
                         let Some(handle) = handle else { return };
-                        let Some(hwnd) = handle.downcast_ref::<HWND>() else {
+                        let Some(visual) = visual_handle(&handle) else {
                             return;
                         };
+                        let hwnd = visual.hwnd();
                         let state = Rc::new(TargetState {
-                            hwnd: *hwnd,
+                            hwnd,
+                            visual,
                             enabled: enabled.clone(),
                             accepted: accepted_types.clone(),
                             default_operation: default_operation.clone(),
@@ -848,6 +893,7 @@ impl IDropSource_Impl for NativeDropSource_Impl {
 
 struct SourceState {
     hwnd: HWND,
+    visual: VisualHandle,
     content: PropValue<DragContent>,
     enabled: PropValue<bool>,
     allowed: PropValue<DragOperations>,
@@ -856,8 +902,30 @@ struct SourceState {
     on_error: PropValue<Option<Shared<dyn Fn(DragSourceError)>>>,
     origin: Cell<Option<POINT>>,
 }
-fn active_source(hwnd: HWND) -> Option<Rc<SourceState>> {
-    SOURCES.with_borrow(|all| all.get(&hwnd.0).and_then(|v| v.last()).cloned())
+fn active_source(hwnd: HWND, point: POINT) -> Option<Rc<SourceState>> {
+    SOURCES.with_borrow(|all| {
+        let states = all.get(&hwnd.0)?;
+        states
+            .iter()
+            .find(|state| state.origin.get().is_some())
+            .or_else(|| {
+                states
+                    .iter()
+                    .rev()
+                    .find(|state| state.visual.contains_client_point(point))
+            })
+            .cloned()
+    })
+}
+
+fn source_at(hwnd: HWND, point: POINT) -> Option<Rc<SourceState>> {
+    SOURCES.with_borrow(|all| {
+        all.get(&hwnd.0)?
+            .iter()
+            .rev()
+            .find(|state| state.visual.contains_client_point(point))
+            .cloned()
+    })
 }
 unsafe extern "system" fn source_subclass(
     hwnd: HWND,
@@ -867,11 +935,23 @@ unsafe extern "system" fn source_subclass(
     _: usize,
     _: usize,
 ) -> LRESULT {
-    if let Some(state) = active_source(hwnd) {
-        let point = POINT {
-            x: (l.0 as i16) as i32,
-            y: ((l.0 >> 16) as i16) as i32,
-        };
+    let point = POINT {
+        x: (l.0 as i16) as i32,
+        y: ((l.0 >> 16) as i16) as i32,
+    };
+    let state = if msg == WM_LBUTTONDOWN {
+        SOURCES.with_borrow(|all| {
+            if let Some(states) = all.get(&hwnd.0) {
+                for state in states {
+                    state.origin.set(None);
+                }
+            }
+        });
+        source_at(hwnd, point)
+    } else {
+        active_source(hwnd, point)
+    };
+    if let Some(state) = state {
         if msg == WM_LBUTTONDOWN {
             state.origin.set(Some(point));
         } else if msg == WM_LBUTTONUP {
@@ -1021,11 +1101,13 @@ pub fn DragSource(props: &DragSourceProps, element: &Element) -> Element {
                     | {
                         registration.borrow_mut().take();
                         let Some(handle) = handle else { return };
-                        let Some(hwnd) = handle.downcast_ref::<HWND>() else {
+                        let Some(visual) = visual_handle(&handle) else {
                             return;
                         };
+                        let hwnd = visual.hwnd();
                         let state = Rc::new(SourceState {
-                            hwnd: *hwnd,
+                            hwnd,
+                            visual,
                             content: content.clone(),
                             enabled: enabled.clone(),
                             allowed: allowed_operations.clone(),
