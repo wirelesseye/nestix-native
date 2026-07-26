@@ -1,7 +1,7 @@
 use gtk4::{Orientation, Widget, prelude::*};
-use nestix::{Computed, Element, Readonly, closure, scoped_effect};
+use nestix::{Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
-    Length, ResolvedStyle, TreeContext, ViewProps, WithAuto, style_align_self, style_flex_basis,
+    ResolvedStyle, TreeContext, ViewProps, WithAuto, style_align_self, style_flex_basis,
     style_flex_grow, style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
@@ -15,7 +15,7 @@ use crate::{
 pub(crate) fn mount_leaf(
     element: &Element,
     widget: &Widget,
-    style_props: Computed<Option<ResolvedStyle>>,
+    style_props: Readonly<Option<ResolvedStyle>>,
     props: &ViewProps,
     content_revision: Readonly<usize>,
 ) -> NodeId {
@@ -25,7 +25,7 @@ pub(crate) fn mount_leaf(
 pub(crate) fn mount_leaf_with_stretchable_width(
     element: &Element,
     widget: &Widget,
-    style_props: Computed<Option<ResolvedStyle>>,
+    style_props: Readonly<Option<ResolvedStyle>>,
     props: &ViewProps,
     content_revision: Readonly<usize>,
 ) -> NodeId {
@@ -35,7 +35,7 @@ pub(crate) fn mount_leaf_with_stretchable_width(
 fn mount_leaf_inner(
     element: &Element,
     widget: &Widget,
-    style_props: Computed<Option<ResolvedStyle>>,
+    style_props: Readonly<Option<ResolvedStyle>>,
     props: &ViewProps,
     content_revision: Readonly<usize>,
     intrinsic_auto_width: bool,

@@ -6,12 +6,13 @@ use nestix::{
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleContext, StyleScope, TabViewItemProps, TabViewProps, TreeContext, matched_style,
-    resolved_view_style,
+    AnimatedStyle, StyleContext, StyleScope, TabViewItemProps, TabViewProps, TreeContext,
+    matched_style, resolved_view_style,
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
 use crate::{
+    WindowContext,
     allocation_bin::AllocationBin,
     contexts::{LayoutRefreshContext, ParentContext},
     layout::mount_leaf_with_stretchable_width,
@@ -27,14 +28,25 @@ struct TabViewContext {
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__gtk4_TabView"];
 
+    let window_context = element.context::<WindowContext>().unwrap();
     let style_context = element.context::<StyleContext>();
-    let style_props = matched_style(
+    let matched_style_props = matched_style(
         style_context,
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
-    let effective_style = resolved_view_style(style_props.clone(), &props.view);
+    let effective_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        effective_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, effective_style, window_context.scale_factor] || {
+            animated_style.set_target(effective_style.get(), scale_factor.get());
+        }
+    );
     let notebook = gtk4::Notebook::new();
     notebook.set_hexpand(true);
     notebook.set_vexpand(true);
@@ -42,7 +54,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let node_id = mount_leaf_with_stretchable_width(
         element,
         notebook.upcast_ref(),
-        style_props,
+        style_props.into_readonly(),
         &props.view,
         content_revision.clone().into_readonly(),
     );

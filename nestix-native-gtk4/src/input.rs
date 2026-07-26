@@ -2,20 +2,34 @@ use std::{cell::Cell, rc::Rc};
 
 use gtk4::prelude::*;
 use nestix::{Element, closure, component, create_state, scoped_effect};
-use nestix_native_core::{InputProps, StyleContext, matched_style};
+use nestix_native_core::{
+    AnimatedStyle, InputProps, StyleContext, matched_style, resolved_view_style,
+};
 
-use crate::layout::mount_leaf;
+use crate::{WindowContext, layout::mount_leaf};
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__gtk4_Input"];
 
     let style_context = element.context::<StyleContext>();
-    let style_props = matched_style(
+    let window_context = element.context::<WindowContext>().unwrap();
+    let matched_style_props = matched_style(
         style_context,
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
+    );
+    let target_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        target_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, target_style, window_context.scale_factor] || {
+            animated_style.set_target(target_style.get(), scale_factor.get());
+        }
     );
     let input = gtk4::Entry::new();
     input.set_text(&props.value.get());
@@ -47,7 +61,7 @@ pub fn Input(props: &InputProps, element: &Element) {
     mount_leaf(
         element,
         input.upcast_ref(),
-        style_props,
+        style_props.into_readonly(),
         &props.view,
         content_revision.into_readonly(),
     );

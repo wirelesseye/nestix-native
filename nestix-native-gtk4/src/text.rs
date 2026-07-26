@@ -2,20 +2,35 @@ use std::{cell::RefCell, rc::Rc};
 
 use gtk4::prelude::*;
 use nestix::{Element, component, create_state, scoped_effect};
-use nestix_native_core::{FontStyle, StyleContext, TextProps, matched_style, resolve_font_props};
+use nestix_native_core::{
+    AnimatedStyle, FontStyle, StyleContext, TextProps, matched_style, resolve_font_props,
+    resolved_view_style,
+};
 
-use crate::layout::mount_leaf;
+use crate::{WindowContext, layout::mount_leaf};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__gtk4_Text"];
 
+    let window_context = element.context::<WindowContext>().unwrap();
     let style_context = element.context::<StyleContext>();
-    let style_props = matched_style(
+    let matched_style_props = matched_style(
         style_context,
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
+    );
+    let target_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        target_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, target_style, window_context.scale_factor] || {
+            animated_style.set_target(target_style.get(), scale_factor.get());
+        }
     );
     let label = gtk4::Label::new(Some(&props.text.get()));
     label.set_xalign(0.0);
@@ -100,7 +115,7 @@ pub fn Text(props: &TextProps, element: &Element) {
     mount_leaf(
         element,
         label.upcast_ref(),
-        style_props,
+        style_props.into_readonly(),
         &props.view,
         content_revision.into_readonly(),
     );
