@@ -18,7 +18,7 @@ fn style_macro_builds_class_rule() {
 fn style_macro_supports_gap() {
     let sheet = style! {
         .stack {
-            gap: 12px;
+            gap: 12 px;
         }
     };
 
@@ -34,9 +34,11 @@ fn style_macro_supports_appearance() {
         .native {
             appearance: native;
         }
+
         .automatic {
             appearance: auto;
         }
+
         .custom {
             appearance: $(inserted);
         }
@@ -67,14 +69,16 @@ fn style_macro_supports_font_props() {
     let sheet = style! {
         .label {
             font_family: "Helvetica Neue";
-            font_size: 16px;
+            font_size: 16 px;
             font_weight: semi-bold;
             font_style: italic;
             text_color: #123456;
         }
+
         .body {
             font_family: Avenir;
         }
+
         .numeric_weight {
             font_weight: 345;
         }
@@ -230,9 +234,11 @@ fn initial_blocks_natural_inheritance_and_unset_resets_non_inherited_props() {
         .initial_font {
             font_family: initial;
         }
+
         .unset_width {
             width: unset;
         }
+
         .ordinary_child {
             height: auto;
         }
@@ -283,9 +289,10 @@ fn global_values_participate_in_specificity_and_source_order() {
         .panel.selected {
             width: inherit;
         }
+
         .panel {
             width: initial;
-            width: 90px;
+            width: 90 px;
         }
     };
 
@@ -459,6 +466,7 @@ fn style_macro_supports_first_and_last_child_selectors() {
         .item:first_child {
             --first: yes;
         }
+
         .item:last_child {
             --last: yes;
         }
@@ -487,13 +495,33 @@ fn style_macro_supports_first_and_last_child_selectors() {
 #[test]
 fn style_macro_supports_full_nth_child_formulas() {
     let sheet = style! {
-        .item:nth_child(2) { --exact: yes; }
-        .item:nth_child(odd) { --odd: yes; }
-        .item:nth_child(even) { --even: yes; }
-        .item:nth_child(3n) { --multiple: yes; }
-        .item:nth_child(2n + 1) { --spaced: yes; }
-        .item:nth_child(-n + 3) { --first_three: yes; }
-        .item:nth_child(0) { --zero: yes; }
+        .item:nth_child(2) {
+            --exact: yes;
+        }
+
+        .item:nth_child(odd) {
+            --odd: yes;
+        }
+
+        .item:nth_child(even) {
+            --even: yes;
+        }
+
+        .item:nth_child(3n) {
+            --multiple: yes;
+        }
+
+        .item:nth_child(2n + 1) {
+            --spaced: yes;
+        }
+
+        .item:nth_child(-n + 3) {
+            --first_three: yes;
+        }
+
+        .item:nth_child(0) {
+            --zero: yes;
+        }
     };
 
     let second =
@@ -523,6 +551,7 @@ fn structural_pseudo_classes_work_inside_combinators() {
         .panel:first_child > .button {
             --parent_first: yes;
         }
+
         .item:first_child + .item {
             --after_first: yes;
         }
@@ -549,6 +578,7 @@ fn structural_pseudo_classes_contribute_class_specificity() {
         .item:first_child {
             bg_color: red;
         }
+
         .item {
             bg_color: blue;
         }
@@ -711,7 +741,7 @@ fn style_macro_embeds_style_sheets_in_source_order() {
     let embedded = style! {
         .counter {
             bg_color: blue;
-            width: 240px;
+            width: 240 px;
         }
     };
 
@@ -723,7 +753,7 @@ fn style_macro_embeds_style_sheets_in_source_order() {
         $(embedded)
 
         .counter {
-            width: 320px;
+            width: 320 px;
         }
     };
 
@@ -820,16 +850,16 @@ fn computed_style_macro_allows_omitting_the_capture_list() {
 fn style_macro_supports_view_props() {
     let sheet = style! {
         .panel {
-            left: 1px;
-            top: 2px;
-            width: 320px;
+            left: 1 px;
+            top: 2 px;
+            width: 320 px;
             height: auto;
-            margin_left: 3px;
-            margin_right: 4px;
-            margin_top: 5px;
-            margin_bottom: 6px;
+            margin_left: 3 px;
+            margin_right: 4 px;
+            margin_top: 5 px;
+            margin_bottom: 6 px;
             flex_grow: 2;
-            flex_basis: 25px;
+            flex_basis: 25 px;
             flex_shrink: 3;
             align_self: center;
         }
@@ -859,10 +889,10 @@ fn style_macro_supports_flex_view_props() {
             align_items: stretch;
             justify_content: space-between;
             flex_wrap: wrap;
-            padding_left: 3px;
-            padding_right: 4px;
-            padding_top: 5px;
-            padding_bottom: 6px;
+            padding_left: 3 px;
+            padding_right: 4 px;
+            padding_top: 5 px;
+            padding_bottom: 6 px;
         }
     };
 
@@ -882,12 +912,12 @@ fn style_macro_supports_flex_view_props() {
 fn style_margin_shorthand_expands_and_cascades_per_edge() {
     let sheet = style! {
         .panel {
-            margin: 8px;
-            margin_left: 16px;
+            margin: 8 px;
+            margin_left: 16 px;
         }
 
         .panel.selected {
-            margin_right: 24px;
+            margin_right: 24 px;
         }
     };
 
@@ -905,9 +935,9 @@ fn style_margin_shorthand_evaluates_inserted_value_once() {
     let sheet = style! {
         .panel {
             margin: $({
-                calls += 1;
-                WithAuto::from(8.0)
-            });
+                          calls += 1;
+                          WithAuto::from(8.0)
+                      });
         }
     };
 
@@ -924,12 +954,12 @@ fn style_margin_shorthand_evaluates_inserted_value_once() {
 fn style_padding_shorthand_expands_and_cascades_per_edge() {
     let sheet = style! {
         .panel {
-            padding: 8px;
-            padding_left: 16px;
+            padding: 8 px;
+            padding_left: 16 px;
         }
 
         .panel.selected {
-            padding_right: 24px;
+            padding_right: 24 px;
         }
     };
 
@@ -947,9 +977,9 @@ fn style_padding_shorthand_evaluates_inserted_value_once() {
     let sheet = style! {
         .panel {
             padding: $({
-                calls += 1;
-                WithAuto::from(8.0)
-            });
+                           calls += 1;
+                           WithAuto::from(8.0)
+                       });
         }
     };
 

@@ -53,6 +53,7 @@ fn AppKitToolbarExample() -> Element {
 
     let styles = computed_style!(
         []
+
         .content {
             padding_top: $(padding_top.get());
             padding_bottom: 15 px;
