@@ -1,4 +1,7 @@
-use std::{cell::Cell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 use gtk4::{glib, prelude::*};
 use nestix::{
@@ -23,6 +26,7 @@ pub struct WindowContext {
     pub window: gtk4::Window,
     pub scale_factor: Readonly<f64>,
     pub animation: Rc<AnimationRuntime>,
+    pub(crate) radio_buttons: Rc<RefCell<Vec<crate::radio_button::RegisteredRadioButton>>>,
 }
 
 #[component]
@@ -34,6 +38,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let animation = Rc::new(AnimationRuntime::new());
     let scale_factor = create_state(1.0);
     let window = gtk4::Window::new();
+    let radio_buttons = Rc::new(RefCell::new(Vec::new()));
     let overlay = gtk4::Overlay::new();
     let content = AllocationBin::new();
     let header_bar = gtk4::HeaderBar::new();
@@ -263,6 +268,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         window: window.clone(),
         scale_factor: scale_factor.into_readonly(),
         animation,
+        radio_buttons,
     });
 
     layout! {

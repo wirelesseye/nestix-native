@@ -1,9 +1,14 @@
 pub mod button;
+pub mod checkbox;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
+pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
+pub mod select;
+pub mod slider;
+pub mod switch;
 pub mod tab_view;
 pub mod text;
 pub mod window;
@@ -13,11 +18,16 @@ mod contexts;
 mod layout;
 
 pub use button::*;
+pub use checkbox::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
+pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
+pub use select::*;
+pub use slider::*;
+pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
 pub use window::*;
@@ -40,6 +50,36 @@ impl Backend for Gtk4Backend {
 
     fn create_button(&self, props: nestix_native_core::ButtonProps) -> Option<nestix::Element> {
         Some(create_element::<Button>(props))
+    }
+
+    fn create_checkbox(&self, props: nestix_native_core::CheckboxProps) -> Option<nestix::Element> {
+        Some(create_element::<Checkbox>(props))
+    }
+
+    fn create_radio_button(
+        &self,
+        props: nestix_native_core::RadioButtonProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<RadioButton>(props))
+    }
+
+    fn create_switch(&self, props: nestix_native_core::SwitchProps) -> Option<nestix::Element> {
+        Some(create_element::<Switch>(props))
+    }
+
+    fn create_select(&self, props: nestix_native_core::SelectProps) -> Option<nestix::Element> {
+        Some(create_element::<Select>(props))
+    }
+
+    fn create_select_option(
+        &self,
+        props: nestix_native_core::SelectOptionProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<SelectOption>(props))
+    }
+
+    fn create_slider(&self, props: nestix_native_core::SliderProps) -> Option<nestix::Element> {
+        Some(create_element::<Slider>(props))
     }
 
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<nestix::Element> {
