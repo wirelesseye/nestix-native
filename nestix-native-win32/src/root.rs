@@ -6,14 +6,18 @@ use std::{
 };
 
 use nestix::{Element, Shared, closure, component, components::ContextProvider, layout};
-use nestix_native_core::{Color, RootProps, StyleScope};
+use nestix_native_core::{Color, DEFAULT_ROOT_FONT_SIZE, RootProps, StyleScope};
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
     System::Ole::OleInitialize,
     UI::{
-        HiDpi::{DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext},
+        HiDpi::{
+            DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext,
+            SystemParametersInfoForDpi,
+        },
         WindowsAndMessaging::{
-            DispatchMessageW, GetMessageW, MSG, PostQuitMessage, TranslateMessage,
+            DispatchMessageW, GetMessageW, MSG, NONCLIENTMETRICSW, PostQuitMessage,
+            SPI_GETNONCLIENTMETRICS, TranslateMessage,
         },
     },
 };
@@ -134,6 +138,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     unsafe {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     }
+    let initial_font_size = system_ui_font_size();
 
     element.on_unmount(|| unsafe { PostQuitMessage(0) });
 
@@ -145,9 +150,34 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<AppState>(app_state) {
-            StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+            StyleScope(
+                .class = props.class.clone(),
+                .default_classes = DEFAULT_CLASSES,
+                .initial_font_size = Some(initial_font_size),
+            ) {
                 $(props.children.clone())
             }
         }
+    }
+}
+
+fn system_ui_font_size() -> f64 {
+    let mut metrics = NONCLIENTMETRICSW {
+        cbSize: std::mem::size_of::<NONCLIENTMETRICSW>() as u32,
+        ..Default::default()
+    };
+    let result = unsafe {
+        SystemParametersInfoForDpi(
+            SPI_GETNONCLIENTMETRICS.0,
+            metrics.cbSize,
+            Some((&mut metrics as *mut NONCLIENTMETRICSW).cast()),
+            0,
+            96,
+        )
+    };
+    if result.is_ok() {
+        f64::from(metrics.lfMessageFont.lfHeight.unsigned_abs()).max(1.0)
+    } else {
+        DEFAULT_ROOT_FONT_SIZE
     }
 }

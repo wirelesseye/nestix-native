@@ -21,6 +21,9 @@ use crate::{
     JustifyContent, Length, Rect, ResolvedFontProps, WithAuto,
 };
 
+/// Cross-platform fallback used when a backend cannot determine its system UI font size.
+pub const DEFAULT_ROOT_FONT_SIZE: f64 = 16.0;
+
 /// A geometry property that can be transitioned.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TransitionProperty {
@@ -374,8 +377,8 @@ pub enum StyleProperty {
     FontFamily(StyleValue<String>),
     /// Font size in logical pixels. This property is inherited.
     ///
-    /// **Available value**: a pixel value such as `14px`.
-    FontSize(StyleValue<f64>),
+    /// **Available value**: pixels such as `14px`, or a font-relative value such as `1.2 em`.
+    FontSize(StyleValue<Length>),
     /// Font weight. This property is inherited.
     ///
     /// **Available value**: `thin`, `extra-light`, `light`, `normal`, `medium`,
@@ -393,75 +396,75 @@ pub enum StyleProperty {
     TextColor(StyleValue<Color>),
     /// Horizontal position offset from the left edge of the containing block.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Left(StyleValue<WithAuto<Length>>),
     /// Vertical position offset from the top edge of the containing block.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Top(StyleValue<WithAuto<Length>>),
     /// Preferred layout width.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Width(StyleValue<WithAuto<Length>>),
     /// Preferred layout height.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Height(StyleValue<WithAuto<Length>>),
     /// Margin applied to all four edges.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Margin(StyleValue<WithAuto<Length>>),
     /// Margin applied to the left and right edges.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     MarginHorizontal(StyleValue<WithAuto<Length>>),
     /// Margin applied to the top and bottom edges.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     MarginVertical(StyleValue<WithAuto<Length>>),
     /// Margin applied to the left edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     MarginLeft(StyleValue<WithAuto<Length>>),
     /// Margin applied to the right edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     MarginRight(StyleValue<WithAuto<Length>>),
     /// Margin applied to the top edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     MarginTop(StyleValue<WithAuto<Length>>),
     /// Margin applied to the bottom edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     MarginBottom(StyleValue<WithAuto<Length>>),
     /// Padding applied to all four edges.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Padding(StyleValue<WithAuto<Length>>),
     /// Padding applied to the left and right edges.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     PaddingHorizontal(StyleValue<WithAuto<Length>>),
     /// Padding applied to the top and bottom edges.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     PaddingVertical(StyleValue<WithAuto<Length>>),
     /// Padding applied to the left edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     PaddingLeft(StyleValue<WithAuto<Length>>),
     /// Padding applied to the right edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     PaddingRight(StyleValue<WithAuto<Length>>),
     /// Padding applied to the top edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     PaddingTop(StyleValue<WithAuto<Length>>),
     /// Padding applied to the bottom edge.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     PaddingBottom(StyleValue<WithAuto<Length>>),
     /// Flex grow factor used when distributing free space.
     ///
@@ -469,7 +472,7 @@ pub enum StyleProperty {
     FlexGrow(StyleValue<f32>),
     /// Initial main size of the flex item.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     FlexBasis(StyleValue<WithAuto<Length>>),
     /// Flex shrink factor used when distributing negative free space.
     ///
@@ -500,7 +503,7 @@ pub enum StyleProperty {
     FlexWrap(StyleValue<FlexWrap>),
     /// Spacing between this element's flex children.
     ///
-    /// **Available value**: `auto`, or a pixel value such as `30px`.
+    /// **Available value**: `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
     Gap(StyleValue<WithAuto<Length>>),
     /// Geometry transitions applied when resolved targets change.
     ///
@@ -695,6 +698,30 @@ pub struct ResolvedStyle {
 }
 
 impl ResolvedStyle {
+    fn resolve_em_lengths(&mut self) {
+        let font_size = self.font_size.unwrap_or(DEFAULT_ROOT_FONT_SIZE);
+        for value in [
+            &mut self.left,
+            &mut self.top,
+            &mut self.width,
+            &mut self.height,
+            &mut self.margin_left,
+            &mut self.margin_right,
+            &mut self.margin_top,
+            &mut self.margin_bottom,
+            &mut self.padding_left,
+            &mut self.padding_right,
+            &mut self.padding_top,
+            &mut self.padding_bottom,
+            &mut self.flex_basis,
+            &mut self.gap,
+        ] {
+            if let Some(WithAuto::Value(length)) = value {
+                *length = length.resolve(font_size);
+            }
+        }
+    }
+
     pub fn transition_for(&self, property: TransitionProperty) -> Option<AnimationSpec> {
         self.transitions
             .iter()
@@ -820,7 +847,14 @@ impl ResolvedStyle {
                 self.font_family = Some(font_family);
             }
             StyleDeclaration::Property(StyleProperty::FontSize(StyleValue::Value(font_size))) => {
-                self.font_size = Some(font_size);
+                let parent_font_size = parent
+                    .and_then(|parent| parent.font_size)
+                    .unwrap_or(DEFAULT_ROOT_FONT_SIZE);
+                self.font_size = Some(match font_size {
+                    Length::Logical(value) => value,
+                    Length::Physical(value) => f64::from(value),
+                    Length::Em(value) => value * parent_font_size,
+                });
             }
             StyleDeclaration::Property(StyleProperty::FontWeight(StyleValue::Value(
                 font_weight,
@@ -995,13 +1029,14 @@ pub fn matched_style(
     let class_list = PropValue::from_signal(computed!(
         [class, default_classes] || { class.get().with_defaults(&default_classes) }
     ));
-    matched_style_for_class_list(style_context, element, class_list)
+    matched_style_for_class_list(style_context, element, class_list, None)
 }
 
 fn matched_style_for_class_list(
     style_context: Option<Rc<StyleContext>>,
     element: &Element,
     class_list: PropValue<ClassList>,
+    initial_font_size_override: Option<f64>,
 ) -> nestix::Computed<Option<ResolvedStyle>> {
     let placement_version = create_state(0);
     let style_sheet = style_context
@@ -1011,6 +1046,13 @@ fn matched_style_for_class_list(
         .as_ref()
         .map(|style_context| style_context.inherited_style.clone())
         .unwrap_or_else(|| PropValue::from_plain(ResolvedStyle::default()));
+    let initial_font_size = initial_font_size_override.unwrap_or_else(|| {
+        style_context
+            .as_ref()
+            .map_or(DEFAULT_ROOT_FONT_SIZE, |style_context| {
+                style_context.initial_font_size
+            })
+    });
     let ancestors = style_context
         .as_ref()
         .map(|style_context| style_context.ancestors.clone())
@@ -1051,7 +1093,8 @@ fn matched_style_for_class_list(
             structure_version,
             inherited_style
         ] || {
-            let inherited_style = inherited_style.get();
+            let mut inherited_style = inherited_style.get();
+            inherited_style.font_size.get_or_insert(initial_font_size);
             let style = if let Some(style_sheet) = &style_sheet {
                 placement_version.get();
                 let style_sheet = style_sheet.get();
@@ -1146,7 +1189,17 @@ pub fn style_length_with_auto(
     default: WithAuto<Length>,
     f: impl FnOnce(&ResolvedStyle) -> Option<WithAuto<Length>>,
 ) -> WithAuto<Length> {
-    inline_or_style(inline, default, style.and_then(f))
+    let value = inline_or_style(inline, default, style.and_then(f));
+    match value {
+        WithAuto::Auto => WithAuto::Auto,
+        WithAuto::Value(length) => WithAuto::Value(
+            length.resolve(
+                style
+                    .and_then(|style| style.font_size)
+                    .unwrap_or(DEFAULT_ROOT_FONT_SIZE),
+            ),
+        ),
+    }
 }
 
 /// Resolves the effective appearance, preferring a non-default inline value.
@@ -1271,7 +1324,7 @@ pub fn style_padding_with_default(
 pub fn resolve_font_props(
     style: Option<&ResolvedStyle>,
     font_family: Option<String>,
-    font_size: Option<f64>,
+    font_size: Option<Length>,
     font_weight: Option<FontWeight>,
     font_style: Option<FontStyle>,
     text_color: Option<Color>,
@@ -1279,7 +1332,16 @@ pub fn resolve_font_props(
     let inherited = style.map(ResolvedStyle::font).unwrap_or_default();
     ResolvedFontProps {
         font_family: font_family.or(inherited.font_family),
-        font_size: font_size.or(inherited.font_size),
+        font_size: font_size
+            .map(|font_size| {
+                let inherited_size = inherited.font_size.unwrap_or(DEFAULT_ROOT_FONT_SIZE);
+                match font_size {
+                    Length::Logical(value) => value,
+                    Length::Physical(value) => f64::from(value),
+                    Length::Em(value) => value * inherited_size,
+                }
+            })
+            .or(inherited.font_size),
         font_weight: font_weight.or(inherited.font_weight),
         font_style: font_style.or(inherited.font_style),
         text_color: text_color.or(inherited.text_color),
@@ -1362,6 +1424,7 @@ impl StyleSheet {
             style.apply(candidate.declaration, parent);
         }
         style.inherit_unspecified(parent, &specified);
+        style.resolve_em_lengths();
         style
     }
 
@@ -1501,6 +1564,8 @@ pub struct StyleContext {
     ancestor_positions: PropValue<Vec<Option<(usize, usize)>>>,
     /// Style values inherited from the parent scope.
     pub inherited_style: PropValue<ResolvedStyle>,
+    /// Backend-provided font size used at the root of the style tree.
+    pub initial_font_size: f64,
     class_registry: ClassRegistry,
     structure_version: State<usize>,
 }
@@ -1556,8 +1621,12 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
         .map(|style_context| style_context.structure_version.clone())
         .unwrap_or_else(|| create_state(0));
     let inherited_style = parent_style_context
+        .as_ref()
         .map(|style_context| style_context.inherited_style.clone())
         .unwrap_or_else(|| PropValue::from_plain(ResolvedStyle::default()));
+    let initial_font_size = parent_style_context
+        .as_ref()
+        .map_or(DEFAULT_ROOT_FONT_SIZE, |context| context.initial_font_size);
 
     layout! {
         ContextProvider<StyleContext>(
@@ -1566,6 +1635,7 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
                 ancestors,
                 ancestor_positions,
                 inherited_style,
+                initial_font_size,
                 class_registry,
                 structure_version,
             },
@@ -1589,6 +1659,8 @@ pub struct StyleScopeProps {
     default_classes: Vec<&'static str>,
     /// Effective style inherited by descendant scopes.
     effective_style: Option<ResolvedStyle>,
+    /// Overrides the backend initial font size at the root of this scope.
+    initial_font_size: Option<f64>,
     /// Components contained by the scope.
     #[props(default)]
     children: Layout,
@@ -1617,6 +1689,11 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
         .as_ref()
         .map(|style_context| style_context.structure_version.clone())
         .unwrap_or_else(|| create_state(0));
+    let initial_font_size = props.initial_font_size.get().unwrap_or_else(|| {
+        parent_style_context
+            .as_ref()
+            .map_or(DEFAULT_ROOT_FONT_SIZE, |context| context.initial_font_size)
+    });
     let ancestors = scope_ancestors(
         parent_ancestors,
         props.class.clone(),
@@ -1638,7 +1715,12 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
     let matched = if props.effective_style.get().is_some() {
         computed!([props.effective_style] || effective_style.get())
     } else {
-        matched_style_for_class_list(parent_style_context.clone(), element, class_list.clone())
+        matched_style_for_class_list(
+            parent_style_context.clone(),
+            element,
+            class_list.clone(),
+            Some(initial_font_size),
+        )
     };
     if parent_style_context.is_none() {
         register_style_element(
@@ -1664,6 +1746,7 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
                 ancestors,
                 ancestor_positions,
                 inherited_style,
+                initial_font_size,
                 class_registry,
                 structure_version,
             },

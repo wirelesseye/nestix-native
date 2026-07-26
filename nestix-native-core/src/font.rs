@@ -1,6 +1,6 @@
 use nestix::props;
 
-use crate::Color;
+use crate::{Color, Length};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FontWeight {
@@ -45,8 +45,8 @@ pub enum FontStyle {
 pub struct FontProps {
     /// Preferred font family name.
     pub font_family: Option<String>,
-    /// Font size in logical points.
-    pub font_size: Option<f64>,
+    /// Font size in logical pixels or `em` units.
+    pub font_size: Option<Length>,
     /// Font weight.
     pub font_weight: Option<FontWeight>,
     /// Font style.

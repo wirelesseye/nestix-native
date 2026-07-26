@@ -1,26 +1,71 @@
-use dpi::{LogicalUnit, PhysicalUnit, Pixel, PixelUnit};
+use dpi::{LogicalUnit, PhysicalUnit, Pixel};
 
-/// An explicit logical or physical pixel length.
+/// An explicit logical, physical, or font-relative length.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Length(PixelUnit);
+pub enum Length {
+    /// Device-independent logical pixels.
+    Logical(f64),
+    /// Device pixels, converted using the current scale factor.
+    Physical(i32),
+    /// A multiple of the element's computed font size.
+    Em(f64),
+}
 
 impl Length {
     pub fn logical(value: impl Into<f64>) -> Self {
-        Self(PixelUnit::Logical(LogicalUnit::new(value.into())))
+        Self::Logical(value.into())
     }
 
     pub fn physical(value: impl Into<i32>) -> Self {
-        Self(PixelUnit::Physical(PhysicalUnit::new(value.into())))
+        Self::Physical(value.into())
     }
 
+    /// Creates a length relative to the element's computed font size.
+    pub fn em(value: impl Into<f64>) -> Self {
+        Self::Em(value.into())
+    }
+
+    /// Resolves font-relative units using `font_size`, preserving pixel units.
+    pub fn resolve(self, font_size: f64) -> Self {
+        match self {
+            Self::Em(value) => Self::Logical(value * font_size),
+            value => value,
+        }
+    }
+
+    /// Resolves this length to logical pixels after font-relative units have been computed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called directly on [`Length::Em`]. Use [`Length::resolve`] first.
     pub fn to_logical<P: Pixel>(&self, scale_factor: f64) -> LogicalUnit<P> {
-        self.0.to_logical(scale_factor)
+        match *self {
+            Self::Logical(value) => LogicalUnit::new(value.cast()),
+            Self::Physical(value) => PhysicalUnit::new(value).to_logical(scale_factor),
+            Self::Em(_) => panic!("em length must be resolved against a computed font size"),
+        }
+    }
+
+    /// Resolves this length to physical pixels after font-relative units have been computed.
+    ///
+    /// # Panics
+    ///
+    /// Panics if called directly on [`Length::Em`]. Use [`Length::resolve`] first.
+    pub fn to_physical<P: Pixel>(&self, scale_factor: f64) -> PhysicalUnit<P> {
+        match *self {
+            Self::Logical(value) => LogicalUnit::new(value).to_physical(scale_factor),
+            Self::Physical(value) => PhysicalUnit::new(value.cast()),
+            Self::Em(_) => panic!("em length must be resolved against a computed font size"),
+        }
     }
 }
 
-impl From<PixelUnit> for Length {
-    fn from(value: PixelUnit) -> Self {
-        Self(value)
+impl From<dpi::PixelUnit> for Length {
+    fn from(value: dpi::PixelUnit) -> Self {
+        match value {
+            dpi::PixelUnit::Logical(value) => Self::Logical(value.0),
+            dpi::PixelUnit::Physical(value) => Self::Physical(value.0),
+        }
     }
 }
 
@@ -90,12 +135,9 @@ impl WithAuto<Length> {
 
         match self {
             WithAuto::Auto => taffy::Dimension::auto(),
-            WithAuto::Value(Length(pixel_unit)) => match pixel_unit {
-                PixelUnit::Physical(physical_unit) => {
-                    taffy::Dimension::from_length(physical_unit.to_logical::<f32>(scale_factor))
-                }
-                PixelUnit::Logical(logical_unit) => taffy::Dimension::from_length(*logical_unit),
-            },
+            WithAuto::Value(length) => {
+                taffy::Dimension::from_length(length.to_logical::<f32>(scale_factor))
+            }
         }
     }
 }

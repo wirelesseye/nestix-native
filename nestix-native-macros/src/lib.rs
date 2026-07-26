@@ -62,7 +62,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 /// style-participating siblings; transparent component wrappers do not add a
 /// position.
 ///
-/// WithAuto<Length> literals must be `auto` or a pixel value such as `30px`.
+/// WithAuto<Length> literals must be `auto`, pixels such as `30px`, or font-relative values such as `2 em`.
 /// Bare numeric sizes such as `margin: 30;` are rejected. Built-in values
 /// are parsed as their Rust types, while custom properties must use a `--`
 /// prefix and are stored as strings.

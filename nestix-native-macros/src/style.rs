@@ -799,22 +799,26 @@ fn expand_length_with_auto(value: StyleValueInput) -> Result<TokenStream2> {
         return Ok(quote!(#nestix_native_path::WithAuto::Auto));
     }
 
-    let Some(value) = value.strip_suffix("px") else {
+    let (value, constructor) = if let Some(value) = value.strip_suffix("px") {
+        (value, quote!(#nestix_native_path::Length::logical))
+    } else if let Some(value) = value.strip_suffix("em") {
+        (value, quote!(#nestix_native_path::Length::em))
+    } else {
         return Err(Error::new(
             proc_macro2::Span::call_site(),
-            "length values must be `auto`, `{number}px`, or an inserted WithAuto<Length>",
+            "length values must be `auto`, `{number}px`, `{number} em`, or an inserted WithAuto<Length>",
         ));
     };
 
-    let length = value.parse::<f64>().map_err(|_| {
+    let length = value.trim().parse::<f64>().map_err(|_| {
         Error::new(
             proc_macro2::Span::call_site(),
-            "length values must be `auto`, `{number}px`, or an inserted WithAuto<Length>",
+            "length values must be `auto`, `{number}px`, `{number} em`, or an inserted WithAuto<Length>",
         )
     })?;
 
     Ok(quote!(#nestix_native_path::WithAuto::from(
-        #nestix_native_path::Length::logical(#length)
+        #constructor(#length)
     )))
 }
 
@@ -980,20 +984,25 @@ fn expand_font_family(value: StyleValueInput) -> Result<TokenStream2> {
 }
 
 fn expand_font_size(value: StyleValueInput) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
     let value = match value {
         StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
         StyleValueInput::Literal(value) => value,
     };
-    let Some(value) = value.strip_suffix("px") else {
+    let (value, constructor) = if let Some(value) = value.strip_suffix("px") {
+        (value, quote!(#nestix_native_path::Length::logical))
+    } else if let Some(value) = value.strip_suffix("em") {
+        (value, quote!(#nestix_native_path::Length::em))
+    } else {
         return Err(Error::new(
             proc_macro2::Span::call_site(),
-            "font-size must be `{number}px` or an inserted f64",
+            "font-size must be `{number}px`, `{number} em`, or an inserted Length",
         ));
     };
-    let value = value.parse::<f64>().map_err(|_| {
+    let value = value.trim().parse::<f64>().map_err(|_| {
         Error::new(
             proc_macro2::Span::call_site(),
-            "font-size must be `{number}px` or an inserted f64",
+            "font-size must be `{number}px`, `{number} em`, or an inserted Length",
         )
     })?;
     if !value.is_finite() || value <= 0.0 {
@@ -1002,7 +1011,7 @@ fn expand_font_size(value: StyleValueInput) -> Result<TokenStream2> {
             "font-size must be greater than zero",
         ));
     }
-    Ok(quote!(#value))
+    Ok(quote!(#constructor(#value)))
 }
 
 fn expand_font_weight(value: StyleValueInput) -> Result<TokenStream2> {

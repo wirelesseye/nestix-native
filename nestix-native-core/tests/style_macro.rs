@@ -98,7 +98,7 @@ fn style_macro_supports_font_props() {
 #[test]
 fn style_macro_supports_inserted_font_props() {
     let family = "Avenir Next".to_string();
-    let size = 18.0;
+    let size = Length::logical(18.0);
     let weight = FontWeight::Bold;
     let style = FontStyle::Normal;
     let color = Color::BLUE;
@@ -114,10 +114,31 @@ fn style_macro_supports_inserted_font_props() {
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("label")));
     assert_eq!(props.font_family, Some(family));
-    assert_eq!(props.font_size, Some(size));
+    assert_eq!(props.font_size, Some(18.0));
     assert_eq!(props.font_weight, Some(weight));
     assert_eq!(props.font_style, Some(style));
     assert_eq!(props.text_color, Some(color));
+}
+
+#[test]
+fn em_values_resolve_against_computed_font_size() {
+    let sheet = style! {
+        .child {
+            font_size: 1.5 em;
+            padding: 2 em;
+        }
+    };
+    let mut parent = ResolvedStyle::default();
+    parent.font_size = Some(18.0);
+
+    let props = sheet
+        .matched_props_with_parent(&MatchContext::new(ClassList::from("child")), Some(&parent));
+
+    assert_eq!(props.font_size, Some(27.0));
+    assert_eq!(props.padding_top, Some(WithAuto::from(54.0)));
+    assert_eq!(props.padding_right, Some(WithAuto::from(54.0)));
+    assert_eq!(props.padding_bottom, Some(WithAuto::from(54.0)));
+    assert_eq!(props.padding_left, Some(WithAuto::from(54.0)));
 }
 
 #[test]
@@ -323,14 +344,14 @@ fn inherited_style_uses_parent_inline_view_value() {
 fn text_and_button_accept_nested_font_props() {
     let text = nestix::build_props!(TextProps(
         "Hello",
-        .font(.font_size = Some(18.0), .font_weight = Some(FontWeight::Bold))
+        .font(.font_size = Some(Length::logical(18.0)), .font_weight = Some(FontWeight::Bold))
     ));
     let button = nestix::build_props!(ButtonProps(
         .title = "Save",
         .font(.font_family = Some("Avenir".to_string()), .text_color = Some(Color::RED))
     ));
 
-    assert_eq!(text.font.font_size.get(), Some(18.0));
+    assert_eq!(text.font.font_size.get(), Some(Length::logical(18.0)));
     assert_eq!(text.font.font_weight.get(), Some(FontWeight::Bold));
     assert_eq!(button.font.font_family.get().as_deref(), Some("Avenir"));
     assert_eq!(button.font.text_color.get(), Some(Color::RED));

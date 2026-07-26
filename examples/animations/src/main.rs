@@ -5,8 +5,8 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    AlignItems, AnimationSpec, Button, Easing, FlexDirection, FlexView, Root, StyleProvider, Text,
-    Window, animate, style,
+    AlignItems, AnimationSpec, Button, Easing, FlexDirection, FlexView, Length, Root,
+    StyleProvider, Text, Window, animate, style,
 };
 
 fn main() {
@@ -86,7 +86,10 @@ fn AnimationApp() -> Element {
                     .resizable = false,
                 ) {
                     FlexView(.class = "root", .view(.flex_grow = 1.0)) {
-                        Text("Cross-platform animation API", .font(.font_size = Some(24.0)))
+                        Text(
+                            "Cross-platform animation API",
+                            .font(.font_size = Some(Length::logical(24.0))),
+                        )
                         Text("The card uses stylesheet transitions; the window uses animate(...).")
                         FlexView(.class = "stage") {
                             FlexView(.class = card_class) {

@@ -8,7 +8,7 @@ use std::{
 
 use nestix::{Shared, State, create_state, untrack};
 
-use crate::{Length, ResolvedStyle, TransitionProperty, WithAuto};
+use crate::{DEFAULT_ROOT_FONT_SIZE, Length, ResolvedStyle, TransitionProperty, WithAuto};
 
 /// Timing curve used by an animation.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -323,8 +323,16 @@ impl AnimatedStyle {
                 continue;
             };
             let (Some(from), Some(to)) = (
-                logical_length_with_auto(from, scale_factor),
-                logical_length_with_auto(to, scale_factor),
+                logical_length_with_auto(
+                    from,
+                    scale_factor,
+                    current.font_size.unwrap_or(DEFAULT_ROOT_FONT_SIZE),
+                ),
+                logical_length_with_auto(
+                    to,
+                    scale_factor,
+                    target.font_size.unwrap_or(DEFAULT_ROOT_FONT_SIZE),
+                ),
             ) else {
                 self.runtime.cancel((self.owner, property));
                 continue;
@@ -359,10 +367,14 @@ impl Drop for AnimatedStyle {
     }
 }
 
-fn logical_length_with_auto(value: WithAuto<Length>, scale_factor: f64) -> Option<f64> {
+fn logical_length_with_auto(
+    value: WithAuto<Length>,
+    scale_factor: f64,
+    font_size: f64,
+) -> Option<f64> {
     match value {
         WithAuto::Auto => None,
-        WithAuto::Value(value) => Some(value.to_logical::<f64>(scale_factor).0),
+        WithAuto::Value(value) => Some(value.resolve(font_size).to_logical::<f64>(scale_factor).0),
     }
 }
 

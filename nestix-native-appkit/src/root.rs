@@ -4,7 +4,7 @@ use nestix::{
 };
 use nestix_native_core::{RootProps, StyleScope};
 use objc2::{MainThreadMarker, rc::Retained};
-use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSMenu};
+use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSFont, NSMenu};
 use objc2_foundation::NSObject;
 
 #[derive(Clone)]
@@ -47,7 +47,11 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     layout! {
         ContextProvider<RootContext>(RootContext { ns_application, app_menu, active_window_menu,  }) {
-            StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+            StyleScope(
+                .class = props.class.clone(),
+                .default_classes = DEFAULT_CLASSES,
+                .initial_font_size = Some(NSFont::systemFontSize()),
+            ) {
                 $(props.children.clone())
             }
         }
