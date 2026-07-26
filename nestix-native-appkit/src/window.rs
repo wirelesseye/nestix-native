@@ -86,8 +86,6 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         | NSWindowStyleMask::Titled;
     ns_window.setStyleMask(style_mask);
     apply_title_bar_mode(&ns_window, props.title_bar_mode.get());
-    root_context.ns_application.activate();
-    ns_window.makeKeyAndOrderFront(None);
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
 
     // NSWindow does not retain its delegate.
@@ -113,6 +111,17 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         [ns_window, props.title] || {
             let ns_string = NSString::from_str(&title.get());
             ns_window.setTitle(&ns_string);
+        }
+    );
+
+    scoped_effect!(
+        [root_context.ns_application, ns_window, props.visible] || {
+            if visible.get() {
+                ns_application.activate();
+                ns_window.makeKeyAndOrderFront(None);
+            } else {
+                ns_window.orderOut(None);
+            }
         }
     );
 

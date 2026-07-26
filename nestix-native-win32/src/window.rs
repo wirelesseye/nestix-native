@@ -68,12 +68,17 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
 
     let title = HSTRING::from(props.title.get());
+    let window_style = if props.visible.get() {
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE
+    } else {
+        WS_OVERLAPPEDWINDOW
+    };
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
             window_classname(hinstance),
             &title,
-            WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+            window_style,
             CW_USEDEFAULT,
             CW_USEDEFAULT,
             0,
@@ -111,6 +116,13 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         [props.title]
             || unsafe {
                 SetWindowTextW(hwnd, &HSTRING::from(title.get())).unwrap();
+            }
+    );
+
+    scoped_effect!(
+        [props.visible]
+            || unsafe {
+                let _ = ShowWindow(hwnd, if visible.get() { SW_SHOW } else { SW_HIDE });
             }
     );
 

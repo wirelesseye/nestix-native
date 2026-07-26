@@ -81,6 +81,15 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
     scoped_effect!(
+        [window, props.visible] || {
+            if visible.get() {
+                window.present();
+            } else {
+                window.set_visible(false);
+            }
+        }
+    );
+    scoped_effect!(
         [window, header_bar, props.title_bar_mode] || {
             apply_title_bar_mode(&window, &header_bar, title_bar_mode.get());
         }
@@ -137,9 +146,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     ));
 
     element.after_mount(closure!(
-        [window, layout_refresh] || {
+        [window, layout_refresh, props.visible] || {
             layout_refresh.flush_queued_refresh();
-            window.present();
+            if visible.get() {
+                window.present();
+            }
         }
     ));
     let window_context = Rc::new(WindowContext {

@@ -32,6 +32,10 @@ pub struct WindowProps {
     #[props(default)]
     pub title: String,
 
+    /// Whether the window is visible.
+    #[props(default = true)]
+    pub visible: bool,
+
     /// Native title-bar presentation mode.
     #[props(default)]
     pub title_bar_mode: TitleBarMode,

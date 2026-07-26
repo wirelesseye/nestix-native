@@ -40,9 +40,10 @@ fn Target() -> Element {
 
 #[test]
 fn menu_bar_and_context_menu_compile_through_layout() {
+    let visible = nestix::create_state(true);
     let context_menu = ContextMenuController::new();
     let _window = layout! {
-        Window {
+        Window(.visible = visible) {
             FlexView {
                 MenuBar(.menu = layout!{ DocumentMenu })
                 Target
