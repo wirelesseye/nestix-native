@@ -368,7 +368,6 @@ struct TargetState {
     on_over: PropValue<Option<Shared<dyn Fn(&DragOffer) -> Option<DragOperation>>>>,
     on_leave: PropValue<Option<Shared<dyn Fn()>>>,
     on_drop: PropValue<Shared<dyn Fn(DropEvent)>>,
-    current: RefCell<Option<(IDataObject, DragDataTypes, DragOperation)>>,
 }
 
 fn active_target(hwnd: HWND, point: &POINTL) -> Option<Rc<TargetState>> {
@@ -384,15 +383,6 @@ fn active_target(hwnd: HWND, point: &POINTL) -> Option<Rc<TargetState>> {
             .iter()
             .rev()
             .find(|state| state.visual.contains_client_point(client))
-            .cloned()
-    })
-}
-
-fn current_target(hwnd: HWND) -> Option<Rc<TargetState>> {
-    TARGETS.with_borrow(|all| {
-        all.get(&hwnd.0)?
-            .iter()
-            .find(|state| state.current.borrow().is_some())
             .cloned()
     })
 }
@@ -439,6 +429,14 @@ fn decide(state: &TargetState, offer: &DragOffer, entering: bool) -> Option<Drag
 #[implement(IDropTarget)]
 struct NativeDropTarget {
     hwnd: HWND,
+    session: RefCell<Option<DropSession>>,
+}
+
+struct DropSession {
+    data: IDataObject,
+    allowed: DROPEFFECT,
+    target: Option<Rc<TargetState>>,
+    operation: Option<DragOperation>,
 }
 
 impl IDropTarget_Impl for NativeDropTarget_Impl {
@@ -449,17 +447,27 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         point: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
+        self.session.borrow_mut().take();
+        let data = data.as_ref().ok_or_else(|| Error::from(E_POINTER))?.clone();
+        let allowed = unsafe { *effect };
         let Some(state) = active_target(self.hwnd, point) else {
+            self.session.replace(Some(DropSession {
+                data,
+                allowed,
+                target: None,
+                operation: None,
+            }));
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
-        let data = data.as_ref().ok_or_else(|| Error::from(E_POINTER))?.clone();
-        let allowed = unsafe { *effect };
         let value = offer(&state, &data, keys, point, allowed);
         let choice = decide(&state, &value, true);
-        state
-            .current
-            .replace(choice.map(|op| (data, value.available_types, op)));
+        self.session.replace(Some(DropSession {
+            data,
+            allowed,
+            target: Some(state),
+            operation: choice,
+        }));
         unsafe {
             *effect = native_operation(choice);
         }
@@ -471,48 +479,61 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         point: &POINTL,
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
-        let previous = current_target(self.hwnd);
+        let Some((data, allowed, previous)) = self.session.borrow().as_ref().map(|session| {
+            (
+                session.data.clone(),
+                session.allowed,
+                session.target.clone(),
+            )
+        }) else {
+            unsafe { *effect = DROPEFFECT_NONE };
+            return Ok(());
+        };
         let Some(state) = active_target(self.hwnd, point) else {
             if let Some(previous) = previous {
-                previous.current.replace(None);
                 if let Some(f) = previous.on_leave.get() {
                     f();
                 }
             }
+            self.session.replace(Some(DropSession {
+                data,
+                allowed,
+                target: None,
+                operation: None,
+            }));
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
-        let Some((data, _, _)) = previous
-            .as_ref()
-            .and_then(|state| state.current.borrow().clone())
-        else {
-            unsafe { *effect = DROPEFFECT_NONE };
-            return Ok(());
-        };
-        let value = offer(&state, &data, keys, point, unsafe { *effect });
+        let value = offer(&state, &data, keys, point, allowed);
         let entering = previous
             .as_ref()
             .is_none_or(|previous| !Rc::ptr_eq(previous, &state));
         if entering {
             if let Some(previous) = previous {
-                previous.current.replace(None);
                 if let Some(f) = previous.on_leave.get() {
                     f();
                 }
             }
         }
         let choice = decide(&state, &value, entering);
-        state
-            .current
-            .replace(choice.map(|op| (data, value.available_types, op)));
+        self.session.replace(Some(DropSession {
+            data,
+            allowed,
+            target: Some(state),
+            operation: choice,
+        }));
         unsafe {
             *effect = native_operation(choice);
         }
         Ok(())
     }
     fn DragLeave(&self) -> windows::core::Result<()> {
-        if let Some(state) = current_target(self.hwnd) {
-            state.current.replace(None);
+        if let Some(state) = self
+            .session
+            .borrow_mut()
+            .take()
+            .and_then(|session| session.target)
+        {
             if let Some(f) = state.on_leave.get() {
                 f();
             }
@@ -527,19 +548,28 @@ impl IDropTarget_Impl for NativeDropTarget_Impl {
         effect: *mut DROPEFFECT,
     ) -> windows::core::Result<()> {
         let Some(state) = active_target(self.hwnd, point) else {
+            if let Some(previous) = self
+                .session
+                .borrow_mut()
+                .take()
+                .and_then(|session| session.target)
+                && let Some(f) = previous.on_leave.get()
+            {
+                f();
+            }
             unsafe { *effect = DROPEFFECT_NONE };
             return Ok(());
         };
         let data = data.as_ref().ok_or_else(|| Error::from(E_POINTER))?.clone();
-        let allowed = unsafe { *effect };
-        let value = offer(&state, &data, keys, point, allowed);
-        let choice = state
-            .current
-            .borrow()
+        let session = self.session.borrow_mut().take();
+        let allowed = session
             .as_ref()
-            .map(|v| v.2)
+            .map(|session| session.allowed)
+            .unwrap_or_else(|| unsafe { *effect });
+        let value = offer(&state, &data, keys, point, allowed);
+        let choice = session
+            .and_then(|session| session.operation)
             .filter(|op| value.allowed_operations.contains_operation(*op));
-        state.current.replace(None);
         unsafe {
             *effect = native_operation(choice);
         }
@@ -589,7 +619,11 @@ fn register_target(state: Rc<TargetState>) -> windows::core::Result<TargetRegist
         first
     });
     if first {
-        let target: IDropTarget = NativeDropTarget { hwnd: state.hwnd }.into();
+        let target: IDropTarget = NativeDropTarget {
+            hwnd: state.hwnd,
+            session: RefCell::new(None),
+        }
+        .into();
         if let Err(error) = unsafe { RegisterDragDrop(state.hwnd, &target) } {
             TARGETS.with_borrow_mut(|all| {
                 all.remove(&state.hwnd.0);
@@ -648,7 +682,6 @@ pub fn DropTarget(props: &DropTargetProps, element: &Element) -> Element {
                             on_over: on_over.clone(),
                             on_leave: on_leave.clone(),
                             on_drop: on_drop.clone(),
-                            current: RefCell::new(None),
                         });
                         if let Ok(value) = register_target(state) {
                             registration.borrow_mut().replace(value);
@@ -1145,6 +1178,17 @@ mod tests {
         ] {
             assert_eq!(operation(native_operation(Some(op))), Some(op));
         }
+    }
+
+    #[test]
+    fn native_data_object_advertises_all_supplied_types() {
+        let content = DragContent::new()
+            .with_files([PathBuf::from("example.txt")])
+            .with_image(DragImage::new([1, 2, 3], "image/png", "example.png"))
+            .with_text("hello");
+        let data: IDataObject = NativeDataObject { content }.into();
+
+        assert_eq!(available_types(&data), DragDataTypes::ALL);
     }
     #[test]
     fn hdrop_is_double_nul_terminated() {
