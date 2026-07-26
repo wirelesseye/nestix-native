@@ -36,6 +36,10 @@ pub struct WindowProps {
     #[props(default = true)]
     pub visible: bool,
 
+    /// Whether the user can resize the window.
+    #[props(default = true)]
+    pub resizable: bool,
+
     /// Native title-bar presentation mode.
     #[props(default)]
     pub title_bar_mode: TitleBarMode,

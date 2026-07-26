@@ -83,6 +83,7 @@ fn AnimationApp() -> Element {
                     .on_close_requested = callback!(|| {
                         unmount_root().expect("root should be mounted");
                     }),
+                    .resizable = false,
                 ) {
                     FlexView(.class = "root", .view(.flex_grow = 1.0)) {
                         Text("Cross-platform animation API", .font(.font_size = Some(24.0)))

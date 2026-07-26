@@ -126,6 +126,18 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
+        [ns_window, props.resizable] || {
+            let mut style_mask = ns_window.styleMask();
+            if resizable.get() {
+                style_mask.insert(NSWindowStyleMask::Resizable);
+            } else {
+                style_mask.remove(NSWindowStyleMask::Resizable);
+            }
+            ns_window.setStyleMask(style_mask);
+        }
+    );
+
+    scoped_effect!(
         [ns_window, props.title_bar_mode] || {
             apply_title_bar_mode(&ns_window, title_bar_mode.get());
         }

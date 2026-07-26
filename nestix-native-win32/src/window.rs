@@ -68,11 +68,14 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
 
     let title = HSTRING::from(props.title.get());
-    let window_style = if props.visible.get() {
+    let mut window_style = if props.visible.get() {
         WS_OVERLAPPEDWINDOW | WS_VISIBLE
     } else {
         WS_OVERLAPPEDWINDOW
     };
+    if !props.resizable.get() {
+        window_style &= !(WS_THICKFRAME | WS_MAXIMIZEBOX);
+    }
     let hwnd = unsafe {
         CreateWindowExW(
             WINDOW_EX_STYLE::default(),
@@ -123,6 +126,13 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         [props.visible]
             || unsafe {
                 let _ = ShowWindow(hwnd, if visible.get() { SW_SHOW } else { SW_HIDE });
+            }
+    );
+
+    scoped_effect!(
+        [props.resizable]
+            || unsafe {
+                apply_resizable(hwnd, resizable.get());
             }
     );
 
@@ -286,6 +296,31 @@ unsafe fn apply_title_bar_mode(hwnd: HWND, mode: TitleBarMode) {
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
         )
         .unwrap();
+    }
+}
+
+unsafe fn apply_resizable(hwnd: HWND, resizable: bool) {
+    unsafe {
+        let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
+        let resize_styles = (WS_THICKFRAME | WS_MAXIMIZEBOX).0 as isize;
+        let next_style = if resizable {
+            style | resize_styles
+        } else {
+            style & !resize_styles
+        };
+        if next_style != style {
+            SetWindowLongPtrW(hwnd, GWL_STYLE, next_style);
+            SetWindowPos(
+                hwnd,
+                None,
+                0,
+                0,
+                0,
+                0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED,
+            )
+            .unwrap();
+        }
     }
 }
 

@@ -90,6 +90,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
     scoped_effect!(
+        [window, props.resizable] || {
+            window.set_resizable(resizable.get());
+        }
+    );
+    scoped_effect!(
         [window, header_bar, props.title_bar_mode] || {
             apply_title_bar_mode(&window, &header_bar, title_bar_mode.get());
         }
