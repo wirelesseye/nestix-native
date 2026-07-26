@@ -3,8 +3,9 @@ use std::{cell::RefCell, rc::Rc};
 use gtk4::prelude::*;
 use nestix::{Element, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
-    Appearance, ButtonProps, FontStyle, Length, Rect, StyleContext, WithAuto, matched_style,
-    resolve_font_props, style_appearance, style_padding_with_default,
+    AnimatedStyle, Appearance, ButtonProps, FontStyle, Length, Rect, StyleContext, WithAuto,
+    matched_style, resolve_font_props, resolved_view_style, style_appearance,
+    style_padding_with_default,
 };
 
 use crate::{WindowContext, layout::mount_leaf};
@@ -15,11 +16,22 @@ pub fn Button(props: &ButtonProps, element: &Element) {
 
     let window_context = element.context::<WindowContext>().unwrap();
     let style_context = element.context::<StyleContext>();
-    let style_props = matched_style(
+    let matched_style_props = matched_style(
         style_context,
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
+    );
+    let target_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        target_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, target_style, window_context.scale_factor] || {
+            animated_style.set_target(target_style.get(), scale_factor.get());
+        }
     );
     let button = gtk4::Button::with_label(&props.title.get());
     let css = gtk4::CssProvider::new();
@@ -138,7 +150,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     mount_leaf(
         element,
         button.upcast_ref(),
-        style_props,
+        style_props.into_readonly(),
         &props.view,
         content_revision.into_readonly(),
     );

@@ -2,12 +2,14 @@ use std::{cell::Cell, rc::Rc};
 
 use gtk4::{glib, prelude::*};
 use nestix::{
-    Element, Layout, Readonly, callback, closure, component, components::ContextProvider,
+    Element, Layout, Readonly, callback, closure, component, components::ContextProvider, computed,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleScope, TitleBarMode, TreeContext, WindowProps,
+    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
+    WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{LogicalSize, Size as DpiSize},
+    matched_style, style_length_with_auto,
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
@@ -20,6 +22,7 @@ use crate::{
 pub struct WindowContext {
     pub window: gtk4::Window,
     pub scale_factor: Readonly<f64>,
+    pub animation: Rc<AnimationRuntime>,
 }
 
 #[component]
@@ -28,6 +31,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     let tree_context = Rc::new(TreeContext::new());
     let layout_refresh = LayoutRefreshContext::new(tree_context.clone());
+    let animation = Rc::new(AnimationRuntime::new());
     let scale_factor = create_state(1.0);
     let window = gtk4::Window::new();
     let overlay = gtk4::Overlay::new();
@@ -76,20 +80,63 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
     let requested_content_size = Rc::new(Cell::new((-1, -1)));
+    let decoration_size = Rc::new(Cell::new((0, 0)));
     let correct_system_title_bar_size = Rc::new(Cell::new(false));
+    let native_size_override = Rc::new(Cell::new(false));
+    let style_props = matched_style(
+        element.context::<StyleContext>(),
+        element,
+        props.class.clone(),
+        &DEFAULT_CLASSES,
+    );
+    let target_size = computed!(
+        [style_props, props.width, props.height] || {
+            let mut style = style_props.get().unwrap_or_default();
+            style.width = Some(style_length_with_auto(
+                Some(&style),
+                width.get().into(),
+                NativeLengthWithAuto::from(800),
+                |style| style.width,
+            ));
+            style.height = Some(style_length_with_auto(
+                Some(&style),
+                height.get().into(),
+                NativeLengthWithAuto::from(600),
+                |style| style.height,
+            ));
+            Some(style)
+        }
+    );
+    let animated_size = Rc::new(AnimatedStyle::new(animation.clone(), target_size.get()));
+    let presented_size = animated_size.value();
+    scoped_effect!(
+        [
+            animated_size,
+            target_size,
+            scale_factor,
+            native_size_override
+        ] || {
+            native_size_override.set(false);
+            animated_size.set_target(target_size.get(), scale_factor.get());
+        }
+    );
     scoped_effect!(
         [
             window,
             requested_content_size,
-            correct_system_title_bar_size,
-            props.width,
-            props.height,
-            props.title_bar_mode
+            decoration_size,
+            presented_size,
+            scale_factor
         ] || {
-            let size = (width.get().round() as i32, height.get().round() as i32);
+            let style = presented_size.get().unwrap_or_default();
+            let fallback = requested_content_size.get();
+            let size = (
+                logical_length(style.width, fallback.0, scale_factor.get()),
+                logical_length(style.height, fallback.1, scale_factor.get()),
+            );
             requested_content_size.set(size);
-            correct_system_title_bar_size.set(title_bar_mode.get() == TitleBarMode::System);
-            window.set_default_size(size.0, size.1);
+            let decoration = decoration_size.get();
+            window.set_default_size(size.0 + decoration.0, size.1 + decoration.1);
         }
     );
     scoped_effect!(
@@ -107,44 +154,76 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
     scoped_effect!(
-        [window, header_bar, props.title_bar_mode] || {
-            apply_title_bar_mode(&window, &header_bar, title_bar_mode.get());
+        [
+            window,
+            header_bar,
+            decoration_size,
+            correct_system_title_bar_size,
+            props.title_bar_mode
+        ] || {
+            let mode = title_bar_mode.get();
+            apply_title_bar_mode(&window, &header_bar, mode);
+            decoration_size.set((0, 0));
+            correct_system_title_bar_size.set(mode == TitleBarMode::System);
         }
     );
 
-    let last_width = Rc::new(Cell::new(-1));
-    let last_height = Rc::new(Cell::new(-1));
     let last_content_width = Rc::new(Cell::new(-1));
     let last_content_height = Rc::new(Cell::new(-1));
     window.add_tick_callback(closure!(
         [
             tree_context,
             layout_refresh,
+            animation,
             props.on_resize,
             content,
-            last_width,
-            last_height,
             last_content_width,
             last_content_height,
             requested_content_size,
-            correct_system_title_bar_size
+            decoration_size,
+            correct_system_title_bar_size,
+            native_size_override,
+            animated_size,
+            presented_size
         ] | window,
         _ | {
             let width = window.width();
             let height = window.height();
             let content_width = content.width();
             let content_height = content.height();
-            if correct_system_title_bar_size.get() && content_width > 0 && content_height > 0 {
+            let correcting_system_title_bar = correct_system_title_bar_size.get();
+            if correcting_system_title_bar && content_width > 0 && content_height > 0 {
                 let requested_size = requested_content_size.get();
                 // GTK includes client-side system decorations in the window
                 // allocation. Preserve the requested content size by adding the
                 // measured decoration size to the default window size. With
                 // server-side decorations this difference is zero.
+                let decoration = (width - content_width, height - content_height);
+                decoration_size.set(decoration);
                 window.set_default_size(
-                    width + requested_size.0 - content_width,
-                    height + requested_size.1 - content_height,
+                    requested_size.0 + decoration.0,
+                    requested_size.1 + decoration.1,
                 );
                 correct_system_title_bar_size.set(false);
+            }
+            let requested_size = requested_content_size.get();
+            let native_size = (content_width, content_height);
+            let differs_from_request = (native_size.0 - requested_size.0).abs() > 1
+                || (native_size.1 - requested_size.1).abs() > 1;
+            if content_width > 0
+                && content_height > 0
+                && !correcting_system_title_bar
+                && (native_size_override.get() || animated_size.is_active() && differs_from_request)
+            {
+                native_size_override.set(true);
+                let mut presentation = presented_size.get().unwrap_or_default();
+                presentation.width = Some(NativeLengthWithAuto::from(content_width));
+                presentation.height = Some(NativeLengthWithAuto::from(content_height));
+                animated_size.interrupt(Some(presentation));
+            }
+            if animation.is_active() {
+                animation.tick();
+                layout_refresh.flush_queued_refresh();
             }
             if content_width != last_content_width.get()
                 || content_height != last_content_height.get()
@@ -161,14 +240,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     });
                     layout_refresh.queue_refresh();
                 }
-            }
-            if width != last_width.get() || height != last_height.get() {
-                last_width.set(width);
-                last_height.set(height);
                 if let Some(on_resize) = on_resize.get() {
                     on_resize(DpiSize::Logical(LogicalSize::new(
-                        width as f64,
-                        height as f64,
+                        content_width as f64,
+                        content_height as f64,
                     )));
                 }
             }
@@ -187,13 +262,18 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let window_context = Rc::new(WindowContext {
         window: window.clone(),
         scale_factor: scale_factor.into_readonly(),
+        animation,
     });
 
     layout! {
         ContextProvider<WindowContext>(window_context) {
             ContextProvider<TreeContext>(tree_context.clone()) {
                 ContextProvider<LayoutRefreshContext>(layout_refresh.clone()) {
-                    StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+                    StyleScope(
+                        .class = props.class.clone(),
+                        .default_classes = DEFAULT_CLASSES,
+                        .effective_style = target_size,
+                    ) {
                         ContextProvider<ParentContext>(
                             ParentContext {
                                 fixed: None,
@@ -229,6 +309,19 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 }
             }
         }
+    }
+}
+
+fn logical_length(
+    value: Option<NativeLengthWithAuto<Length>>,
+    fallback: i32,
+    scale_factor: f64,
+) -> i32 {
+    match value {
+        Some(NativeLengthWithAuto::Value(value)) => {
+            value.to_logical::<f64>(scale_factor).0.round() as i32
+        }
+        Some(NativeLengthWithAuto::Auto) | None => fallback,
     }
 }
 

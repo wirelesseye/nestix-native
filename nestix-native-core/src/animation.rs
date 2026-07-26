@@ -181,6 +181,13 @@ impl AnimationRuntime {
         !self.active.borrow().is_empty()
     }
 
+    fn is_owner_active(&self, owner: u64) -> bool {
+        self.active
+            .borrow()
+            .keys()
+            .any(|(candidate, _)| *candidate == owner)
+    }
+
     fn transition(
         self: &Rc<Self>,
         key: (u64, TransitionProperty),
@@ -283,6 +290,7 @@ pub struct AnimatedStyle {
     owner: u64,
     runtime: Rc<AnimationRuntime>,
     value: State<Option<ResolvedStyle>>,
+    scale_factor: Cell<Option<f64>>,
 }
 
 impl AnimatedStyle {
@@ -292,6 +300,7 @@ impl AnimatedStyle {
             owner: NEXT_OWNER.fetch_add(1, Ordering::Relaxed),
             runtime,
             value: create_state(initial),
+            scale_factor: Cell::new(None),
         }
     }
 
@@ -299,7 +308,24 @@ impl AnimatedStyle {
         self.value.clone()
     }
 
+    #[doc(hidden)]
+    pub fn is_active(&self) -> bool {
+        self.runtime.is_owner_active(self.owner)
+    }
+
+    #[doc(hidden)]
+    pub fn interrupt(&self, presentation: Option<ResolvedStyle>) {
+        self.runtime.cancel_owner(self.owner);
+        self.value.set(presentation);
+    }
+
     pub fn set_target(&self, target: Option<ResolvedStyle>, scale_factor: f64) {
+        let previous_scale_factor = self.scale_factor.replace(Some(scale_factor));
+        if previous_scale_factor.is_some_and(|previous| previous != scale_factor) {
+            self.runtime.cancel_owner(self.owner);
+            self.value.set(target);
+            return;
+        }
         let Some(target) = target else {
             self.runtime.cancel_owner(self.owner);
             self.value.set(None);
@@ -501,5 +527,29 @@ mod tests {
             Some(WithAuto::from(5)),
         );
         effect_handle.cancel();
+    }
+
+    #[test]
+    fn scale_factor_change_snaps_to_the_current_target() {
+        let runtime = Rc::new(AnimationRuntime::new());
+        let transition = StyleTransition {
+            property: TransitionProperty::Width,
+            animation: AnimationSpec::new(Duration::from_millis(100)),
+        };
+        let mut initial = ResolvedStyle::default();
+        initial.width = Some(WithAuto::from(0));
+        initial.transitions = vec![transition];
+        let animated = AnimatedStyle::new(runtime.clone(), Some(initial.clone()));
+        animated.set_target(Some(initial), 1.0);
+
+        let mut target = ResolvedStyle::default();
+        target.width = Some(WithAuto::from(10));
+        target.transitions = vec![transition];
+        animated.set_target(Some(target.clone()), 1.0);
+        assert!(runtime.is_active());
+
+        animated.set_target(Some(target.clone()), 2.0);
+        assert!(!runtime.is_active());
+        assert_eq!(animated.value().get(), Some(target));
     }
 }

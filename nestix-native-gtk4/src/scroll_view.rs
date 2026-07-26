@@ -9,12 +9,13 @@ use nestix::{
     layout, scoped_effect,
 };
 use nestix_native_core::{
-    ChildOrder, ScrollViewProps, StyleContext, StyleScope, TreeContext, matched_style,
-    resolved_view_style,
+    AnimatedStyle, ChildOrder, ScrollViewProps, StyleContext, StyleScope, TreeContext,
+    matched_style, resolved_view_style,
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
 
 use crate::{
+    WindowContext,
     contexts::{LayoutRefreshContext, ParentContext},
     layout::mount_leaf_with_stretchable_width,
 };
@@ -23,13 +24,24 @@ use crate::{
 pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__ScrollView", "__gtk4_ScrollView"];
 
-    let style_props = matched_style(
+    let window_context = element.context::<WindowContext>().unwrap();
+    let matched_style_props = matched_style(
         element.context::<StyleContext>(),
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
-    let effective_style = resolved_view_style(style_props.clone(), &props.view);
+    let effective_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        effective_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, effective_style, window_context.scale_factor] || {
+            animated_style.set_target(effective_style.get(), scale_factor.get());
+        }
+    );
     let scrolled = gtk4::ScrolledWindow::new();
     scrolled.set_hexpand(true);
     scrolled.set_vexpand(true);
@@ -39,7 +51,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     mount_leaf_with_stretchable_width(
         element,
         scrolled.upcast_ref(),
-        style_props,
+        style_props.into_readonly(),
         &props.view,
         content_revision.clone().into_readonly(),
     );
