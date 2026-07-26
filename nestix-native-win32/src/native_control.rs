@@ -1,6 +1,6 @@
 use nestix::{Computed, Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
-    Length, ResolvedStyle, TreeContext, ViewProps, WithAuto,
+    ResolvedStyle, TreeContext, ViewProps, WithAuto,
     dpi::{LogicalPosition, LogicalSize},
     style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink, style_length_with_auto,
     style_margin,

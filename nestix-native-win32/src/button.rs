@@ -16,7 +16,7 @@ use windows::{
             DFCS_INACTIVE, DFCS_PUSHED, DT_CENTER, DT_SINGLELINE, DT_VCENTER, DeleteObject,
             DrawFocusRect, DrawFrameControl, DrawTextW, FillRect, GetDC, GetSysColor,
             GetSysColorBrush, GetTextExtentPoint32W, HFONT, InflateRect, InvalidateRect,
-            OffsetRect, SelectObject, SetBkMode, SetTextColor, TRANSPARENT,
+            OffsetRect, ReleaseDC, SelectObject, SetBkMode, SetTextColor, TRANSPARENT,
         },
         UI::{
             Controls::{
@@ -237,8 +237,10 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = resolved_font(&font_props, scale_factor);
-                SelectObject(hds, font.into());
+                let previous_font = SelectObject(hds, font.into());
                 GetTextExtentPoint32W(hds, &mesure_string, &mut size).unwrap();
+                SelectObject(hds, previous_font);
+                ReleaseDC(Some(hwnd), hds);
                 DeleteObject(font.into()).unwrap();
             }
 
@@ -476,7 +478,7 @@ unsafe fn draw_button(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nestix_native_core::{Color, dpi::PhysicalUnit};
+    use nestix_native_core::Color;
 
     #[test]
     fn appearance_controls_native_theme() {

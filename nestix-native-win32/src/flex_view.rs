@@ -4,7 +4,7 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    ChildOrder, FlexViewProps, Length, StyleContext, StyleScope, TreeContext, WithAuto,
+    ChildOrder, FlexViewProps, StyleContext, StyleScope, TreeContext, WithAuto,
     dpi::{LogicalPosition, LogicalSize},
     matched_style, resolved_flex_view_style, style_align_items, style_align_self, style_flex_basis,
     style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap,

@@ -1,6 +1,6 @@
 use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
-    InputProps, Length, StyleContext, TreeContext, WithAuto,
+    InputProps, StyleContext, TreeContext, WithAuto,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
     matched_style, style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink,
     style_length_with_auto, style_margin,
@@ -10,7 +10,7 @@ use taffy::{Size, Style, prelude::FromLength};
 use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
-        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, SelectObject},
+        Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, ReleaseDC, SelectObject},
         UI::{
             Controls::WC_EDIT,
             WindowsAndMessaging::{
@@ -154,8 +154,10 @@ pub fn Input(props: &InputProps, element: &Element) {
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);
-                SelectObject(hds, font.into());
+                let previous_font = SelectObject(hds, font.into());
                 GetTextExtentPoint32W(hds, &mesure_string, &mut size).unwrap();
+                SelectObject(hds, previous_font);
+                ReleaseDC(Some(hwnd), hds);
                 DeleteObject(font.into()).unwrap();
             }
 

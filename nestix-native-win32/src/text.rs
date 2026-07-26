@@ -1,6 +1,6 @@
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    Length, StyleContext, TextProps, TreeContext, WithAuto,
+    StyleContext, TextProps, TreeContext, WithAuto,
     dpi::{LogicalPosition, LogicalSize, PhysicalUnit},
     matched_style, resolve_font_props, style_align_self, style_flex_basis, style_flex_grow,
     style_flex_shrink, style_length_with_auto, style_margin,
@@ -12,7 +12,7 @@ use windows::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{
             DeleteObject, GetDC, GetTextExtentPoint32W, InvalidateRect, RDW_ALLCHILDREN, RDW_ERASE,
-            RDW_INVALIDATE, RedrawWindow, SelectObject,
+            RDW_INVALIDATE, RedrawWindow, ReleaseDC, SelectObject,
         },
         System::SystemServices::SS_SIMPLE,
         UI::{
@@ -171,8 +171,10 @@ pub fn Text(props: &TextProps, element: &Element) {
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = resolved_font(&font_props, scale_factor);
-                SelectObject(hds, font.into());
+                let previous_font = SelectObject(hds, font.into());
                 GetTextExtentPoint32W(hds, &string, &mut size).unwrap();
+                SelectObject(hds, previous_font);
+                ReleaseDC(Some(hwnd), hds);
                 DeleteObject(font.into()).unwrap();
             }
 

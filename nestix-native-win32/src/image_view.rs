@@ -8,7 +8,7 @@ use std::{
 
 use nestix::{Element, closure, component, scoped_effect};
 use nestix_native_core::{
-    ContentFit, ImageSource, ImageViewProps, Length, StyleContext, TreeContext, WithAuto,
+    ContentFit, ImageSource, ImageViewProps, StyleContext, TreeContext, WithAuto,
     dpi::{LogicalPosition, LogicalSize},
     matched_style, style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink,
     style_length_with_auto, style_margin,
