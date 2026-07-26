@@ -75,9 +75,21 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             header_title.set_text(&title);
         }
     );
+    let requested_content_size = Rc::new(Cell::new((-1, -1)));
+    let correct_system_title_bar_size = Rc::new(Cell::new(false));
     scoped_effect!(
-        [window, props.width, props.height] || {
-            window.set_default_size(width.get().round() as i32, height.get().round() as i32);
+        [
+            window,
+            requested_content_size,
+            correct_system_title_bar_size,
+            props.width,
+            props.height,
+            props.title_bar_mode
+        ] || {
+            let size = (width.get().round() as i32, height.get().round() as i32);
+            requested_content_size.set(size);
+            correct_system_title_bar_size.set(title_bar_mode.get() == TitleBarMode::System);
+            window.set_default_size(size.0, size.1);
         }
     );
     scoped_effect!(
@@ -113,13 +125,27 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             last_width,
             last_height,
             last_content_width,
-            last_content_height
+            last_content_height,
+            requested_content_size,
+            correct_system_title_bar_size
         ] | window,
         _ | {
             let width = window.width();
             let height = window.height();
             let content_width = content.width();
             let content_height = content.height();
+            if correct_system_title_bar_size.get() && content_width > 0 && content_height > 0 {
+                let requested_size = requested_content_size.get();
+                // GTK includes client-side system decorations in the window
+                // allocation. Preserve the requested content size by adding the
+                // measured decoration size to the default window size. With
+                // server-side decorations this difference is zero.
+                window.set_default_size(
+                    width + requested_size.0 - content_width,
+                    height + requested_size.1 - content_height,
+                );
+                correct_system_title_bar_size.set(false);
+            }
             if content_width != last_content_width.get()
                 || content_height != last_content_height.get()
             {
