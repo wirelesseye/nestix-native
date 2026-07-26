@@ -1,5 +1,6 @@
 pub mod button;
 pub mod flex_view;
+pub mod image_view;
 pub mod input;
 pub mod root;
 pub mod scroll_view;
@@ -13,6 +14,7 @@ mod layout;
 
 pub use button::*;
 pub use flex_view::*;
+pub use image_view::*;
 pub use input::*;
 pub use root::*;
 pub use scroll_view::*;
@@ -57,6 +59,13 @@ impl Backend for Gtk4Backend {
 
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<nestix::Element> {
         Some(create_element::<Input>(props))
+    }
+
+    fn create_image_view(
+        &self,
+        props: nestix_native_core::ImageViewProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<ImageView>(props))
     }
 
     fn create_scroll_view(
