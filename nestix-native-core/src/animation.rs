@@ -152,6 +152,7 @@ struct ActiveAnimation {
 pub struct AnimationRuntime {
     active: RefCell<HashMap<(u64, TransitionProperty), ActiveAnimation>>,
     clock: Shared<dyn Fn() -> Instant>,
+    frame_requester: RefCell<Option<Shared<dyn Fn()>>>,
 }
 
 impl Default for AnimationRuntime {
@@ -160,6 +161,7 @@ impl Default for AnimationRuntime {
         Self {
             active: RefCell::new(HashMap::new()),
             clock: Shared::from(clock),
+            frame_requester: RefCell::new(None),
         }
     }
 }
@@ -174,6 +176,15 @@ impl AnimationRuntime {
         Self {
             active: RefCell::new(HashMap::new()),
             clock,
+            frame_requester: RefCell::new(None),
+        }
+    }
+
+    /// Installs the backend callback used to wake its UI-loop frame driver.
+    pub fn set_frame_requester(&self, requester: Shared<dyn Fn()>) {
+        self.frame_requester.replace(Some(requester.clone()));
+        if self.is_active() {
+            requester();
         }
     }
 
@@ -228,6 +239,9 @@ impl AnimationRuntime {
                 update,
             },
         );
+        if let Some(requester) = self.frame_requester.borrow().clone() {
+            requester();
+        }
     }
 
     pub fn cancel_owner(&self, owner: u64) {
@@ -446,6 +460,29 @@ mod tests {
         elapsed.set(Duration::from_millis(100));
         assert!(!runtime.tick());
         assert_eq!(value.get(), 10.0);
+    }
+
+    #[test]
+    fn active_transition_requests_a_backend_frame() {
+        let runtime = Rc::new(AnimationRuntime::new());
+        let requests = Rc::new(Cell::new(0));
+        let requester: Rc<dyn Fn()> = Rc::new({
+            let requests = requests.clone();
+            move || requests.set(requests.get() + 1)
+        });
+        runtime.set_frame_requester(Shared::from(requester));
+        let update: Rc<dyn Fn(f64)> = Rc::new(|_| {});
+
+        runtime.transition(
+            (1, TransitionProperty::Width),
+            0.0,
+            10.0,
+            AnimationSpec::new(Duration::from_millis(100)),
+            None,
+            Shared::from(update),
+        );
+
+        assert_eq!(requests.get(), 1);
     }
 
     #[test]

@@ -5,7 +5,7 @@ use nestix::{
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleContext, StyleScope, TabViewItemProps, TabViewProps, TreeContext,
+    AnimatedStyle, StyleContext, StyleScope, TabViewItemProps, TabViewProps, TreeContext,
     WithAuto as NativeLengthWithAuto,
     dpi::{LogicalSize, PhysicalSize},
     matched_style, resolved_view_style, style_align_self, style_flex_basis, style_flex_grow,
@@ -68,13 +68,23 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent_context = element.context::<ParentContext>().unwrap();
     let style_context = element.context::<StyleContext>();
-    let style_props = matched_style(
+    let matched_style_props = matched_style(
         style_context,
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
-    let effective_style = resolved_view_style(style_props.clone(), &props.view);
+    let effective_style = resolved_view_style(matched_style_props, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window_context.animation.clone(),
+        effective_style.get(),
+    ));
+    let style_props = animated_style.value();
+    scoped_effect!(
+        [animated_style, effective_style, window_context.scale_factor] || {
+            animated_style.set_target(effective_style.get(), scale_factor.get());
+        }
+    );
 
     let current_selected = create_state(None);
 

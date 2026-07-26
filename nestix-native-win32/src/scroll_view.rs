@@ -4,7 +4,7 @@ use nestix::{
     Element, Layout, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    ScrollViewProps, StyleContext, StyleScope, TreeContext, WithAuto,
+    AnimatedStyle, ScrollViewProps, StyleContext, StyleScope, TreeContext, WithAuto,
     dpi::LogicalSize,
     matched_style, resolved_view_style, style_align_self, style_flex_basis, style_flex_grow,
     style_flex_shrink, style_length_with_auto, style_margin,
@@ -93,13 +93,23 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     let window = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
     let parent = element.context::<ParentContext>().unwrap();
-    let styles = matched_style(
+    let matched_styles = matched_style(
         element.context::<StyleContext>(),
         element,
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
-    let effective_style = resolved_view_style(styles.clone(), &props.view);
+    let effective_style = resolved_view_style(matched_styles, &props.view);
+    let animated_style = Rc::new(AnimatedStyle::new(
+        window.animation.clone(),
+        effective_style.get(),
+    ));
+    let styles = animated_style.value();
+    scoped_effect!(
+        [animated_style, effective_style, window.scale_factor] || {
+            animated_style.set_target(effective_style.get(), scale_factor.get());
+        }
+    );
     let subtree = Rc::new(TreeContext::new());
     let subtree_root = subtree.create_node(false);
     subtree.set_root_node(Some(subtree_root));

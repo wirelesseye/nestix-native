@@ -1,12 +1,14 @@
 use std::{rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Readonly, Shared, State, component, components::ContextProvider,
+    computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    StyleScope, TitleBarMode, TreeContext, WindowProps,
+    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
+    WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{LogicalSize, PhysicalSize, Size},
+    matched_style, style_length_with_auto,
 };
 use taffy::{Style, prelude::FromLength};
 use windows::{
@@ -30,6 +32,9 @@ use crate::{
     root::shared_app_state,
     surface::{VisualSurface, handle_surface_message},
 };
+
+const ANIMATION_TIMER_ID: usize = 0x4e58;
+const WM_NESTIX_ANIMATION_FRAME: u32 = WM_APP + 0x59;
 
 fn window_classname(hinstance: HMODULE) -> PCWSTR {
     const WINDOW_CLASSNAME: PCWSTR = w!("NestixNativeWindow");
@@ -56,6 +61,8 @@ fn window_classname(hinstance: HMODULE) -> PCWSTR {
 pub struct WindowContext {
     /// The window's current display scale relative to 96 DPI.
     pub scale_factor: Readonly<f64>,
+    /// Shared animation runtime driven by this window's UI message loop.
+    pub animation: Rc<AnimationRuntime>,
     pub(crate) hwnd: HWND,
 }
 
@@ -65,10 +72,12 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__win32_Window"];
 
     let app_state = element.context::<AppState>().unwrap();
+    let style_context = element.context::<StyleContext>();
 
     let scale_factor = create_state(1.0);
 
     let tree_context = Rc::new(TreeContext::new());
+    let animation = Rc::new(AnimationRuntime::new());
 
     let hinstance = unsafe { GetModuleHandleW(None).unwrap() };
 
@@ -100,6 +109,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     };
     let window_context = Rc::new(WindowContext {
         scale_factor: scale_factor.clone().into_readonly(),
+        animation: animation.clone(),
         hwnd,
     });
     let surface = VisualSurface::new(hwnd, tree_context.clone(), None);
@@ -108,10 +118,16 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         bg_brush: unsafe { GetSysColorBrush(COLOR_BTNFACE) },
         tree_context: tree_context.clone(),
         _surface: surface.clone(),
+        animation: animation.clone(),
+        scale_factor: scale_factor.clone(),
         on_resize: props.on_resize.clone(),
         on_close_requested: props.on_close_requested.clone(),
     });
     app_state.add_window(hwnd, window_state.clone());
+    let request_frame: Rc<dyn Fn()> = Rc::new(move || unsafe {
+        let _ = PostMessageW(Some(hwnd), WM_NESTIX_ANIMATION_FRAME, WPARAM(0), LPARAM(0));
+    });
+    animation.set_frame_requester(Shared::from(request_frame));
 
     let refresh_request_revision = tree_context.refresh_request_revision();
     scoped_effect!(
@@ -122,6 +138,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     element.on_unmount(move || unsafe {
+        let _ = KillTimer(Some(hwnd), ANIMATION_TIMER_ID);
         DestroyWindow(hwnd).unwrap();
     });
 
@@ -157,8 +174,39 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             }
     );
 
+    let style_props = matched_style(
+        style_context,
+        element,
+        props.class.clone(),
+        &DEFAULT_CLASSES,
+    );
+    let target_size = computed!(
+        [style_props, props.width, props.height] || {
+            let mut style = style_props.get().unwrap_or_default();
+            style.width = Some(style_length_with_auto(
+                Some(&style),
+                width.get().into(),
+                NativeLengthWithAuto::from(800),
+                |style| style.width,
+            ));
+            style.height = Some(style_length_with_auto(
+                Some(&style),
+                height.get().into(),
+                NativeLengthWithAuto::from(600),
+                |style| style.height,
+            ));
+            Some(style)
+        }
+    );
+    let animated_size = Rc::new(AnimatedStyle::new(animation, target_size.get()));
+    let presented_size = animated_size.value();
     scoped_effect!(
-        [scale_factor, props.width, props.height]
+        [animated_size, target_size, scale_factor] || {
+            animated_size.set_target(target_size.get(), scale_factor.get());
+        }
+    );
+    scoped_effect!(
+        [scale_factor, presented_size]
             || unsafe {
                 let mut rect_client = RECT::default();
                 let mut rect_wind = RECT::default();
@@ -170,8 +218,17 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 point_diff.x = (rect_wind.right - rect_wind.left) - rect_client.right;
                 point_diff.y = (rect_wind.bottom - rect_wind.top) - rect_client.bottom;
 
-                let size: PhysicalSize<i32> =
-                    LogicalSize::new(width.get(), height.get()).to_physical(scale_factor.get());
+                let style = presented_size.get().unwrap_or_default();
+                let current: LogicalSize<f64> = PhysicalSize::new(
+                    rect_client.right - rect_client.left,
+                    rect_client.bottom - rect_client.top,
+                )
+                .to_logical(scale_factor.get());
+                let size: PhysicalSize<i32> = LogicalSize::new(
+                    logical_length(style.width, current.width, scale_factor.get()),
+                    logical_length(style.height, current.height, scale_factor.get()),
+                )
+                .to_physical(scale_factor.get());
 
                 MoveWindow(
                     hwnd,
@@ -188,7 +245,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     layout! {
         ContextProvider<WindowContext>(window_context) {
             ContextProvider<TreeContext>(tree_context.clone()) {
-                StyleScope(.class = props.class.clone(), .default_classes = DEFAULT_CLASSES) {
+                StyleScope(
+                    .class = props.class.clone(),
+                    .default_classes = DEFAULT_CLASSES,
+                    .effective_style = target_size,
+                ) {
                     ContextProvider<ParentContext>(
                         ParentContext {
                             surface: surface.clone(),
@@ -201,6 +262,17 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 }
             }
         }
+    }
+}
+
+fn logical_length(
+    value: Option<NativeLengthWithAuto<Length>>,
+    fallback: f64,
+    scale_factor: f64,
+) -> f64 {
+    match value {
+        Some(NativeLengthWithAuto::Value(value)) => value.to_logical::<f64>(scale_factor).0,
+        Some(NativeLengthWithAuto::Auto) | None => fallback,
     }
 }
 
@@ -248,6 +320,8 @@ pub(crate) struct WindowState {
     bg_brush: HBRUSH,
     tree_context: Rc<TreeContext>,
     _surface: Rc<VisualSurface>,
+    animation: Rc<AnimationRuntime>,
+    scale_factor: State<f64>,
     on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
 }
@@ -308,6 +382,45 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
     }
     unsafe {
         match msg {
+            WM_NESTIX_ANIMATION_FRAME => {
+                let app_state = shared_app_state();
+                if app_state
+                    .window_state(hwnd)
+                    .is_some_and(|window_state| window_state.animation.is_active())
+                {
+                    SetTimer(Some(hwnd), ANIMATION_TIMER_ID, 16, None);
+                }
+                LRESULT(0)
+            }
+
+            WM_TIMER if wparam.0 == ANIMATION_TIMER_ID => {
+                let app_state = shared_app_state();
+                if let Some(window_state) = app_state.window_state(hwnd)
+                    && window_state.animation.is_active()
+                {
+                    window_state.tree_context.begin_batch();
+                    let active = window_state.animation.tick();
+                    window_state.tree_context.end_batch();
+                    if !active {
+                        let _ = KillTimer(Some(hwnd), ANIMATION_TIMER_ID);
+                    }
+                } else {
+                    let _ = KillTimer(Some(hwnd), ANIMATION_TIMER_ID);
+                }
+                LRESULT(0)
+            }
+
+            WM_DPICHANGED => {
+                let app_state = shared_app_state();
+                if let Some(window_state) = app_state.window_state(hwnd)
+                    && let Some(scale) = get_scale_factor_for_window(hwnd)
+                    && window_state.scale_factor.get() != scale
+                {
+                    window_state.scale_factor.set(scale);
+                }
+                DefWindowProcW(hwnd, msg, wparam, lparam)
+            }
+
             WM_KEYDOWN | WM_SYSKEYDOWN => {
                 if crate::menu::handle_menu_shortcut(hwnd, wparam.0) {
                     return LRESULT(0);
@@ -350,8 +463,11 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                     let width = client_rect.right - client_rect.left;
                     let height = client_rect.bottom - client_rect.top;
 
+                    let scale_factor = get_scale_factor_for_window(hwnd).unwrap_or(1.0);
+                    if window_state.scale_factor.get() != scale_factor {
+                        window_state.scale_factor.set(scale_factor);
+                    }
                     if let Some(root_node) = window_state.tree_context.root_node() {
-                        let scale_factor = get_scale_factor_for_window(hwnd).unwrap();
                         let size: LogicalSize<f32> =
                             PhysicalSize::new(width, height).to_logical(scale_factor);
                         window_state
