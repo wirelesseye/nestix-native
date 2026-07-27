@@ -31,6 +31,8 @@ macro_rules! delegate {
 pub mod backend_override;
 pub mod button;
 pub mod checkbox;
+#[cfg(all(feature = "dom", not(target_arch = "wasm32")))]
+pub mod dom_surface;
 pub mod drag_drop;
 pub mod file_picker;
 pub mod flex_view;
@@ -52,6 +54,8 @@ pub mod window;
 pub use backend_override::*;
 pub use button::*;
 pub use checkbox::*;
+#[cfg(all(feature = "dom", not(target_arch = "wasm32")))]
+pub use dom_surface::*;
 pub use drag_drop::*;
 pub use file_picker::*;
 pub use flex_view::*;
@@ -78,8 +82,8 @@ pub mod appkit {
     pub use nestix_native_appkit::*;
 }
 
-/// DOM backend APIs available to WebAssembly builds.
-#[cfg(all(target_arch = "wasm32", feature = "dom"))]
+/// DOM backend and managed-surface APIs.
+#[cfg(feature = "dom")]
 pub mod dom {
     pub use nestix_native_dom::*;
 }
@@ -135,11 +139,4 @@ pub fn default_backend() -> &'static dyn Backend {
     panic!(
         "nestix-native has no default backend for this build; enable the platform feature or provide a BackendContext"
     )
-}
-
-/// Context that selects the backend used by descendant native components.
-#[derive(Clone)]
-pub struct BackendContext {
-    /// Backend responsible for constructing native controls.
-    pub backend: &'static dyn Backend,
 }

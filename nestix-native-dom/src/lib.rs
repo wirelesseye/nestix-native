@@ -1,28 +1,53 @@
 //! Browser DOM backend for Nestix Native.
 
+#[cfg(target_arch = "wasm32")]
 mod button;
+#[cfg(target_arch = "wasm32")]
 mod dom;
+#[cfg(target_arch = "wasm32")]
 mod dom_element;
+#[cfg(target_arch = "wasm32")]
 mod flex_view;
+#[cfg(target_arch = "wasm32")]
 mod input;
+#[cfg(not(target_arch = "wasm32"))]
+mod remote;
+#[cfg(target_arch = "wasm32")]
 mod root;
+mod runtime;
+#[cfg(target_arch = "wasm32")]
 mod style;
+#[cfg(target_arch = "wasm32")]
 mod text;
+#[cfg(target_arch = "wasm32")]
 mod web_view;
+#[cfg(target_arch = "wasm32")]
 mod window;
 
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests;
 
+#[cfg(target_arch = "wasm32")]
 pub use button::*;
+#[cfg(target_arch = "wasm32")]
 pub use dom_element::*;
+#[cfg(target_arch = "wasm32")]
 pub use flex_view::*;
+#[cfg(target_arch = "wasm32")]
 pub use input::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub use remote::*;
+#[cfg(target_arch = "wasm32")]
 pub use root::*;
+pub use runtime::*;
+#[cfg(target_arch = "wasm32")]
 pub use text::*;
+#[cfg(target_arch = "wasm32")]
 pub use web_view::*;
+#[cfg(target_arch = "wasm32")]
 pub use window::*;
 
+#[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
 
 use nestix::{Element, create_element};
@@ -39,10 +64,12 @@ impl Backend for DomBackend {
         "nestix-native-dom"
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<Element> {
         Some(create_element::<Root>(props))
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn create_window(&self, props: nestix_native_core::WindowProps) -> Option<Element> {
         Some(create_element::<Window>(props))
     }
@@ -63,11 +90,13 @@ impl Backend for DomBackend {
         Some(create_element::<Input>(props))
     }
 
+    #[cfg(target_arch = "wasm32")]
     fn create_web_view(&self, props: nestix_native_core::WebViewProps) -> Option<Element> {
         Some(create_element::<WebView>(props))
     }
 }
 
+#[cfg(target_arch = "wasm32")]
 thread_local! {
     static PENDING_MOUNT_TARGET: RefCell<Option<web_sys::Element>> = const { RefCell::new(None) };
 }
@@ -78,6 +107,7 @@ thread_local! {
 ///
 /// Panics when no browser document exists, `selector` is invalid, no element
 /// matches it, or the tree does not contain a Nestix Native [`Root`].
+#[cfg(target_arch = "wasm32")]
 pub fn mount_root(selector: &str, app: &Element) {
     let document = web_sys::window()
         .and_then(|window| window.document())
@@ -98,6 +128,7 @@ pub fn mount_root(selector: &str, app: &Element) {
     );
 }
 
+#[cfg(target_arch = "wasm32")]
 pub(crate) fn take_mount_target() -> web_sys::Element {
     PENDING_MOUNT_TARGET
         .with_borrow_mut(Option::take)

@@ -8,6 +8,7 @@ pub mod color;
 pub mod container;
 pub mod contexts;
 pub mod dimension;
+pub mod dom_surface;
 pub mod drag_drop;
 pub mod file_picker;
 pub mod flex_view;
@@ -38,6 +39,7 @@ pub use color::*;
 pub use container::*;
 pub use contexts::*;
 pub use dimension::*;
+pub use dom_surface::*;
 pub use drag_drop::*;
 pub use file_picker::*;
 pub use flex_view::*;
@@ -64,6 +66,13 @@ pub use dpi;
 pub use nestix_native_macros::*;
 
 use nestix::Element;
+
+/// Context that selects the backend used by descendant facade components.
+#[derive(Clone)]
+pub struct BackendContext {
+    /// Backend responsible for constructing controls in this subtree.
+    pub backend: &'static dyn Backend,
+}
 
 /// Factory interface implemented by native platform backends.
 pub trait Backend {
@@ -147,6 +156,11 @@ pub trait Backend {
 
     /// Creates a view that displays web content.
     fn create_web_view(&self, _props: WebViewProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a native host for a managed DOM subtree.
+    fn create_dom_surface(&self, _props: DomSurfaceProps) -> Option<Element> {
         None
     }
 

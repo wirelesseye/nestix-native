@@ -4,9 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-js-sys = "0.3.82"
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3.82"
 wasm-bindgen = "0.2.105"
 web-sys = { version = "0.3.82", features = [
     "AddEventListenerOptions",

@@ -234,6 +234,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dom-surface-example"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "nestix",
+ "nestix-native",
+]
+
+[[package]]
 name = "dpi"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,6 +836,7 @@ dependencies = [
  "nanoid",
  "nestix",
  "nestix-native-core",
+ "nestix-native-dom",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
@@ -851,6 +861,8 @@ dependencies = [
  "js-sys",
  "nestix",
  "nestix-native-core",
+ "serde",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-test",
  "web-sys",
@@ -1077,6 +1089,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2e5aaab980c433cf470df9d7af96a7b46a9d892d521a2cbbb2f8a4c16751e7f"
 dependencies = [
  "bitflags",
+ "block2",
  "objc2",
  "objc2-app-kit",
  "objc2-core-foundation",

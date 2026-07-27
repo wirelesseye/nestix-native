@@ -1,7 +1,10 @@
 # Nestix Native DOM
 
 `nestix-native-dom` renders Nestix Native component trees into browser DOM
-nodes on `wasm32-unknown-unknown`.
+nodes on `wasm32-unknown-unknown`. It also supplies the command runtime used by
+native `DomSurface` hosts, allowing a native application to render a scoped
+subtree into an embedded browser while retaining the same Rust signals and
+callbacks.
 
 The initial backend supports `Root`, `Window`, `FlexView`, `Text`, `Button`,
 `Input`, and `WebView`. `WebView` renders an HTML `iframe`. The backend also

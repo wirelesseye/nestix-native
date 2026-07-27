@@ -8,6 +8,7 @@ block2 = "0.6.2"
 nanoid = "0.4.0"
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core", features = ["taffy"] }
+nestix-native-dom = { path = "../nestix-native-dom" }
 objc2 = "0.6.3"
 objc2-app-kit = { version = "0.3.2", features = [
     "NSDraggingItem",
@@ -42,7 +43,11 @@ objc2-foundation = { version = "0.3.2", features = [
     "NSURLRequest",
 ] }
 objc2-web-kit = { version = "0.3.2", default-features = false, features = [
+    "block2",
     "WKNavigation",
+    "WKScriptMessage",
+    "WKScriptMessageHandler",
+    "WKUserContentController",
     "WKWebView",
     "WKWebViewConfiguration",
     "objc2-app-kit",

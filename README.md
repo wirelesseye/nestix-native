@@ -39,6 +39,29 @@ Browser setup and backend-specific APIs are documented in the
 [`nestix-native-dom` README](nestix-native-dom/README.md). Desktop-only window
 options are grouped under `Window(.desktop(...))`.
 
+## Managed DOM surfaces
+
+On macOS, enabling both the `appkit` and `dom` features provides `DomSurface`.
+It is laid out as one native view while its descendants are rendered by the DOM
+backend inside a managed `WKWebView` document:
+
+```rust
+layout! {
+    FlexView {
+        Button(.title = "Native button")
+        DomSurface(.view(.height = 160)) {
+            Button(.title = "DOM button")
+        }
+    }
+}
+```
+
+The native and DOM controls remain in one Nestix tree, so they share signals,
+computed values, callbacks, styling, and lifecycle. The embedded backend
+currently supports `Button`, `Input`, `Text`, and `FlexView`. `WebView` remains
+the URL-loading component and does not accept a Nestix subtree. See
+`examples/dom-surface` for a complete mixed native/DOM application.
+
 ### Alternative backend(s)
 
 [`nestix-native-winui`](https://github.com/wirelesseye/nestix-native-winui) is
@@ -57,6 +80,8 @@ The workspace includes these examples:
   target for files, encoded images, and UTF-8 text.
 - `examples/dom-basic` demonstrates selector-based browser mounting, DOM
   controls, reactive state, and shared Nestix Native styling.
+- `examples/dom-surface` demonstrates native AppKit controls and managed DOM
+  elements sharing the same signals and callbacks in one window.
 - `examples/file-picker` demonstrates open, multi-file, save, and folder picker
   requests through a window-bound controller.
 - `examples/menu-bar` demonstrates application-wide and window-specific menu
