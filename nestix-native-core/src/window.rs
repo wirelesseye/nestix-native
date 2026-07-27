@@ -21,6 +21,14 @@ pub enum TitleBarMode {
 #[props(debug, default)]
 #[derive(Debug, Clone)]
 pub struct DesktopWindowProps {
+    /// Initial content width in logical pixels.
+    #[props(default = 800.0)]
+    pub width: f64,
+
+    /// Initial content height in logical pixels.
+    #[props(default = 600.0)]
+    pub height: f64,
+
     /// Whether the user can resize the window.
     #[props(default = true)]
     pub resizable: bool,
@@ -56,13 +64,6 @@ pub struct WindowProps {
     /// Properties used only by desktop window backends.
     #[props(nested, default)]
     pub desktop: DesktopWindowProps,
-
-    /// Initial content width in logical pixels.
-    #[props(default = 800.0)]
-    pub width: f64,
-    /// Initial content height in logical pixels.
-    #[props(default = 600.0)]
-    pub height: f64,
 
     /// Called after the native window's content size changes.
     pub on_resize: Option<Shared<dyn Fn(dpi::Size)>>,

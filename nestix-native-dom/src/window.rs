@@ -1,8 +1,5 @@
 use nestix::{Element, Layout, component, computed, layout};
-use nestix_native_core::{
-    StyleContext, StyleScope, WindowProps, WithAuto, dpi::LogicalSize, matched_style,
-    style_length_with_auto,
-};
+use nestix_native_core::{StyleContext, StyleScope, WindowProps, dpi::LogicalSize, matched_style};
 use wasm_bindgen::{JsCast, closure::Closure};
 use web_sys::{Node, ResizeObserver};
 
@@ -26,24 +23,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         props.class.clone(),
         &DEFAULT_CLASSES,
     );
-    let effective_style = computed!(
-        [matched, props.width, props.height] || {
-            let mut style = matched.get().unwrap_or_default();
-            style.width = Some(style_length_with_auto(
-                Some(&style),
-                width.get().into(),
-                WithAuto::from(800),
-                |style| style.width,
-            ));
-            style.height = Some(style_length_with_auto(
-                Some(&style),
-                height.get().into(),
-                WithAuto::from(600),
-                |style| style.height,
-            ));
-            Some(style)
-        }
-    );
+    let effective_style = computed!([matched] || Some(matched.get().unwrap_or_default()));
 
     element.scoped_effect({
         let html = html.clone();
@@ -54,7 +34,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             set(
                 &html.style(),
                 "display",
-                if visible.get() { "block" } else { "none" },
+                if visible.get() { "contents" } else { "none" },
             );
         }
     });

@@ -33,7 +33,7 @@ fn mounts_reacts_and_cleans_up() {
     let app = layout! {
         StyleProvider(styles) {
             Root {
-                Window(.title = "DOM test", .width = 320, .height = 200) {
+                Window(.title = "DOM test") {
                     FlexView(.class = "rust_only_class") {
                         Text(nestix::computed!([count] || format!("Count: {}", count.get())))
                         Button(
@@ -56,6 +56,15 @@ fn mounts_reacts_and_cleans_up() {
 
     mount_root("#nestix-dom-test-root", &app);
     assert_eq!(document.title(), "DOM test");
+    let window = target
+        .first_element_child()
+        .unwrap()
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+    assert_eq!(
+        window.style().get_property_value("display").unwrap(),
+        "contents"
+    );
     assert!(target.query_selector(".rust_only_class").unwrap().is_none());
     let flex = target
         .query_selector("div > div")

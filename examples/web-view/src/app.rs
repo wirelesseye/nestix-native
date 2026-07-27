@@ -30,11 +30,13 @@ pub fn App() -> Element {
             Root {
                 Window(
                     .title = "Nestix WebView",
-                    .width = 900,
-                    .height = 650,
-                    .desktop(.on_close_requested = callback!(|| {
-                        unmount_root().expect("root should be mounted");
-                    })),
+                    .desktop(
+                        .width = 900,
+                        .height = 650,
+                        .on_close_requested = callback!(|| {
+                            unmount_root().expect("root should be mounted");
+                        })
+                    ),
                 ) {
                     FlexView(
                         .class = "content",

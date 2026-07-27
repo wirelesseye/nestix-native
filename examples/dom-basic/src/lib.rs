@@ -42,7 +42,7 @@ fn App() -> Element {
     layout! {
         StyleProvider(styles) {
             Root {
-                Window(.title = "Nestix Native DOM", .width = 480, .height = 320) {
+                Window(.title = "Nestix Native DOM") {
                     FlexView(.class = "app") {
                         Text("Nestix Native DOM", .class = "heading")
                         Text(computed!([count] || format!("Count: {}", count.get())))

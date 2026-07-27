@@ -95,7 +95,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         &DEFAULT_CLASSES,
     );
     let target_size = computed!(
-        [style_props, props.width, props.height] || {
+        [style_props, props.desktop.width, props.desktop.height] || {
             let mut style = style_props.get().unwrap_or_default();
             style.width = Some(style_length_with_auto(
                 Some(&style),
