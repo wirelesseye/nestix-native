@@ -67,6 +67,35 @@ the URL-loading component and does not accept a Nestix subtree. See
 `DomSurface` has a transparent background by default. Set `transparent` to
 `false` to use WebKit's normal opaque background.
 
+Applications can provide the surrounding document with `DomTemplate`. Nestix
+injects its root, default styles, and bridge script at document start; the
+template remains free to load its own stylesheets and scripts. Mark the desired
+mount point with `data-nestix-root`, or Nestix will append one to `body`:
+
+```rust
+DomSurface(
+    .template = DomTemplate::resource("web/index.html")
+        .with_development_path(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/assets/web/index.html",
+        )),
+) {
+    Button(.title = "DOM button")
+}
+```
+
+The resource path is relative to the packaged application's resource directory.
+For `cargo-packager`, map the directory in the example package metadata:
+
+```toml
+[package.metadata.packager]
+resources = [{ src = "assets/web", target = "web" }]
+```
+
+`development_path` is only a fallback for running the unpackaged binary with
+`cargo run`. Inline HTML is also available through `DomTemplate::html` and
+`DomTemplate::html_with_base_url`.
+
 ### Alternative backend(s)
 
 [`nestix-native-winui`](https://github.com/wirelesseye/nestix-native-winui) is

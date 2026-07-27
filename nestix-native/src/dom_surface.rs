@@ -32,7 +32,8 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
     let runtime = EmbeddedDomRuntime::new(DomSurfaceId(
         NEXT_SURFACE_ID.fetch_add(1, Ordering::Relaxed),
     ));
-    let document: Rc<dyn WebViewDocument> = ManagedDomDocument::new(runtime.clone());
+    let document: Rc<dyn WebViewDocument> =
+        ManagedDomDocument::new(runtime.clone(), props.template.get());
 
     layout! {
         WebView(

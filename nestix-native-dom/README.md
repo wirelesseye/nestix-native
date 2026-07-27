@@ -32,6 +32,21 @@ inline CSS, including layout, flex, font, color, and transition properties.
 Backend default selector classes use the `__Component` and
 `__dom_Component` forms.
 
+## Native document templates
+
+On native platforms, `DomSurface` can load application HTML using
+`DomTemplate::html`, `DomTemplate::html_with_base_url`, or
+`DomTemplate::resource`. Nestix installs its runtime before the document loads
+and renders into the first element carrying `data-nestix-root`. If the marker is
+absent, a root is appended to `body` automatically.
+
+Resource templates are resolved beneath the packaged application's resource
+directory. Their parent directory is used as WebKit's read-access root, so
+relative stylesheet, image, and script imports alongside the template work.
+Use `with_development_path` to point at the same entry HTML while running an
+unpackaged development build. Templates and imported scripts are trusted
+application content and receive the same privileges as the embedded page.
+
 ## Arbitrary and custom elements
 
 Use `DomElement` for native HTML elements or registered custom elements such

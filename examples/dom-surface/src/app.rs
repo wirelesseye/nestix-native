@@ -1,7 +1,7 @@
 use nestix::{Element, callback, component, computed, create_state, layout, unmount_root};
 use nestix_native::{
-    AlignItems, Button, DomSurface, FlexDirection, FlexView, Input, Root, StyleProvider, Text,
-    Window, style,
+    AlignItems, Button, DomSurface, DomTemplate, FlexDirection, FlexView, Input, Root,
+    StyleProvider, Text, Window, style,
 };
 
 #[component]
@@ -84,6 +84,7 @@ pub fn App() -> Element {
                         DomSurface(
                             .class = "dom_surface",
                             .view(.height = 260, .align_self = AlignItems::Stretch),
+                            .template = DomTemplate::resource("web/index.html").with_development_path(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/web/index.html")),
                         ) {
                             FlexView(.class = "dom_panel") {
                                 Text("DOM elements in DomSurface", .class = "heading")

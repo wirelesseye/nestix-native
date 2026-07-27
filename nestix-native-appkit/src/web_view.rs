@@ -1,9 +1,12 @@
-use std::rc::Rc;
+use std::{
+    path::{Component, Path},
+    rc::Rc,
+};
 
 use nestix::{Element, component, components::Fragment, create_state, layout, scoped_effect};
 use nestix_native_core::{
-    JavaScriptEvaluator, StyleContext, WebViewDocument, WebViewProps, dpi::LogicalSize,
-    matched_style, resolved_view_style,
+    JavaScriptEvaluator, StyleContext, WebViewDocument, WebViewDocumentSource, WebViewProps,
+    dpi::LogicalSize, matched_style, resolved_view_style,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
@@ -11,12 +14,12 @@ use objc2::{
 };
 use objc2_app_kit::NSView;
 use objc2_foundation::{
-    NSNumber, NSObject, NSObjectNSKeyValueCoding, NSObjectProtocol, NSPoint, NSRect, NSSize,
-    NSString, NSURL, NSURLRequest, ns_string,
+    NSBundle, NSNumber, NSObject, NSObjectNSKeyValueCoding, NSObjectProtocol, NSPoint, NSRect,
+    NSSize, NSString, NSURL, NSURLRequest, ns_string,
 };
 use objc2_web_kit::{
-    WKScriptMessage, WKScriptMessageHandler, WKUserContentController, WKWebView,
-    WKWebViewConfiguration,
+    WKScriptMessage, WKScriptMessageHandler, WKUserContentController, WKUserScript,
+    WKUserScriptInjectionTime, WKWebView, WKWebViewConfiguration,
 };
 
 use crate::native_control;
@@ -39,6 +42,20 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
     let configuration = unsafe { WKWebViewConfiguration::new(mtm) };
     let message_bridge = document.as_ref().map(|document| {
         let content_controller = unsafe { configuration.userContentController() };
+        if let Some(source) = document.initialization_script() {
+            let source = NSString::from_str(source);
+            let user_script = unsafe {
+                WKUserScript::initWithSource_injectionTime_forMainFrameOnly(
+                    WKUserScript::alloc(mtm),
+                    &source,
+                    WKUserScriptInjectionTime::AtDocumentStart,
+                    true,
+                )
+            };
+            unsafe {
+                content_controller.addUserScript(&user_script);
+            }
+        }
         let handler = ScriptMessageHandler::new(
             mtm,
             ScriptMessageState {
@@ -80,9 +97,29 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             }
         });
         document.attach(evaluator);
-        let html = NSString::from_str(document.html());
-        unsafe {
-            web_view.loadHTMLString_baseURL(&html, None);
+        match document.source() {
+            WebViewDocumentSource::Html { html, base_url } => {
+                let html = NSString::from_str(&html);
+                let base_url = base_url.map(|value| {
+                    let value = NSString::from_str(&value);
+                    NSURL::URLWithString(&value).unwrap_or_else(|| {
+                        panic!("AppKit WebView received an invalid base URL: {:?}", value)
+                    })
+                });
+                unsafe {
+                    web_view.loadHTMLString_baseURL(&html, base_url.as_deref());
+                }
+            }
+            WebViewDocumentSource::Resource {
+                path,
+                development_path,
+            } => {
+                let (file_url, read_access_url) =
+                    resolve_document_resource(&path, development_path.as_deref());
+                unsafe {
+                    web_view.loadFileURL_allowingReadAccessToURL(&file_url, &read_access_url);
+                }
+            }
         }
     } else {
         scoped_effect!(
@@ -125,6 +162,67 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             $(props.children.get())
         }
     }
+}
+
+fn resolve_document_resource(
+    resource_path: &Path,
+    development_path: Option<&Path>,
+) -> (Retained<NSURL>, Retained<NSURL>) {
+    assert!(
+        !resource_path.as_os_str().is_empty()
+            && !resource_path.is_absolute()
+            && resource_path
+                .components()
+                .all(|component| matches!(component, Component::Normal(_))),
+        "DomTemplate resource paths must be non-empty relative paths without `..`: {:?}",
+        resource_path
+    );
+
+    if let Some(resource_root) = NSBundle::mainBundle().resourceURL() {
+        let component = NSString::from_str(&resource_path.to_string_lossy());
+        if let Some(file_url) = resource_root.URLByAppendingPathComponent(&component)
+            && ns_url_is_file(&file_url)
+        {
+            let read_access_url = file_url
+                .URLByDeletingLastPathComponent()
+                .expect("bundled DOM template must have a parent directory");
+            return (file_url, read_access_url);
+        }
+    }
+
+    if let Some(development_path) = development_path {
+        let canonical = development_path.canonicalize().unwrap_or_else(|error| {
+            panic!(
+                "failed to resolve development DOM template {:?}: {error}",
+                development_path
+            )
+        });
+        assert!(
+            canonical.is_file(),
+            "development DOM template is not a file: {:?}",
+            canonical
+        );
+        let parent = canonical
+            .parent()
+            .expect("development DOM template must have a parent directory");
+        let file_path = NSString::from_str(&canonical.to_string_lossy());
+        let root_path = NSString::from_str(&parent.to_string_lossy());
+        return (
+            NSURL::fileURLWithPath(&file_path),
+            NSURL::fileURLWithPath(&root_path),
+        );
+    }
+
+    panic!(
+        "DOM template resource {:?} was not found in the application bundle; provide a development path when running without a packaged app",
+        resource_path
+    );
+}
+
+fn ns_url_is_file(url: &NSURL) -> bool {
+    url.path()
+        .map(|path| Path::new(&path.to_string()).is_file())
+        .unwrap_or(false)
 }
 
 struct ScriptMessageState {

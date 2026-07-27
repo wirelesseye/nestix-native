@@ -5,7 +5,9 @@ use std::{
 };
 
 use nestix::Shared;
-use nestix_native_core::{JavaScriptEvaluator, WebViewDocument};
+use nestix_native_core::{
+    DomTemplate, JavaScriptEvaluator, WebViewDocument, WebViewDocumentSource,
+};
 use serde::{Deserialize, Serialize};
 
 /// Identifier for one managed DOM document.
@@ -324,11 +326,40 @@ pub struct DomRuntimeContext {
 /// Managed web-view document that connects WebKit to an embedded DOM runtime.
 pub struct ManagedDomDocument {
     runtime: Rc<EmbeddedDomRuntime>,
+    source: WebViewDocumentSource,
+    initialization_script: String,
+    message_handler_name: String,
+    apply_function_name: String,
 }
 
 impl ManagedDomDocument {
-    pub fn new(runtime: Rc<EmbeddedDomRuntime>) -> Rc<Self> {
-        Rc::new(Self { runtime })
+    pub fn new(runtime: Rc<EmbeddedDomRuntime>, template: DomTemplate) -> Rc<Self> {
+        let surface = runtime.surface().0;
+        let message_handler_name = format!("nestix_{surface}");
+        let apply_function_name = format!("__nestixApply_{surface}");
+        let initialization_script =
+            dom_initialization_script(&message_handler_name, &apply_function_name);
+        let source = match template {
+            DomTemplate::Default => WebViewDocumentSource::Html {
+                html: DEFAULT_DOM_TEMPLATE.to_string(),
+                base_url: None,
+            },
+            DomTemplate::Html { html, base_url } => WebViewDocumentSource::Html { html, base_url },
+            DomTemplate::Resource {
+                path,
+                development_path,
+            } => WebViewDocumentSource::Resource {
+                path,
+                development_path,
+            },
+        };
+        Rc::new(Self {
+            runtime,
+            source,
+            initialization_script,
+            message_handler_name,
+            apply_function_name,
+        })
     }
 }
 
@@ -342,17 +373,22 @@ impl std::fmt::Debug for ManagedDomDocument {
 }
 
 impl WebViewDocument for ManagedDomDocument {
-    fn html(&self) -> &str {
-        DOM_BOOTSTRAP_HTML
+    fn source(&self) -> WebViewDocumentSource {
+        self.source.clone()
+    }
+
+    fn initialization_script(&self) -> Option<&str> {
+        Some(&self.initialization_script)
     }
 
     fn message_handler_name(&self) -> &str {
-        "nestix"
+        &self.message_handler_name
     }
 
     fn attach(&self, evaluate_javascript: JavaScriptEvaluator) {
+        let apply_function_name = self.apply_function_name.clone();
         self.runtime.set_sender(move |commands| {
-            evaluate_javascript(&format!("window.__nestixApply({commands});"));
+            evaluate_javascript(&format!("window.{apply_function_name}({commands});"));
         });
     }
 
@@ -367,49 +403,76 @@ impl WebViewDocument for ManagedDomDocument {
     }
 }
 
-/// HTML loaded by native managed DOM surfaces.
-pub const DOM_BOOTSTRAP_HTML: &str = r#"<!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body,#nestix-root{box-sizing:border-box;width:100%;height:100%;margin:0;background-color:transparent}body{overflow:auto}</style></head>
-<body><div id="nestix-root"></div><script>
-(() => {
-  const nodes = new Map([[0, document.getElementById('nestix-root')]]);
-  const post = value => window.webkit.messageHandlers.nestix.postMessage(JSON.stringify(value));
-  window.__nestixApply = commands => {
-    for (const command of commands) {
-      const node = nodes.get(command.node);
-      switch (command.type) {
-        case 'create': nodes.set(command.node, document.createElement(command.tag)); break;
-        case 'setText': node.textContent = command.value; break;
-        case 'replaceStyles':
-          node.removeAttribute('style');
-          for (const style of command.styles) node.style.setProperty(style.property, style.value);
-          break;
-        case 'setAttribute':
-          if (command.value === null) node.removeAttribute(command.name);
-          else node.setAttribute(command.name, command.value);
-          break;
-        case 'setProperty': node[command.name] = command.value; break;
-        case 'place': {
-          const parent = nodes.get(command.parent);
-          const predecessor = command.predecessor == null ? null : nodes.get(command.predecessor);
-          parent.insertBefore(node, predecessor ? predecessor.nextSibling : parent.firstChild);
-          break;
-        }
-        case 'listen':
-          node.addEventListener(command.event, event => post({
-            type: 'event', node: command.node, event: command.event,
-            value: event.target && 'value' in event.target ? event.target.value : null,
-            checked: event.target && 'checked' in event.target ? event.target.checked : null
-          }));
-          break;
-        case 'remove': node.remove(); nodes.delete(command.node); break;
-      }
+/// Minimal document used when an application does not provide a template.
+pub const DEFAULT_DOM_TEMPLATE: &str = r#"<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body><div data-nestix-root></div></body></html>"#;
+
+const DOM_RUNTIME_STYLE: &str = r#":where(html,body,[data-nestix-root]){box-sizing:border-box;width:100%;height:100%;margin:0;background-color:transparent}:where(body){overflow:auto}"#;
+
+const DOM_INITIALIZATION_SCRIPT: &str = r#"(() => {
+  const initialize = () => {
+    let root = document.querySelector('[data-nestix-root]');
+    if (!root) {
+      root = document.createElement('div');
+      root.setAttribute('data-nestix-root', '');
+      document.body.appendChild(root);
     }
+    if (!document.querySelector('style[data-nestix-runtime]')) {
+      const style = document.createElement('style');
+      style.setAttribute('data-nestix-runtime', '');
+      style.textContent = __NESTIX_STYLE__;
+      (document.head || document.documentElement).appendChild(style);
+    }
+    const nodes = new Map([[0, root]]);
+    const post = value => window.webkit.messageHandlers.__NESTIX_HANDLER__.postMessage(JSON.stringify(value));
+    window.__NESTIX_APPLY__ = commands => {
+      for (const command of commands) {
+        const node = nodes.get(command.node);
+        switch (command.type) {
+          case 'create': nodes.set(command.node, document.createElement(command.tag)); break;
+          case 'setText': node.textContent = command.value; break;
+          case 'replaceStyles':
+            node.removeAttribute('style');
+            for (const style of command.styles) node.style.setProperty(style.property, style.value);
+            break;
+          case 'setAttribute':
+            if (command.value === null) node.removeAttribute(command.name);
+            else node.setAttribute(command.name, command.value);
+            break;
+          case 'setProperty': node[command.name] = command.value; break;
+          case 'place': {
+            const parent = nodes.get(command.parent);
+            const predecessor = command.predecessor == null ? null : nodes.get(command.predecessor);
+            parent.insertBefore(node, predecessor ? predecessor.nextSibling : parent.firstChild);
+            break;
+          }
+          case 'listen':
+            node.addEventListener(command.event, event => post({
+              type: 'event', node: command.node, event: command.event,
+              value: event.target && 'value' in event.target ? event.target.value : null,
+              checked: event.target && 'checked' in event.target ? event.target.checked : null
+            }));
+            break;
+          case 'remove': node.remove(); nodes.delete(command.node); break;
+        }
+      }
+    };
+    post({type: 'ready'});
   };
-  post({type: 'ready'});
-})();
-</script></body></html>"#;
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', initialize, {once: true});
+  else
+    initialize();
+})();"#;
+
+fn dom_initialization_script(message_handler_name: &str, apply_function_name: &str) -> String {
+    let style = serde_json::to_string(DOM_RUNTIME_STYLE).expect("DOM runtime CSS must serialize");
+    DOM_INITIALIZATION_SCRIPT
+        .replace("__NESTIX_STYLE__", &style)
+        .replace("__NESTIX_HANDLER__", message_handler_name)
+        .replace("__NESTIX_APPLY__", apply_function_name)
+}
 
 #[cfg(test)]
 mod tests {
@@ -459,7 +522,7 @@ mod tests {
     #[test]
     fn managed_document_connects_and_disconnects_the_runtime() {
         let runtime = EmbeddedDomRuntime::new(DomSurfaceId(10));
-        let document = ManagedDomDocument::new(runtime.clone());
+        let document = ManagedDomDocument::new(runtime.clone(), DomTemplate::Default);
         let scripts = Rc::new(RefCell::new(Vec::new()));
         let captured_scripts = scripts.clone();
 
@@ -470,10 +533,52 @@ mod tests {
         document.receive_message(r#"{"type":"ready"}"#);
 
         assert_eq!(scripts.borrow().len(), 1);
-        assert!(scripts.borrow()[0].starts_with("window.__nestixApply(["));
+        assert!(scripts.borrow()[0].starts_with("window.__nestixApply_10(["));
 
         document.detach();
         runtime.create_element("span");
         assert_eq!(scripts.borrow().len(), 1);
+    }
+
+    #[test]
+    fn managed_document_preserves_inline_template_and_injects_runtime() {
+        let runtime = EmbeddedDomRuntime::new(DomSurfaceId(21));
+        let html = "<!doctype html><body><main data-nestix-root></main></body>";
+        let document = ManagedDomDocument::new(
+            runtime,
+            DomTemplate::html_with_base_url(html, "https://example.test/assets/"),
+        );
+
+        assert_eq!(
+            document.source(),
+            WebViewDocumentSource::Html {
+                html: html.to_string(),
+                base_url: Some("https://example.test/assets/".to_string()),
+            }
+        );
+        let script = document
+            .initialization_script()
+            .expect("managed documents inject their runtime");
+        assert!(script.contains("data-nestix-root"));
+        assert!(script.contains("window.__nestixApply_21"));
+        assert!(script.contains("messageHandlers.nestix_21"));
+        assert!(!script.contains("__NESTIX_"));
+    }
+
+    #[test]
+    fn managed_document_preserves_packaged_and_development_paths() {
+        let runtime = EmbeddedDomRuntime::new(DomSurfaceId(22));
+        let document = ManagedDomDocument::new(
+            runtime,
+            DomTemplate::resource("web/index.html").with_development_path("assets/web/index.html"),
+        );
+
+        assert_eq!(
+            document.source(),
+            WebViewDocumentSource::Resource {
+                path: "web/index.html".into(),
+                development_path: Some("assets/web/index.html".into()),
+            }
+        );
     }
 }
