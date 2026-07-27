@@ -323,7 +323,7 @@ pub struct DomRuntimeContext {
 /// HTML loaded by native managed DOM surfaces.
 pub const DOM_BOOTSTRAP_HTML: &str = r#"<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<style>html,body,#nestix-root{box-sizing:border-box;width:100%;height:100%;margin:0}body{overflow:auto}</style></head>
+<style>html,body,#nestix-root{box-sizing:border-box;width:100%;height:100%;margin:0;background-color:transparent}body{overflow:auto}</style></head>
 <body><div id="nestix-root"></div><script>
 (() => {
   const nodes = new Map([[0, document.getElementById('nestix-root')]]);

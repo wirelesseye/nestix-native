@@ -1,6 +1,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use nestix::{Element, component, components::ContextProvider, create_state, layout};
+use nestix::{
+    Element, component, components::ContextProvider, create_state, layout, scoped_effect,
+};
 use nestix_native_core::{
     DomSurfaceProps, StyleContext, dpi::LogicalSize, matched_style, resolved_view_style,
 };
@@ -10,7 +12,10 @@ use objc2::{
     runtime::ProtocolObject,
 };
 use objc2_app_kit::NSView;
-use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize, NSString};
+use objc2_foundation::{
+    NSNumber, NSObject, NSObjectNSKeyValueCoding, NSObjectProtocol, NSPoint, NSRect, NSSize,
+    NSString, ns_string,
+};
 use objc2_web_kit::{
     WKScriptMessage, WKScriptMessageHandler, WKUserContentController, WKWebView,
     WKWebViewConfiguration,
@@ -57,6 +62,16 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
             &configuration,
         )
     };
+    scoped_effect!(
+        [web_view, props.transparent] || {
+            // WKWebView paints an opaque white backing even when the document is
+            // transparent. `drawsBackground` is available through KVC on macOS.
+            let draws_background = NSNumber::numberWithBool(!transparent.get());
+            unsafe {
+                web_view.setValue_forKey(Some(&draws_background), ns_string!("drawsBackground"));
+            }
+        }
+    );
     let sender_web_view = web_view.clone();
     runtime.set_sender(move |commands| {
         let script = NSString::from_str(&format!("window.__nestixApply({commands});"));

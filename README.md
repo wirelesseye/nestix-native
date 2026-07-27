@@ -49,7 +49,10 @@ backend inside a managed `WKWebView` document:
 layout! {
     FlexView {
         Button(.title = "Native button")
-        DomSurface(.view(.height = 160)) {
+        DomSurface(
+            .view(.height = 160),
+            .transparent = false,
+        ) {
             Button(.title = "DOM button")
         }
     }
@@ -61,6 +64,8 @@ computed values, callbacks, styling, and lifecycle. The embedded backend
 currently supports `Button`, `Input`, `Text`, and `FlexView`. `WebView` remains
 the URL-loading component and does not accept a Nestix subtree. See
 `examples/dom-surface` for a complete mixed native/DOM application.
+`DomSurface` has a transparent background by default. Set `transparent` to
+`false` to use WebKit's normal opaque background.
 
 ### Alternative backend(s)
 

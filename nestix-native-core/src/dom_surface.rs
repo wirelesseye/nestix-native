@@ -14,6 +14,10 @@ pub struct DomSurfaceProps {
     #[props(nested, default)]
     pub view: ViewProps,
 
+    /// Whether the managed document has a transparent background.
+    #[props(default = true)]
+    pub transparent: bool,
+
     /// Components rendered into the managed DOM document.
     #[props(default)]
     pub children: Layout,

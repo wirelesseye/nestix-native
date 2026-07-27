@@ -12,7 +12,7 @@ fn MixedControls() -> Element {
         Window {
             FlexView {
                 Button(.title = "Native")
-                DomSurface(.view(.width = 320, .height = 180)) {
+                DomSurface(.view(.width = 320, .height = 180), .transparent = false) {
                     Button(.title = "DOM")
                 }
             }
