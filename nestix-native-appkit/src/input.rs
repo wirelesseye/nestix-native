@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{Element, PropValue, Shared, closure, component, scoped_effect};
 use nestix_native_core::{
-    AnimatedStyle, InputProps, StyleContext, TreeContext, WithAuto, matched_style,
+    AnimatedStyle, InputProps, Length, StyleContext, TreeContext, WithAuto, matched_style,
     resolved_view_style, style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink,
     style_length_with_auto, style_margin,
 };
@@ -22,6 +22,9 @@ use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 thread_local! {
     static DELEGATES: RefCell<HashMap<String, Retained<InputDelegate>>> = RefCell::new(HashMap::new());
 }
+
+const DEFAULT_INPUT_WIDTH: f32 = 200.0;
+const DEFAULT_INPUT_HEIGHT: f32 = 22.0;
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
@@ -135,20 +138,25 @@ pub fn Input(props: &InputProps, element: &Element) {
 
             let intrinsic_size =
                 (width.is_auto() || height.is_auto()).then(|| input.intrinsicContentSize());
-            let width = match width {
-                WithAuto::Auto => intrinsic_size.unwrap().width as f32,
-                WithAuto::Value(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
-            };
-            let height = match height {
-                WithAuto::Auto => intrinsic_size.unwrap().height as f32,
-                WithAuto::Value(pixel_unit) => pixel_unit.to_logical::<f32>(scale_factor).into(),
-            };
+            let (width, min_width) = input_dimension(
+                width,
+                intrinsic_size.map(|size| size.width as f32),
+                DEFAULT_INPUT_WIDTH,
+                scale_factor,
+            );
+            let (height, min_height) = input_dimension(
+                height,
+                intrinsic_size.map(|size| size.height as f32),
+                DEFAULT_INPUT_HEIGHT,
+                scale_factor,
+            );
 
             if parent_node.is_some() {
                 tree_context.update_style(node_id, |prev| Style {
-                    size: Size {
-                        width: taffy::Dimension::from_length(width),
-                        height: taffy::Dimension::from_length(height),
+                    size: Size { width, height },
+                    min_size: Size {
+                        width: min_width,
+                        height: min_height,
                     },
                     ..prev
                 });
@@ -235,6 +243,30 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
 }
 
+fn input_dimension(
+    value: WithAuto<Length>,
+    intrinsic: Option<f32>,
+    fallback: f32,
+    scale_factor: f64,
+) -> (taffy::Dimension, taffy::Dimension) {
+    match value {
+        WithAuto::Auto => match intrinsic.filter(|value| value.is_finite() && *value > 0.0) {
+            Some(intrinsic) => (
+                taffy::Dimension::from_length(intrinsic),
+                taffy::Dimension::auto(),
+            ),
+            None => (
+                taffy::Dimension::auto(),
+                taffy::Dimension::from_length(fallback),
+            ),
+        },
+        WithAuto::Value(value) => (
+            taffy::Dimension::from_length(value.to_logical::<f32>(scale_factor)),
+            taffy::Dimension::auto(),
+        ),
+    }
+}
+
 #[derive(Debug)]
 struct InputState {
     on_text_change: PropValue<Option<Shared<dyn Fn(&str)>>>,
@@ -271,5 +303,46 @@ impl InputDelegate {
     fn new(mtm: MainThreadMarker, state: InputState) -> Retained<Self> {
         let this = Self::alloc(mtm).set_ivars(state);
         unsafe { msg_send![super(this), init] }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use taffy::{FlexDirection, TaffyTree};
+
+    #[test]
+    fn auto_input_width_uses_a_minimum_and_stretches() {
+        let (width, min_width) = input_dimension(WithAuto::Auto, Some(-1.0), 200.0, 1.0);
+        let (height, min_height) = input_dimension(WithAuto::Auto, Some(22.0), 22.0, 1.0);
+        let mut tree = TaffyTree::<()>::new();
+        let input = tree
+            .new_leaf(Style {
+                size: Size { width, height },
+                min_size: Size {
+                    width: min_width,
+                    height: min_height,
+                },
+                ..Style::default()
+            })
+            .unwrap();
+        let root = tree
+            .new_with_children(
+                Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(600.0),
+                        height: taffy::Dimension::from_length(100.0),
+                    },
+                    flex_direction: FlexDirection::Column,
+                    ..Style::default()
+                },
+                &[input],
+            )
+            .unwrap();
+
+        tree.compute_layout(root, Size::max_content()).unwrap();
+        let layout = tree.layout(input).unwrap();
+        assert_eq!(layout.size.width, 600.0);
+        assert_eq!(layout.size.height, 22.0);
     }
 }
