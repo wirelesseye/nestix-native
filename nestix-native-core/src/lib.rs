@@ -159,11 +159,6 @@ pub trait Backend {
         None
     }
 
-    /// Creates a native host for a managed DOM subtree.
-    fn create_dom_surface(&self, _props: DomSurfaceProps) -> Option<Element> {
-        None
-    }
-
     /// Creates a text label.
     fn create_text(&self, _props: TextProps) -> Option<Element> {
         None

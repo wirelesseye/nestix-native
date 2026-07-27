@@ -2,7 +2,6 @@
 
 pub mod button;
 pub mod checkbox;
-pub mod dom_surface;
 pub mod drag_drop;
 pub mod file_picker;
 pub mod flex_view;
@@ -28,7 +27,6 @@ mod native_control;
 
 pub use button::*;
 pub use checkbox::*;
-pub use dom_surface::*;
 pub use drag_drop::*;
 pub use file_picker::*;
 pub use flex_view::*;
@@ -148,13 +146,6 @@ impl Backend for AppKitBackend {
 
     fn create_web_view(&self, props: nestix_native_core::WebViewProps) -> Option<nestix::Element> {
         Some(create_element::<WebView>(props))
-    }
-
-    fn create_dom_surface(
-        &self,
-        props: nestix_native_core::DomSurfaceProps,
-    ) -> Option<nestix::Element> {
-        Some(create_element::<DomSurface>(props))
     }
 
     fn create_text(&self, props: nestix_native_core::TextProps) -> Option<nestix::Element> {

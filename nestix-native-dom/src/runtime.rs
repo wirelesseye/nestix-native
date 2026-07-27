@@ -5,6 +5,7 @@ use std::{
 };
 
 use nestix::Shared;
+use nestix_native_core::{JavaScriptEvaluator, WebViewDocument};
 use serde::{Deserialize, Serialize};
 
 /// Identifier for one managed DOM document.
@@ -320,6 +321,52 @@ pub struct DomRuntimeContext {
     pub runtime: Rc<EmbeddedDomRuntime>,
 }
 
+/// Managed web-view document that connects WebKit to an embedded DOM runtime.
+pub struct ManagedDomDocument {
+    runtime: Rc<EmbeddedDomRuntime>,
+}
+
+impl ManagedDomDocument {
+    pub fn new(runtime: Rc<EmbeddedDomRuntime>) -> Rc<Self> {
+        Rc::new(Self { runtime })
+    }
+}
+
+impl std::fmt::Debug for ManagedDomDocument {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("ManagedDomDocument")
+            .field("surface", &self.runtime.surface())
+            .finish()
+    }
+}
+
+impl WebViewDocument for ManagedDomDocument {
+    fn html(&self) -> &str {
+        DOM_BOOTSTRAP_HTML
+    }
+
+    fn message_handler_name(&self) -> &str {
+        "nestix"
+    }
+
+    fn attach(&self, evaluate_javascript: JavaScriptEvaluator) {
+        self.runtime.set_sender(move |commands| {
+            evaluate_javascript(&format!("window.__nestixApply({commands});"));
+        });
+    }
+
+    fn receive_message(&self, message: &str) {
+        if let Err(error) = self.runtime.handle_message_json(message) {
+            eprintln!("ignored invalid Nestix DOM message: {error}");
+        }
+    }
+
+    fn detach(&self) {
+        self.runtime.clear_sender();
+    }
+}
+
 /// HTML loaded by native managed DOM surfaces.
 pub const DOM_BOOTSTRAP_HTML: &str = r#"<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -407,5 +454,26 @@ mod tests {
             .handle_message_json(r#"{"type":"event","node":1,"event":"click"}"#)
             .unwrap();
         assert_eq!(clicks.get(), 1);
+    }
+
+    #[test]
+    fn managed_document_connects_and_disconnects_the_runtime() {
+        let runtime = EmbeddedDomRuntime::new(DomSurfaceId(10));
+        let document = ManagedDomDocument::new(runtime.clone());
+        let scripts = Rc::new(RefCell::new(Vec::new()));
+        let captured_scripts = scripts.clone();
+
+        document.attach(Rc::new(move |script| {
+            captured_scripts.borrow_mut().push(script.to_string());
+        }));
+        runtime.create_element("button");
+        document.receive_message(r#"{"type":"ready"}"#);
+
+        assert_eq!(scripts.borrow().len(), 1);
+        assert!(scripts.borrow()[0].starts_with("window.__nestixApply(["));
+
+        document.detach();
+        runtime.create_element("span");
+        assert_eq!(scripts.borrow().len(), 1);
     }
 }

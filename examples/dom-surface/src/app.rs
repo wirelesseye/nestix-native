@@ -49,9 +49,9 @@ pub fn App() -> Element {
                         .view(.flex_grow = 1.0),
                         .align_items = AlignItems::Stretch,
                     ) {
-                        // These controls are rendered by the native AppKit backend.
+                        // These controls are rendered by the native backend.
                         FlexView(.class = "native_panel") {
-                            Text("Native AppKit controls", .class = "heading")
+                            Text("Native controls", .class = "heading")
                             Text(computed!([count] || format!("Shared count: {}", count.get())))
                             Input(
                                 .value = name.clone(),

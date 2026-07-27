@@ -836,7 +836,6 @@ dependencies = [
  "nanoid",
  "nestix",
  "nestix-native-core",
- "nestix-native-dom",
  "objc2",
  "objc2-app-kit",
  "objc2-foundation",
