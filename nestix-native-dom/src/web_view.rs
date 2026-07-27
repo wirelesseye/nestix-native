@@ -1,5 +1,7 @@
 use nestix::{Element, component};
-use nestix_native_core::{StyleContext, WebViewProps, matched_style, resolved_view_style};
+use nestix_native_core::{
+    StyleContext, WebViewSource, WebViewProps, matched_style, resolved_view_style,
+};
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlIFrameElement, Node};
 
@@ -29,10 +31,37 @@ pub fn WebView(props: &WebViewProps, element: &Element) {
     element.scoped_effect({
         let iframe = iframe.clone();
         let effective_style = effective_style.clone();
-        let url = props.url.clone();
+        let source = props.source.clone();
         move || {
-            iframe.set_src(&url.get());
+            match source.get() {
+                WebViewSource::Url(url) => {
+                    iframe.remove_attribute("srcdoc").unwrap();
+                    iframe.set_src(&url);
+                }
+                WebViewSource::Html { html, base_url } => {
+                    iframe.remove_attribute("src").unwrap();
+                    let html = match base_url {
+                        Some(base_url) => {
+                            format!("<base href=\"{}\">{html}", escape_html_attribute(&base_url))
+                        }
+                        None => html,
+                    };
+                    iframe.set_srcdoc(&html);
+                }
+                WebViewSource::Resource { path, .. } => {
+                    iframe.remove_attribute("srcdoc").unwrap();
+                    iframe.set_src(&path.to_string_lossy());
+                }
+            }
             apply_view_style(&iframe.style(), &effective_style.get().unwrap_or_default());
         }
     });
+}
+
+fn escape_html_attribute(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }

@@ -7,7 +7,7 @@ use crate::{
     Button, DomAttribute, DomElement, DomElementRef, DomEvent, DomProperty, FlexView, Input, Root,
     Text, WebView, Window, mount_root,
 };
-use nestix_native_core::{StyleProvider, style};
+use nestix_native_core::{StyleProvider, WebViewSource, style};
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -132,11 +132,11 @@ fn web_view_uses_a_reactive_iframe_and_cleans_up() {
     target.set_id("nestix-web-view-test-root");
     document.body().unwrap().append_child(&target).unwrap();
 
-    let url = create_state("https://example.com/first".to_string());
+    let source = create_state(WebViewSource::url("https://example.com/first"));
     let app = layout! {
         Root {
             Window {
-                WebView(url.clone(), .view(.width = 320, .height = 180))
+                WebView(source.clone(), .view(.width = 320, .height = 180))
             }
         }
     };
@@ -158,7 +158,7 @@ fn web_view_uses_a_reactive_iframe_and_cleans_up() {
         "180px"
     );
 
-    url.set("https://example.com/second".to_string());
+    source.set(WebViewSource::url("https://example.com/second"));
     assert_eq!(
         iframe.get_attribute("src").as_deref(),
         Some("https://example.com/second")

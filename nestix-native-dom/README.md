@@ -7,8 +7,9 @@ subtree into an embedded browser while retaining the same Rust signals and
 callbacks.
 
 The initial backend supports `Root`, `Window`, `FlexView`, `Text`, `Button`,
-`Input`, and `WebView`. `WebView` renders an HTML `iframe`. The backend also
-provides `DomElement` for arbitrary HTML and registered custom elements.
+`Input`, and `WebView`. `WebView` renders `WebViewSource::Url` and
+`Resource` as an HTML `iframe` URL, and `Html` through `srcdoc`. The backend
+also provides `DomElement` for arbitrary HTML and registered custom elements.
 
 ## Mounting
 

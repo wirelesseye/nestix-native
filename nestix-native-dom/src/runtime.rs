@@ -5,9 +5,7 @@ use std::{
 };
 
 use nestix::Shared;
-use nestix_native_core::{
-    DomTemplate, JavaScriptEvaluator, WebViewDocument, WebViewDocumentSource,
-};
+use nestix_native_core::{DomTemplate, JavaScriptEvaluator, WebViewBridge, WebViewSource};
 use serde::{Deserialize, Serialize};
 
 /// Identifier for one managed DOM document.
@@ -323,39 +321,23 @@ pub struct DomRuntimeContext {
     pub runtime: Rc<EmbeddedDomRuntime>,
 }
 
-/// Managed web-view document that connects WebKit to an embedded DOM runtime.
-pub struct ManagedDomDocument {
+/// Bridge that connects a native web view to an embedded DOM runtime.
+pub struct ManagedDomBridge {
     runtime: Rc<EmbeddedDomRuntime>,
-    source: WebViewDocumentSource,
     initialization_script: String,
     message_handler_name: String,
     apply_function_name: String,
 }
 
-impl ManagedDomDocument {
-    pub fn new(runtime: Rc<EmbeddedDomRuntime>, template: DomTemplate) -> Rc<Self> {
+impl ManagedDomBridge {
+    pub fn new(runtime: Rc<EmbeddedDomRuntime>) -> Rc<Self> {
         let surface = runtime.surface().0;
         let message_handler_name = format!("nestix_{surface}");
         let apply_function_name = format!("__nestixApply_{surface}");
         let initialization_script =
             dom_initialization_script(&message_handler_name, &apply_function_name);
-        let source = match template {
-            DomTemplate::Default => WebViewDocumentSource::Html {
-                html: DEFAULT_DOM_TEMPLATE.to_string(),
-                base_url: None,
-            },
-            DomTemplate::Html { html, base_url } => WebViewDocumentSource::Html { html, base_url },
-            DomTemplate::Resource {
-                path,
-                development_path,
-            } => WebViewDocumentSource::Resource {
-                path,
-                development_path,
-            },
-        };
         Rc::new(Self {
             runtime,
-            source,
             initialization_script,
             message_handler_name,
             apply_function_name,
@@ -363,20 +345,16 @@ impl ManagedDomDocument {
     }
 }
 
-impl std::fmt::Debug for ManagedDomDocument {
+impl std::fmt::Debug for ManagedDomBridge {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
-            .debug_struct("ManagedDomDocument")
+            .debug_struct("ManagedDomBridge")
             .field("surface", &self.runtime.surface())
             .finish()
     }
 }
 
-impl WebViewDocument for ManagedDomDocument {
-    fn source(&self) -> WebViewDocumentSource {
-        self.source.clone()
-    }
-
+impl WebViewBridge for ManagedDomBridge {
     fn initialization_script(&self) -> Option<&str> {
         Some(&self.initialization_script)
     }
@@ -400,6 +378,21 @@ impl WebViewDocument for ManagedDomDocument {
 
     fn detach(&self) {
         self.runtime.clear_sender();
+    }
+}
+
+/// Converts a `DomSurface` template into content loadable by its web view.
+pub fn dom_template_source(template: DomTemplate) -> WebViewSource {
+    match template {
+        DomTemplate::Default => WebViewSource::html(DEFAULT_DOM_TEMPLATE),
+        DomTemplate::Html { html, base_url } => WebViewSource::Html { html, base_url },
+        DomTemplate::Resource {
+            path,
+            development_path,
+        } => WebViewSource::Resource {
+            path,
+            development_path,
+        },
     }
 }
 
@@ -520,43 +513,44 @@ mod tests {
     }
 
     #[test]
-    fn managed_document_connects_and_disconnects_the_runtime() {
+    fn managed_bridge_connects_and_disconnects_the_runtime() {
         let runtime = EmbeddedDomRuntime::new(DomSurfaceId(10));
-        let document = ManagedDomDocument::new(runtime.clone(), DomTemplate::Default);
+        let bridge = ManagedDomBridge::new(runtime.clone());
         let scripts = Rc::new(RefCell::new(Vec::new()));
         let captured_scripts = scripts.clone();
 
-        document.attach(Rc::new(move |script| {
+        bridge.attach(Rc::new(move |script| {
             captured_scripts.borrow_mut().push(script.to_string());
         }));
         runtime.create_element("button");
-        document.receive_message(r#"{"type":"ready"}"#);
+        bridge.receive_message(r#"{"type":"ready"}"#);
 
         assert_eq!(scripts.borrow().len(), 1);
         assert!(scripts.borrow()[0].starts_with("window.__nestixApply_10(["));
 
-        document.detach();
+        bridge.detach();
         runtime.create_element("span");
         assert_eq!(scripts.borrow().len(), 1);
     }
 
     #[test]
-    fn managed_document_preserves_inline_template_and_injects_runtime() {
+    fn managed_bridge_injects_runtime_into_inline_template() {
         let runtime = EmbeddedDomRuntime::new(DomSurfaceId(21));
         let html = "<!doctype html><body><main data-nestix-root></main></body>";
-        let document = ManagedDomDocument::new(
-            runtime,
-            DomTemplate::html_with_base_url(html, "https://example.test/assets/"),
-        );
+        let bridge = ManagedDomBridge::new(runtime);
+        let source = dom_template_source(DomTemplate::html_with_base_url(
+            html,
+            "https://example.test/assets/",
+        ));
 
         assert_eq!(
-            document.source(),
-            WebViewDocumentSource::Html {
+            source,
+            WebViewSource::Html {
                 html: html.to_string(),
                 base_url: Some("https://example.test/assets/".to_string()),
             }
         );
-        let script = document
+        let script = bridge
             .initialization_script()
             .expect("managed documents inject their runtime");
         assert!(script.contains("data-nestix-root"));
@@ -566,16 +560,16 @@ mod tests {
     }
 
     #[test]
-    fn managed_document_preserves_packaged_and_development_paths() {
+    fn dom_template_preserves_packaged_and_development_paths() {
         let runtime = EmbeddedDomRuntime::new(DomSurfaceId(22));
-        let document = ManagedDomDocument::new(
-            runtime,
+        let _bridge = ManagedDomBridge::new(runtime);
+        let source = dom_template_source(
             DomTemplate::resource("web/index.html").with_development_path("assets/web/index.html"),
         );
 
         assert_eq!(
-            document.source(),
-            WebViewDocumentSource::Resource {
+            source,
+            WebViewSource::Resource {
                 path: "web/index.html".into(),
                 development_path: Some("assets/web/index.html".into()),
             }

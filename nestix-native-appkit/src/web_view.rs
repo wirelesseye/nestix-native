@@ -5,7 +5,7 @@ use std::{
 
 use nestix::{Element, component, components::Fragment, create_state, layout, scoped_effect};
 use nestix_native_core::{
-    JavaScriptEvaluator, StyleContext, WebViewDocument, WebViewDocumentSource, WebViewProps,
+    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewSource, WebViewProps,
     dpi::LogicalSize, matched_style, resolved_view_style,
 };
 use objc2::{
@@ -29,7 +29,7 @@ use crate::native_control;
 pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__appkit_WebView"];
 
-    let document = props.document.get();
+    let bridge = props.bridge.get();
     let matched = matched_style(
         element.context::<StyleContext>(),
         element,
@@ -40,9 +40,9 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
 
     let mtm = MainThreadMarker::new().expect("AppKit WebView must be created on the main thread");
     let configuration = unsafe { WKWebViewConfiguration::new(mtm) };
-    let message_bridge = document.as_ref().map(|document| {
+    let message_bridge = bridge.as_ref().map(|bridge| {
         let content_controller = unsafe { configuration.userContentController() };
-        if let Some(source) = document.initialization_script() {
+        if let Some(source) = bridge.initialization_script() {
             let source = NSString::from_str(source);
             let user_script = unsafe {
                 WKUserScript::initWithSource_injectionTime_forMainFrameOnly(
@@ -59,10 +59,10 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
         let handler = ScriptMessageHandler::new(
             mtm,
             ScriptMessageState {
-                document: document.clone(),
+                bridge: bridge.clone(),
             },
         );
-        let handler_name = NSString::from_str(document.message_handler_name());
+        let handler_name = NSString::from_str(bridge.message_handler_name());
         unsafe {
             content_controller
                 .addScriptMessageHandler_name(ProtocolObject::from_ref(&*handler), &handler_name);
@@ -88,7 +88,7 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
         }
     );
 
-    if let Some(document) = &document {
+    if let Some(bridge) = &bridge {
         let evaluator_web_view = web_view.clone();
         let evaluator: JavaScriptEvaluator = Rc::new(move |script| {
             let script = NSString::from_str(script);
@@ -96,44 +96,14 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
                 evaluator_web_view.evaluateJavaScript_completionHandler(&script, None);
             }
         });
-        document.attach(evaluator);
-        match document.source() {
-            WebViewDocumentSource::Html { html, base_url } => {
-                let html = NSString::from_str(&html);
-                let base_url = base_url.map(|value| {
-                    let value = NSString::from_str(&value);
-                    NSURL::URLWithString(&value).unwrap_or_else(|| {
-                        panic!("AppKit WebView received an invalid base URL: {:?}", value)
-                    })
-                });
-                unsafe {
-                    web_view.loadHTMLString_baseURL(&html, base_url.as_deref());
-                }
-            }
-            WebViewDocumentSource::Resource {
-                path,
-                development_path,
-            } => {
-                let (file_url, read_access_url) =
-                    resolve_document_resource(&path, development_path.as_deref());
-                unsafe {
-                    web_view.loadFileURL_allowingReadAccessToURL(&file_url, &read_access_url);
-                }
-            }
-        }
-    } else {
-        scoped_effect!(
-            [web_view, props.url] || {
-                let value = NSString::from_str(&url.get());
-                let url = NSURL::URLWithString(&value).unwrap_or_else(|| {
-                    panic!("AppKit WebView received an invalid URL: {:?}", value)
-                });
-                let request = NSURLRequest::requestWithURL(&url);
-                unsafe { web_view.loadRequest(&request) }
-                    .expect("AppKit WebView failed to start navigation");
-            }
-        );
+        bridge.attach(evaluator);
     }
+
+    scoped_effect!(
+        [web_view, props.source] || {
+            load_source(&web_view, source.get());
+        }
+    );
 
     let view: Retained<NSView> = web_view.into_super();
     native_control::mount_with_intrinsic_size(
@@ -145,11 +115,11 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
         LogicalSize::new(300.0, 150.0),
     );
 
-    if let (Some(document), Some((content_controller, handler, handler_name))) =
-        (document, message_bridge)
+    if let (Some(bridge), Some((content_controller, handler, handler_name))) =
+        (bridge, message_bridge)
     {
         element.on_unmount(move || {
-            document.detach();
+            bridge.detach();
             unsafe {
                 content_controller.removeScriptMessageHandlerForName(&handler_name);
             }
@@ -164,6 +134,41 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
     }
 }
 
+fn load_source(web_view: &WKWebView, source: WebViewSource) {
+    match source {
+        WebViewSource::Url(url) => {
+            let value = NSString::from_str(&url);
+            let url = NSURL::URLWithString(&value)
+                .unwrap_or_else(|| panic!("AppKit WebView received an invalid URL: {:?}", value));
+            let request = NSURLRequest::requestWithURL(&url);
+            unsafe { web_view.loadRequest(&request) }
+                .expect("AppKit WebView failed to start navigation");
+        }
+        WebViewSource::Html { html, base_url } => {
+            let html = NSString::from_str(&html);
+            let base_url = base_url.map(|value| {
+                let value = NSString::from_str(&value);
+                NSURL::URLWithString(&value).unwrap_or_else(|| {
+                    panic!("AppKit WebView received an invalid base URL: {:?}", value)
+                })
+            });
+            unsafe {
+                web_view.loadHTMLString_baseURL(&html, base_url.as_deref());
+            }
+        }
+        WebViewSource::Resource {
+            path,
+            development_path,
+        } => {
+            let (file_url, read_access_url) =
+                resolve_document_resource(&path, development_path.as_deref());
+            unsafe {
+                web_view.loadFileURL_allowingReadAccessToURL(&file_url, &read_access_url);
+            }
+        }
+    }
+}
+
 fn resolve_document_resource(
     resource_path: &Path,
     development_path: Option<&Path>,
@@ -174,7 +179,7 @@ fn resolve_document_resource(
             && resource_path
                 .components()
                 .all(|component| matches!(component, Component::Normal(_))),
-        "DomTemplate resource paths must be non-empty relative paths without `..`: {:?}",
+        "WebView resource paths must be non-empty relative paths without `..`: {:?}",
         resource_path
     );
 
@@ -226,7 +231,7 @@ fn ns_url_is_file(url: &NSURL) -> bool {
 }
 
 struct ScriptMessageState {
-    document: Rc<dyn WebViewDocument>,
+    bridge: Rc<dyn WebViewBridge>,
 }
 
 define_class!(
@@ -249,7 +254,7 @@ define_class!(
             let Some(body) = body.downcast_ref::<NSString>() else {
                 return;
             };
-            self.ivars().document.receive_message(&body.to_string());
+            self.ivars().bridge.receive_message(&body.to_string());
         }
     }
 );

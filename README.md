@@ -39,6 +39,29 @@ Browser setup and backend-specific APIs are documented in the
 [`nestix-native-dom` README](nestix-native-dom/README.md). Desktop-only window
 options are grouped under `Window(.desktop(...))`.
 
+## Web content
+
+`WebView` accepts a `WebViewSource`, independently of `DomSurface` and
+its native bridge runtime:
+
+```rust
+WebView(WebViewSource::url("https://example.com"))
+
+WebView(WebViewSource::html(
+    "<!doctype html><body>Application HTML</body>",
+))
+
+WebView(
+    WebViewSource::resource("web/index.html")
+        .with_development_path("assets/web/index.html"),
+)
+```
+
+Sources are reactive, so a state or computed value containing a
+`WebViewSource` can navigate or replace the document after mounting.
+On native platforms, resource paths are relative to the packaged application
+resource directory; `development_path` is the unpackaged `cargo run` fallback.
+
 ## Managed DOM surfaces
 
 On macOS, enabling both the `appkit` and `dom` features provides `DomSurface`.

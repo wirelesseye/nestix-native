@@ -1,7 +1,7 @@
-use nestix::{Element, callback, component, create_state, layout, unmount_root};
+use nestix::{Element, callback, component, computed, create_state, layout, unmount_root};
 use nestix_native::{
-    AlignItems, Button, FlexDirection, FlexView, Input, Root, StyleProvider, Text, WebView, Window,
-    style,
+    AlignItems, Button, FlexDirection, FlexView, Input, Root, StyleProvider, Text, WebView,
+    WebViewSource, Window, style,
 };
 
 #[component]
@@ -68,7 +68,7 @@ pub fn App() -> Element {
                             )
                         }
                         WebView(
-                            loaded_url.clone(),
+                            computed!([loaded_url] || WebViewSource::url(loaded_url.get())),
                             .view(.flex_grow = 1.0, .align_self = AlignItems::Stretch),
                         )
                     }
