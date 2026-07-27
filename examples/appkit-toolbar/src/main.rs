@@ -3,11 +3,12 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    Button, FlexView, Length, Root, StyleProvider, Text, TitleBarMode, Window, computed_style,
-};
-use nestix_native_appkit::{
-    AppKitToolbar, AppKitToolbarDisplayMode, AppKitToolbarFlexibleSpace, AppKitToolbarItem,
-    AppKitToolbarSpace, AppKitToolbarStyle,
+    Button, FlexView, Length, Root, StyleProvider, Text, TitleBarMode, Window,
+    appkit::{
+        AppKitToolbar, AppKitToolbarDisplayMode, AppKitToolbarFlexibleSpace, AppKitToolbarItem,
+        AppKitToolbarSpace, AppKitToolbarStyle,
+    },
+    computed_style,
 };
 
 fn main() {

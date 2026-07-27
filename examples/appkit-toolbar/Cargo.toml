@@ -7,4 +7,3 @@ edition = "2024"
 env_logger = "0.11.8"
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native = { path = "../../nestix-native" }
-nestix-native-appkit = { path = "../../nestix-native-appkit" }

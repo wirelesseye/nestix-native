@@ -70,10 +70,28 @@ pub use window::*;
 
 pub use nestix_native_core::*;
 
+/// AppKit backend APIs available to macOS builds.
+#[cfg(all(target_os = "macos", feature = "appkit"))]
+pub mod appkit {
+    pub use nestix_native_appkit::*;
+}
+
 /// DOM backend APIs available to WebAssembly builds.
 #[cfg(all(target_arch = "wasm32", feature = "dom"))]
 pub mod dom {
     pub use nestix_native_dom::*;
+}
+
+/// GTK4 backend APIs available to Linux builds.
+#[cfg(all(target_os = "linux", feature = "gtk4"))]
+pub mod gtk4 {
+    pub use nestix_native_gtk4::*;
+}
+
+/// Win32 backend APIs available to Windows builds.
+#[cfg(all(target_os = "windows", feature = "win32"))]
+pub mod win32 {
+    pub use nestix_native_win32::*;
 }
 
 /// Returns the backend selected for browser WebAssembly builds.

@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[wasm_bindgen(start)]
 pub fn start() {
     let app = layout! { App };
-    nestix_native_dom::mount_root("#app", &app);
+    nestix_native::dom::mount_root("#app", &app);
     mem::forget(app);
 }
 

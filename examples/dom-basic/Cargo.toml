@@ -9,5 +9,4 @@ crate-type = ["cdylib"]
 [dependencies]
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native = { path = "../../nestix-native", default-features = false, features = ["dom"] }
-nestix-native-dom = { path = "../../nestix-native-dom" }
 wasm-bindgen = "0.2.105"

@@ -78,7 +78,6 @@ dependencies = [
  "env_logger",
  "nestix",
  "nestix-native",
- "nestix-native-appkit",
 ]
 
 [[package]]
@@ -231,7 +230,6 @@ version = "0.1.0"
 dependencies = [
  "nestix",
  "nestix-native",
- "nestix-native-dom",
  "wasm-bindgen",
 ]
 
