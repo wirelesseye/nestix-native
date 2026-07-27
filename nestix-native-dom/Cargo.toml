@@ -9,6 +9,7 @@ nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core" }
 wasm-bindgen = "0.2.105"
 web-sys = { version = "0.3.82", features = [
+    "AddEventListenerOptions",
     "CssStyleDeclaration",
     "Document",
     "DomRect",

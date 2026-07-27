@@ -28,44 +28,16 @@ Nestix Native currently provides built-in backend crates for:
 | macOS | `nestix-native-appkit` | `appkit` |
 | Windows | `nestix-native-win32` | `win32` |
 | Linux | `nestix-native-gtk4` | `gtk4` |
-| Browser (`wasm32`) | `nestix-native-dom` | `dom` |
+| Browser (`wasm32`) | [`nestix-native-dom`](nestix-native-dom/README.md) | `dom` |
 
 The facade crate enables all backend features by default, but only the backend
 for the current compilation target is used. Builds for unsupported platforms, or
 builds where the relevant platform feature is disabled, must provide their own
 backend context or will fail at runtime when the default backend is requested.
 
-### DOM backend
-
-Browser applications must mount through `nestix-native-dom` and supply the
-query selector for their host element:
-
-```rust
-let app = layout! { App };
-nestix_native_dom::mount_root("#app", &app);
-```
-
-The selector must match an existing element. The first DOM backend version
-implements `Root`, `Window`, `FlexView`, `Text`, `Button`, and `Input`.
-`Window` is rendered as an in-page application surface rather than a browser
-popup. User-provided Nestix style classes participate in Rust-side selector
-matching but are not copied to the generated DOM; resolved styles are emitted
-by the backend.
-
-Desktop-specific window options are nested so shared layouts can keep them
-separate from portable window properties:
-
-```rust
-Window(
-    .title = "Example",
-    .desktop(
-        .resizable = false,
-        .on_close_requested = callback!(|| { /* ... */ }),
-    ),
-) {
-    // content
-}
-```
+Browser setup and backend-specific APIs are documented in the
+[`nestix-native-dom` README](nestix-native-dom/README.md). Desktop-only window
+options are grouped under `Window(.desktop(...))`.
 
 ### Alternative backend(s)
 

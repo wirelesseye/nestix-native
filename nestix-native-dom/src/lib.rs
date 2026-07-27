@@ -2,6 +2,7 @@
 
 mod button;
 mod dom;
+mod dom_element;
 mod flex_view;
 mod input;
 mod root;
@@ -13,6 +14,7 @@ mod window;
 mod tests;
 
 pub use button::*;
+pub use dom_element::*;
 pub use flex_view::*;
 pub use input::*;
 pub use root::*;

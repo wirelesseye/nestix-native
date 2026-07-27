@@ -1,9 +1,12 @@
 use nestix::{callback, create_state, layout, unmount_root};
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_test::*;
 use web_sys::{Event, HtmlButtonElement, HtmlElement, HtmlInputElement};
 
-use crate::{Button, FlexView, Input, Root, Text, Window, mount_root};
+use crate::{
+    Button, DomAttribute, DomElement, DomElementRef, DomEvent, DomProperty, FlexView, Input, Root,
+    Text, Window, mount_root,
+};
 use nestix_native_core::{StyleProvider, style};
 
 wasm_bindgen_test_configure!(run_in_browser);
@@ -111,4 +114,80 @@ fn mounts_reacts_and_cleans_up() {
 fn missing_mount_selector_panics() {
     let app = layout! { Root() };
     mount_root("#nestix-dom-missing-target", &app);
+}
+
+#[wasm_bindgen_test]
+fn custom_elements_support_dom_state_events_and_refs() {
+    let document = web_sys::window().unwrap().document().unwrap();
+    let target = document.create_element("div").unwrap();
+    target.set_id("nestix-custom-element-test-root");
+    document.body().unwrap().append_child(&target).unwrap();
+
+    let disabled = create_state(false);
+    let value = create_state("initial".to_string());
+    let clicks = create_state(0);
+    let clicks_for_event = clicks.clone();
+    let node_ref = DomElementRef::new();
+    let app = layout! {
+        Root {
+            Window {
+                DomElement(
+                    "sp-button",
+                    .class = "internal_action",
+                    .dom_class = "external-action",
+                    .attributes = nestix::computed!(
+                        [disabled]
+                            || vec![
+                                DomAttribute::string("variant", "accent"),
+                                DomAttribute::boolean("disabled", disabled.get()),
+                            ]
+                    ),
+                    .properties = nestix::computed!(
+                        [value]
+                            || vec![DomProperty::new("value", JsValue::from_str(&value.get())),]
+                    ),
+                    .events = vec![DomEvent::new("click", move |_| {
+                        clicks_for_event.update(|count| count + 1);
+                    })],
+                    .node_ref = node_ref.clone(),
+                ) {
+                    Text("Save")
+                }
+            }
+        }
+    };
+
+    mount_root("#nestix-custom-element-test-root", &app);
+    let custom = target.query_selector("sp-button").unwrap().unwrap();
+    assert_eq!(custom.class_name(), "external-action");
+    assert_eq!(custom.get_attribute("variant").as_deref(), Some("accent"));
+    assert!(!custom.has_attribute("disabled"));
+    assert!(node_ref.get().is_some());
+    assert_eq!(
+        js_sys::Reflect::get(custom.as_ref(), &JsValue::from_str("value"))
+            .unwrap()
+            .as_string()
+            .as_deref(),
+        Some("initial")
+    );
+
+    disabled.set(true);
+    value.set("updated".to_string());
+    assert!(custom.has_attribute("disabled"));
+    assert_eq!(
+        js_sys::Reflect::get(custom.as_ref(), &JsValue::from_str("value"))
+            .unwrap()
+            .as_string()
+            .as_deref(),
+        Some("updated")
+    );
+    custom
+        .dispatch_event(&Event::new("click").unwrap())
+        .unwrap();
+    assert_eq!(clicks.get(), 1);
+
+    unmount_root().unwrap();
+    assert!(node_ref.get().is_none());
+    assert!(!target.has_child_nodes());
+    target.remove();
 }

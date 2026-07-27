@@ -3,6 +3,7 @@
 use std::mem;
 
 use nestix::{Element, callback, component, computed, create_state, layout};
+use nestix_native::dom::{DomAttribute, DomElement, DomEvent};
 use nestix_native::{
     AlignItems, Button, FlexDirection, FlexView, Input, Root, StyleProvider, Text, Window, style,
 };
@@ -64,6 +65,16 @@ fn App() -> Element {
                                 .on_click = callback!([count] || count.update(|value| value + 1)),
                             )
                             Button(.title = "Reset", .on_click = callback!([count] || count.set(0)))
+                            DomElement(
+                                "demo-button",
+                                .attributes = vec![DomAttribute::string("variant", "accent")],
+                                .events = vec![DomEvent::new("click", {
+                                    let count = count.clone();
+                                    move |_| count.update(|value| value + 10)
+                                })],
+                            ) {
+                                Text("Add ten (custom element)")
+                            }
                         }
                     }
                 }
