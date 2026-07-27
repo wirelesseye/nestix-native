@@ -65,6 +65,8 @@ The workspace includes these examples:
   explicit menu presentation, reactive visibility, and shared menu components.
 - `examples/tabs` shows tabs, editable input, dynamic lists, conditional
   rendering, and reactive styles.
+- `examples/web-view` demonstrates reactive URL navigation with `WKWebView` on
+  macOS and an `iframe` in browser WebAssembly builds.
 
 They are intended as reference material for the current shape of the API rather
 than as comprehensive documentation.

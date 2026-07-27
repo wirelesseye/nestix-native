@@ -1,0 +1,12 @@
+{
+  "name": "nestix-native-dom-basic",
+  "private": true,
+  "scripts": {
+    "wasm:build": "wasm-pack build --target web",
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^7.2.2"
+  }
+}

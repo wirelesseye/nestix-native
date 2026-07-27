@@ -27,6 +27,7 @@ pub mod text;
 pub mod tray_icon;
 pub mod utils;
 pub mod view;
+pub mod web_view;
 pub mod window;
 
 pub use animation::*;
@@ -56,6 +57,7 @@ pub use text::*;
 pub use tray_icon::*;
 pub use utils::*;
 pub use view::*;
+pub use web_view::*;
 pub use window::*;
 
 pub use dpi;
@@ -140,6 +142,11 @@ pub trait Backend {
 
     /// Creates an image view.
     fn create_image_view(&self, _props: ImageViewProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a view that displays web content.
+    fn create_web_view(&self, _props: WebViewProps) -> Option<Element> {
         None
     }
 

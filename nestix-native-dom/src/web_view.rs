@@ -1,0 +1,38 @@
+use nestix::{Element, component};
+use nestix_native_core::{StyleContext, WebViewProps, matched_style, resolved_view_style};
+use wasm_bindgen::JsCast;
+use web_sys::{HtmlIFrameElement, Node};
+
+use crate::{
+    dom::{create_html_element, mount_host},
+    style::apply_view_style,
+};
+
+/// DOM web view rendered as an HTML iframe.
+#[component]
+pub fn WebView(props: &WebViewProps, element: &Element) {
+    const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__dom_WebView"];
+
+    let iframe = create_html_element("iframe")
+        .dyn_into::<HtmlIFrameElement>()
+        .expect("iframe element must be an HtmlIFrameElement");
+    let node = iframe.clone().unchecked_into::<Node>();
+    mount_host(element, &node);
+
+    let matched = matched_style(
+        element.context::<StyleContext>(),
+        element,
+        props.class.clone(),
+        &DEFAULT_CLASSES,
+    );
+    let effective_style = resolved_view_style(matched, &props.view);
+    element.scoped_effect({
+        let iframe = iframe.clone();
+        let effective_style = effective_style.clone();
+        let url = props.url.clone();
+        move || {
+            iframe.set_src(&url.get());
+            apply_view_style(&iframe.style(), &effective_style.get().unwrap_or_default());
+        }
+    });
+}

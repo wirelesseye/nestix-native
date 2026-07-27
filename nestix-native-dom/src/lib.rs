@@ -8,6 +8,7 @@ mod input;
 mod root;
 mod style;
 mod text;
+mod web_view;
 mod window;
 
 #[cfg(all(test, target_arch = "wasm32"))]
@@ -19,6 +20,7 @@ pub use flex_view::*;
 pub use input::*;
 pub use root::*;
 pub use text::*;
+pub use web_view::*;
 pub use window::*;
 
 use std::cell::RefCell;
@@ -59,6 +61,10 @@ impl Backend for DomBackend {
 
     fn create_input(&self, props: nestix_native_core::InputProps) -> Option<Element> {
         Some(create_element::<Input>(props))
+    }
+
+    fn create_web_view(&self, props: nestix_native_core::WebViewProps) -> Option<Element> {
+        Some(create_element::<WebView>(props))
     }
 }
 

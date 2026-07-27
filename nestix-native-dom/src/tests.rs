@@ -1,11 +1,11 @@
 use nestix::{callback, create_state, layout, unmount_root};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_test::*;
-use web_sys::{Event, HtmlButtonElement, HtmlElement, HtmlInputElement};
+use web_sys::{Event, HtmlButtonElement, HtmlElement, HtmlIFrameElement, HtmlInputElement};
 
 use crate::{
     Button, DomAttribute, DomElement, DomElementRef, DomEvent, DomProperty, FlexView, Input, Root,
-    Text, Window, mount_root,
+    Text, WebView, Window, mount_root,
 };
 use nestix_native_core::{StyleProvider, style};
 
@@ -114,6 +114,50 @@ fn mounts_reacts_and_cleans_up() {
 fn missing_mount_selector_panics() {
     let app = layout! { Root() };
     mount_root("#nestix-dom-missing-target", &app);
+}
+
+#[wasm_bindgen_test]
+fn web_view_uses_a_reactive_iframe_and_cleans_up() {
+    let document = web_sys::window().unwrap().document().unwrap();
+    let target = document.create_element("div").unwrap();
+    target.set_id("nestix-web-view-test-root");
+    document.body().unwrap().append_child(&target).unwrap();
+
+    let url = create_state("https://example.com/first".to_string());
+    let app = layout! {
+        Root {
+            Window {
+                WebView(url.clone(), .view(.width = 320, .height = 180))
+            }
+        }
+    };
+
+    mount_root("#nestix-web-view-test-root", &app);
+    let iframe = target
+        .query_selector("iframe")
+        .unwrap()
+        .unwrap()
+        .dyn_into::<HtmlIFrameElement>()
+        .unwrap();
+    assert_eq!(
+        iframe.get_attribute("src").as_deref(),
+        Some("https://example.com/first")
+    );
+    assert_eq!(iframe.style().get_property_value("width").unwrap(), "320px");
+    assert_eq!(
+        iframe.style().get_property_value("height").unwrap(),
+        "180px"
+    );
+
+    url.set("https://example.com/second".to_string());
+    assert_eq!(
+        iframe.get_attribute("src").as_deref(),
+        Some("https://example.com/second")
+    );
+
+    unmount_root().unwrap();
+    assert!(!target.has_child_nodes());
+    target.remove();
 }
 
 #[wasm_bindgen_test]

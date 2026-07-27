@@ -4,8 +4,8 @@
 nodes on `wasm32-unknown-unknown`.
 
 The initial backend supports `Root`, `Window`, `FlexView`, `Text`, `Button`,
-and `Input`. It also provides `DomElement` for arbitrary HTML and registered
-custom elements.
+`Input`, and `WebView`. `WebView` renders an HTML `iframe`. The backend also
+provides `DomElement` for arbitrary HTML and registered custom elements.
 
 ## Mounting
 
