@@ -87,7 +87,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     } else {
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN
     };
-    if !props.resizable.get() {
+    if !props.desktop.resizable.get() {
         window_style &= !(WS_THICKFRAME | WS_MAXIMIZEBOX);
     }
     let hwnd = unsafe {
@@ -121,7 +121,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         animation: animation.clone(),
         scale_factor: scale_factor.clone(),
         on_resize: props.on_resize.clone(),
-        on_close_requested: props.on_close_requested.clone(),
+        on_close_requested: props.desktop.on_close_requested.clone(),
     });
     app_state.add_window(hwnd, window_state.clone());
     let request_frame: Rc<dyn Fn()> = Rc::new(move || unsafe {
@@ -161,14 +161,14 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [props.resizable]
+        [props.desktop.resizable]
             || unsafe {
                 apply_resizable(hwnd, resizable.get());
             }
     );
 
     scoped_effect!(
-        [props.title_bar_mode]
+        [props.desktop.title_bar_mode]
             || unsafe {
                 apply_title_bar_mode(hwnd, title_bar_mode.get());
             }

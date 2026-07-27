@@ -70,20 +70,32 @@ pub use window::*;
 
 pub use nestix_native_core::*;
 
+/// DOM backend APIs available to WebAssembly builds.
+#[cfg(all(target_arch = "wasm32", feature = "dom"))]
+pub mod dom {
+    pub use nestix_native_dom::*;
+}
+
+/// Returns the backend selected for browser WebAssembly builds.
+#[cfg(all(target_arch = "wasm32", feature = "dom"))]
+pub fn default_backend() -> &'static dyn Backend {
+    &nestix_native_dom::DOM_BACKEND
+}
+
 /// Returns the backend selected for the current platform and feature set.
-#[cfg(all(target_os = "macos", feature = "appkit"))]
+#[cfg(all(not(target_arch = "wasm32"), target_os = "macos", feature = "appkit"))]
 pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_appkit::APPKIT_BACKEND
 }
 
 /// Returns the backend selected for the current platform and feature set.
-#[cfg(all(target_os = "windows", feature = "win32"))]
+#[cfg(all(not(target_arch = "wasm32"), target_os = "windows", feature = "win32"))]
 pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_win32::WIN32_BACKEND
 }
 
 /// Returns the backend selected for the current platform and feature set.
-#[cfg(all(target_os = "linux", feature = "gtk4"))]
+#[cfg(all(not(target_arch = "wasm32"), target_os = "linux", feature = "gtk4"))]
 pub fn default_backend() -> &'static dyn Backend {
     &nestix_native_gtk4::GTK4_BACKEND
 }
@@ -94,9 +106,10 @@ pub fn default_backend() -> &'static dyn Backend {
 ///
 /// Panics when no backend feature is enabled for the target platform.
 #[cfg(not(any(
-    all(target_os = "macos", feature = "appkit"),
-    all(target_os = "windows", feature = "win32"),
-    all(target_os = "linux", feature = "gtk4")
+    all(target_arch = "wasm32", feature = "dom"),
+    all(not(target_arch = "wasm32"), target_os = "macos", feature = "appkit"),
+    all(not(target_arch = "wasm32"), target_os = "windows", feature = "win32"),
+    all(not(target_arch = "wasm32"), target_os = "linux", feature = "gtk4")
 )))]
 pub fn default_backend() -> &'static dyn Backend {
     panic!(

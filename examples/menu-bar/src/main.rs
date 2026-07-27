@@ -61,11 +61,11 @@ fn MenuBarExample() -> Element {
                 .title = "Window-specific menu",
                 .width = 480,
                 .height = 300,
-                .on_close_requested = callback!(
+                .desktop(.on_close_requested = callback!(
                     [window_menu_open] || {
                         window_menu_open.set(false);
                     }
-                ),
+                )),
             ) {
                 FlexView(
                     .align_items = AlignItems::Center,
@@ -123,11 +123,11 @@ fn MenuBarExample() -> Element {
                 .title = "No window menu",
                 .width = 480,
                 .height = 240,
-                .on_close_requested = callback!(
+                .desktop(.on_close_requested = callback!(
                     [plain_window_open] || {
                         plain_window_open.set(false);
                     }
-                ),
+                )),
             ) {
                 FlexView(
                     .align_items = AlignItems::Center,

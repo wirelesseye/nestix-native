@@ -107,9 +107,9 @@ fn ContextMenuExample() -> Element {
                 .title = "Nestix Context Menu",
                 .width = 520,
                 .height = 360,
-                .on_close_requested = callback!(|| {
+                .desktop(.on_close_requested = callback!(|| {
                     unmount_root().expect("root should be mounted");
-                }),
+                })),
             ) {
                 FlexView(
                     .align_items = AlignItems::Center,

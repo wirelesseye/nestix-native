@@ -21,9 +21,9 @@ fn FilePickerExample() -> Element {
                 .title = "Nestix File Picker",
                 .width = 520,
                 .height = 360,
-                .on_close_requested = callback!(|| {
+                .desktop(.on_close_requested = callback!(|| {
                     unmount_root().expect("root should be mounted");
-                }),
+                })),
             ) {
                 FlexView(
                     .align_items = AlignItems::Start,

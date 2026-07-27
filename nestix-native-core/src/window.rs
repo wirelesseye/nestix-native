@@ -17,6 +17,23 @@ pub enum TitleBarMode {
     Overlay,
 }
 
+/// Desktop-only properties for a top-level window.
+#[props(debug, default)]
+#[derive(Debug, Clone)]
+pub struct DesktopWindowProps {
+    /// Whether the user can resize the window.
+    #[props(default = true)]
+    pub resizable: bool,
+
+    /// Native title-bar presentation mode.
+    #[props(default)]
+    pub title_bar_mode: TitleBarMode,
+
+    /// Called when the user asks to close the window. The window stays open
+    /// until this component is unmounted.
+    pub on_close_requested: Option<Shared<dyn Fn()>>,
+}
+
 /// Properties for a top-level native window.
 #[props(debug)]
 #[derive(Debug, Clone)]
@@ -36,13 +53,9 @@ pub struct WindowProps {
     #[props(default = true)]
     pub visible: bool,
 
-    /// Whether the user can resize the window.
-    #[props(default = true)]
-    pub resizable: bool,
-
-    /// Native title-bar presentation mode.
-    #[props(default)]
-    pub title_bar_mode: TitleBarMode,
+    /// Properties used only by desktop window backends.
+    #[props(nested, default)]
+    pub desktop: DesktopWindowProps,
 
     /// Initial content width in logical pixels.
     #[props(default = 800.0)]
@@ -53,8 +66,4 @@ pub struct WindowProps {
 
     /// Called after the native window's content size changes.
     pub on_resize: Option<Shared<dyn Fn(dpi::Size)>>,
-
-    /// Called when the user asks to close the window. The window stays open
-    /// until this component is unmounted.
-    pub on_close_requested: Option<Shared<dyn Fn()>>,
 }

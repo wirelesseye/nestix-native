@@ -75,7 +75,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         WindowState {
             tree_context: tree_context.clone(),
             on_resize: props.on_resize.clone(),
-            on_close_requested: props.on_close_requested.clone(),
+            on_close_requested: props.desktop.on_close_requested.clone(),
             menu,
             active_window_menu: root_context.active_window_menu.clone(),
         },
@@ -85,7 +85,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         | NSWindowStyleMask::Resizable
         | NSWindowStyleMask::Titled;
     ns_window.setStyleMask(style_mask);
-    apply_title_bar_mode(&ns_window, props.title_bar_mode.get());
+    apply_title_bar_mode(&ns_window, props.desktop.title_bar_mode.get());
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
 
     // NSWindow does not retain its delegate.
@@ -126,7 +126,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [ns_window, props.resizable] || {
+        [ns_window, props.desktop.resizable] || {
             let mut style_mask = ns_window.styleMask();
             if resizable.get() {
                 style_mask.insert(NSWindowStyleMask::Resizable);
@@ -138,7 +138,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [ns_window, props.title_bar_mode] || {
+        [ns_window, props.desktop.title_bar_mode] || {
             apply_title_bar_mode(&ns_window, title_bar_mode.get());
         }
     );

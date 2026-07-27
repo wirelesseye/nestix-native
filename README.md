@@ -28,11 +28,44 @@ Nestix Native currently provides built-in backend crates for:
 | macOS | `nestix-native-appkit` | `appkit` |
 | Windows | `nestix-native-win32` | `win32` |
 | Linux | `nestix-native-gtk4` | `gtk4` |
+| Browser (`wasm32`) | `nestix-native-dom` | `dom` |
 
 The facade crate enables all backend features by default, but only the backend
 for the current compilation target is used. Builds for unsupported platforms, or
 builds where the relevant platform feature is disabled, must provide their own
 backend context or will fail at runtime when the default backend is requested.
+
+### DOM backend
+
+Browser applications must mount through `nestix-native-dom` and supply the
+query selector for their host element:
+
+```rust
+let app = layout! { App };
+nestix_native_dom::mount_root("#app", &app);
+```
+
+The selector must match an existing element. The first DOM backend version
+implements `Root`, `Window`, `FlexView`, `Text`, `Button`, and `Input`.
+`Window` is rendered as an in-page application surface rather than a browser
+popup. User-provided Nestix style classes participate in Rust-side selector
+matching but are not copied to the generated DOM; resolved styles are emitted
+by the backend.
+
+Desktop-specific window options are nested so shared layouts can keep them
+separate from portable window properties:
+
+```rust
+Window(
+    .title = "Example",
+    .desktop(
+        .resizable = false,
+        .on_close_requested = callback!(|| { /* ... */ }),
+    ),
+) {
+    // content
+}
+```
 
 ### Alternative backend(s)
 
@@ -50,6 +83,8 @@ The workspace includes these examples:
   items, submenus, and programmatic presentation.
 - `examples/drag-drop` demonstrates a drag source and lazy drop
   target for files, encoded images, and UTF-8 text.
+- `examples/dom-basic` demonstrates selector-based browser mounting, DOM
+  controls, reactive state, and shared Nestix Native styling.
 - `examples/file-picker` demonstrates open, multi-file, save, and folder picker
   requests through a window-bound controller.
 - `examples/menu-bar` demonstrates application-wide and window-specific menu

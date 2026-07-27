@@ -44,7 +44,7 @@ fn menu_bar_and_context_menu_compile_through_layout() {
     let resizable = nestix::create_state(true);
     let context_menu = ContextMenuController::new();
     let _window = layout! {
-        Window(.visible = visible, .resizable = resizable) {
+        Window(.visible = visible, .desktop(.resizable = resizable)) {
             FlexView {
                 MenuBar(.menu = layout!{ DocumentMenu })
                 Target

@@ -92,9 +92,9 @@ fn StyleMacroApp() -> Element {
                     .title = "Nestix style! selector gallery",
                     .width = 620,
                     .height = 650,
-                    .on_close_requested = callback!(|| {
+                    .desktop(.on_close_requested = callback!(|| {
                         unmount_root().expect("root should be mounted");
-                    }),
+                    })),
                 ) {
                     FlexView(.class = "app", .view(.flex_grow = 1.0)) {
                         Text("style! selector gallery", .class = "heading")

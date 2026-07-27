@@ -68,12 +68,12 @@ fn AppKitToolbarExample() -> Element {
             StyleProvider(styles) {
                 Window(
                     .title = "AppKit Toolbar Example",
-                    .title_bar_mode = title_bar_mode.clone(),
                     .width = 560,
                     .height = 320,
+                    .desktop(.title_bar_mode = title_bar_mode.clone(),
                     .on_close_requested = callback!(|| {
                         unmount_root().expect("root should be mounted");
-                    }),
+                    })),
                 ) {
                     FlexView(.class = "content") {
                         // AppKitToolbar may be mounted anywhere below its Window.

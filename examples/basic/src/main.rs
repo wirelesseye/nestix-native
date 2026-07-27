@@ -41,9 +41,9 @@ fn ExampleApp() -> Element {
                     .title = "Nestix Counter",
                     .width = 420,
                     .height = 320,
-                    .on_close_requested = callback!(|| {
+                    .desktop(.on_close_requested = callback!(|| {
                         unmount_root().expect("root should be mounted");
-                    }),
+                    })),
                     .on_resize = callback!(|size| {
                         println!("{:?}", size);
                     }),

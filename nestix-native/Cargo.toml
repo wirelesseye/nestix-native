@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["appkit", "win32", "gtk4"]
+default = ["appkit", "win32", "gtk4", "dom"]
 appkit = ["dep:nestix-native-appkit"]
 win32 = ["dep:nestix-native-win32"]
 gtk4 = ["dep:nestix-native-gtk4"]
+dom = ["dep:nestix-native-dom"]
 
 [dependencies]
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
@@ -21,3 +22,6 @@ nestix-native-win32 = { path = "../nestix-native-win32", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 nestix-native-gtk4 = { path = "../nestix-native-gtk4", optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+nestix-native-dom = { path = "../nestix-native-dom", optional = true }

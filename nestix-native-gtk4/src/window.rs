@@ -59,7 +59,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     ));
     window.connect_close_request(closure!(
-        [unmounting, props.on_close_requested] | _ | {
+        [unmounting, props.desktop.on_close_requested] | _ | {
             if unmounting.get() {
                 glib::Propagation::Proceed
             } else {
@@ -154,7 +154,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     );
     scoped_effect!(
-        [window, props.resizable] || {
+        [window, props.desktop.resizable] || {
             window.set_resizable(resizable.get());
         }
     );
@@ -164,7 +164,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             header_bar,
             decoration_size,
             correct_system_title_bar_size,
-            props.title_bar_mode
+            props.desktop.title_bar_mode
         ] || {
             let mode = title_bar_mode.get();
             apply_title_bar_mode(&window, &header_bar, mode);
