@@ -83,24 +83,21 @@ pub(crate) fn mount(
             let scale = scale_factor.get();
             let style = style_props.get();
             let intrinsic = intrinsic_size.get();
-            let width =
-                match style_length_with_auto(style.as_ref(), width.get(), WithAuto::Auto, |s| {
-                    s.width
-                }) {
-                    WithAuto::Auto => intrinsic.width,
-                    WithAuto::Value(value) => value.to_logical::<f32>(scale).0,
-                };
-            let height =
-                match style_length_with_auto(style.as_ref(), height.get(), WithAuto::Auto, |s| {
-                    s.height
-                }) {
-                    WithAuto::Auto => intrinsic.height,
-                    WithAuto::Value(value) => value.to_logical::<f32>(scale).0,
-                };
+            let (width, min_width) = leaf_dimension(
+                style_length_with_auto(style.as_ref(), width.get(), WithAuto::Auto, |s| s.width),
+                intrinsic.width,
+                scale,
+            );
+            let (height, min_height) = leaf_dimension(
+                style_length_with_auto(style.as_ref(), height.get(), WithAuto::Auto, |s| s.height),
+                intrinsic.height,
+                scale,
+            );
             tree_context.update_style(node_id, |prev| Style {
-                size: Size {
-                    width: taffy::Dimension::from_length(width),
-                    height: taffy::Dimension::from_length(height),
+                size: Size { width, height },
+                min_size: Size {
+                    width: min_width,
+                    height: min_height,
                 },
                 ..prev
             });
@@ -159,4 +156,71 @@ pub(crate) fn mount(
     );
 
     node_id
+}
+
+pub(crate) fn leaf_dimension(
+    value: WithAuto<nestix_native_core::Length>,
+    intrinsic: f32,
+    scale_factor: f64,
+) -> (taffy::Dimension, taffy::Dimension) {
+    match value {
+        WithAuto::Auto => (
+            taffy::Dimension::auto(),
+            taffy::Dimension::from_length(intrinsic),
+        ),
+        WithAuto::Value(value) => (
+            taffy::Dimension::from_length(value.to_logical::<f32>(scale_factor).0),
+            taffy::Dimension::auto(),
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use taffy::{AlignItems, AvailableSpace, FlexDirection, TaffyTree};
+
+    #[test]
+    fn auto_native_leaf_width_can_stretch_past_intrinsic_size() {
+        let mut tree: TaffyTree<()> = TaffyTree::new();
+        let leaf = tree
+            .new_leaf(Style {
+                size: Size {
+                    width: taffy::Dimension::auto(),
+                    height: taffy::Dimension::from_length(150.0),
+                },
+                min_size: Size {
+                    width: taffy::Dimension::from_length(300.0),
+                    height: taffy::Dimension::from_length(150.0),
+                },
+                ..Default::default()
+            })
+            .unwrap();
+        let root = tree
+            .new_with_children(
+                Style {
+                    display: taffy::Display::Flex,
+                    flex_direction: FlexDirection::Column,
+                    align_items: Some(AlignItems::Stretch),
+                    size: Size {
+                        width: taffy::Dimension::from_length(600.0),
+                        height: taffy::Dimension::from_length(400.0),
+                    },
+                    ..Default::default()
+                },
+                &[leaf],
+            )
+            .unwrap();
+
+        tree.compute_layout(
+            root,
+            Size {
+                width: AvailableSpace::Definite(600.0),
+                height: AvailableSpace::Definite(400.0),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(tree.layout(leaf).unwrap().size.width, 600.0);
+    }
 }

@@ -7,6 +7,16 @@ use crate::{ClassList, ViewProps};
 /// Function supplied by a native web view for evaluating JavaScript.
 pub type JavaScriptEvaluator = Rc<dyn Fn(&str)>;
 
+/// Platform capabilities supplied while constructing a bridge's document-start script.
+///
+/// The expression must evaluate to a JavaScript function accepting one string message.
+/// This keeps bridge implementations independent of platform APIs such as WebKit script
+/// handlers or WebView2's `chrome.webview` object.
+#[derive(Debug, Clone, Copy)]
+pub struct WebViewBridgeScriptContext<'a> {
+    pub post_message_expression: &'a str,
+}
+
 /// Content loaded by a web view.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WebViewSource {
@@ -68,13 +78,13 @@ impl WebViewSource {
 
 /// Optional native bridge installed into a web view before its document loads.
 pub trait WebViewBridge: Debug {
-    /// Script installed before the document loads.
-    fn initialization_script(&self) -> Option<&str> {
+    /// Builds a script installed before the document loads.
+    fn initialization_script(&self, _context: WebViewBridgeScriptContext<'_>) -> Option<String> {
         None
     }
 
-    /// Name used by the document's script-message channel.
-    fn message_handler_name(&self) -> &str;
+    /// Stable name used when a backend supports named message channels.
+    fn message_channel_name(&self) -> &str;
 
     /// Connects the bridge to the web view's JavaScript evaluator.
     fn attach(&self, evaluate_javascript: JavaScriptEvaluator);

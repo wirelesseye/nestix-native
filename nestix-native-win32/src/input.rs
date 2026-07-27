@@ -8,7 +8,7 @@ use nestix_native_core::{
     style_flex_shrink, style_length_with_auto, style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
-use taffy::{Size, Style, prelude::FromLength};
+use taffy::{Size, Style};
 use windows::{
     Win32::{
         Foundation::{LPARAM, SIZE, WPARAM},
@@ -25,7 +25,10 @@ use windows::{
     core::HSTRING,
 };
 
-use crate::{AppState, WindowContext, contexts::ParentContext, font::ui_font, utils::hiword};
+use crate::{
+    AppState, WindowContext, contexts::ParentContext, font::ui_font,
+    native_control::leaf_dimension, utils::hiword,
+};
 
 #[component]
 /// Renders a native Win32 single-line text input.
@@ -185,19 +188,20 @@ pub fn Input(props: &InputProps, element: &Element) {
                 |style| style.height,
             );
 
-            let width = match width {
-                WithAuto::Auto => PhysicalUnit::new(size.cx + 12).to_logical(scale_factor),
-                WithAuto::Value(length) => length.to_logical::<f32>(scale_factor),
-            };
-            let height = match height {
-                WithAuto::Auto => PhysicalUnit::new(size.cy + 8).to_logical(scale_factor),
-                WithAuto::Value(length) => length.to_logical::<f32>(scale_factor).into(),
-            };
+            let intrinsic_width = PhysicalUnit::new(size.cx + 12)
+                .to_logical::<f32>(scale_factor)
+                .0;
+            let intrinsic_height = PhysicalUnit::new(size.cy + 8)
+                .to_logical::<f32>(scale_factor)
+                .0;
+            let (width, min_width) = leaf_dimension(width, intrinsic_width, scale_factor);
+            let (height, min_height) = leaf_dimension(height, intrinsic_height, scale_factor);
 
             tree_context.update_style(node_id, |prev| Style {
-                size: Size {
-                    width: taffy::Dimension::from_length(width),
-                    height: taffy::Dimension::from_length(height),
+                size: Size { width, height },
+                min_size: Size {
+                    width: min_width,
+                    height: min_height,
                 },
                 ..prev
             });

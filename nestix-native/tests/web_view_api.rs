@@ -23,9 +23,7 @@ fn web_view_compiles_through_layout() {
     };
     let _html_window = layout! {
         Window {
-            WebView(
-                WebViewSource::html("<!doctype html><body>Inline application HTML</body>"),
-            )
+            WebView(WebViewSource::html("<!doctype html><body>Inline application HTML</body>"))
         }
     };
     let _resource_window = layout! {

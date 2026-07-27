@@ -32,6 +32,8 @@ pub mod tab_view;
 pub mod text;
 /// Win32 notification-area icon component.
 pub mod tray_icon;
+/// Win32 WebView2 component.
+pub mod web_view;
 /// Win32 top-level window component.
 pub mod window;
 
@@ -57,6 +59,7 @@ pub use slider::*;
 pub use tab_view::*;
 pub use text::*;
 pub use tray_icon::*;
+pub use web_view::*;
 pub use window::*;
 
 use nestix::create_element;
@@ -123,6 +126,10 @@ impl Backend for Win32Backend {
         props: nestix_native_core::ImageViewProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<ImageView>(props))
+    }
+
+    fn create_web_view(&self, props: nestix_native_core::WebViewProps) -> Option<nestix::Element> {
+        Some(create_element::<WebView>(props))
     }
 
     fn create_scroll_view(

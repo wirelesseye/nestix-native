@@ -1,6 +1,6 @@
 use nestix::{Element, component};
 use nestix_native_core::{
-    StyleContext, WebViewSource, WebViewProps, matched_style, resolved_view_style,
+    StyleContext, WebViewProps, WebViewSource, matched_style, resolved_view_style,
 };
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlIFrameElement, Node};

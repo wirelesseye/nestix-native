@@ -5,7 +5,9 @@ use std::{
 };
 
 use nestix::Shared;
-use nestix_native_core::{DomTemplate, JavaScriptEvaluator, WebViewBridge, WebViewSource};
+use nestix_native_core::{
+    DomTemplate, JavaScriptEvaluator, WebViewBridge, WebViewBridgeScriptContext, WebViewSource,
+};
 use serde::{Deserialize, Serialize};
 
 /// Identifier for one managed DOM document.
@@ -324,22 +326,18 @@ pub struct DomRuntimeContext {
 /// Bridge that connects a native web view to an embedded DOM runtime.
 pub struct ManagedDomBridge {
     runtime: Rc<EmbeddedDomRuntime>,
-    initialization_script: String,
-    message_handler_name: String,
+    message_channel_name: String,
     apply_function_name: String,
 }
 
 impl ManagedDomBridge {
     pub fn new(runtime: Rc<EmbeddedDomRuntime>) -> Rc<Self> {
         let surface = runtime.surface().0;
-        let message_handler_name = format!("nestix_{surface}");
+        let message_channel_name = format!("nestix_{surface}");
         let apply_function_name = format!("__nestixApply_{surface}");
-        let initialization_script =
-            dom_initialization_script(&message_handler_name, &apply_function_name);
         Rc::new(Self {
             runtime,
-            initialization_script,
-            message_handler_name,
+            message_channel_name,
             apply_function_name,
         })
     }
@@ -355,12 +353,15 @@ impl std::fmt::Debug for ManagedDomBridge {
 }
 
 impl WebViewBridge for ManagedDomBridge {
-    fn initialization_script(&self) -> Option<&str> {
-        Some(&self.initialization_script)
+    fn initialization_script(&self, context: WebViewBridgeScriptContext<'_>) -> Option<String> {
+        Some(dom_initialization_script(
+            context.post_message_expression,
+            &self.apply_function_name,
+        ))
     }
 
-    fn message_handler_name(&self) -> &str {
-        &self.message_handler_name
+    fn message_channel_name(&self) -> &str {
+        &self.message_channel_name
     }
 
     fn attach(&self, evaluate_javascript: JavaScriptEvaluator) {
@@ -418,7 +419,8 @@ const DOM_INITIALIZATION_SCRIPT: &str = r#"(() => {
       (document.head || document.documentElement).appendChild(style);
     }
     const nodes = new Map([[0, root]]);
-    const post = value => window.webkit.messageHandlers.__NESTIX_HANDLER__.postMessage(JSON.stringify(value));
+    const postMessage = __NESTIX_POST_MESSAGE__;
+    const post = value => postMessage(JSON.stringify(value));
     window.__NESTIX_APPLY__ = commands => {
       for (const command of commands) {
         const node = nodes.get(command.node);
@@ -459,11 +461,11 @@ const DOM_INITIALIZATION_SCRIPT: &str = r#"(() => {
     initialize();
 })();"#;
 
-fn dom_initialization_script(message_handler_name: &str, apply_function_name: &str) -> String {
+fn dom_initialization_script(post_message_expression: &str, apply_function_name: &str) -> String {
     let style = serde_json::to_string(DOM_RUNTIME_STYLE).expect("DOM runtime CSS must serialize");
     DOM_INITIALIZATION_SCRIPT
         .replace("__NESTIX_STYLE__", &style)
-        .replace("__NESTIX_HANDLER__", message_handler_name)
+        .replace("__NESTIX_POST_MESSAGE__", post_message_expression)
         .replace("__NESTIX_APPLY__", apply_function_name)
 }
 
@@ -551,11 +553,15 @@ mod tests {
             }
         );
         let script = bridge
-            .initialization_script()
+            .initialization_script(WebViewBridgeScriptContext {
+                post_message_expression: "message => testTransport(message)",
+            })
             .expect("managed documents inject their runtime");
         assert!(script.contains("data-nestix-root"));
         assert!(script.contains("window.__nestixApply_21"));
-        assert!(script.contains("messageHandlers.nestix_21"));
+        assert!(script.contains("message => testTransport(message)"));
+        assert!(!script.contains("window.webkit"));
+        assert!(!script.contains("window.chrome"));
         assert!(!script.contains("__NESTIX_"));
     }
 

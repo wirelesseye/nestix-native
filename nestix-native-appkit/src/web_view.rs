@@ -5,8 +5,8 @@ use std::{
 
 use nestix::{Element, component, components::Fragment, create_state, layout, scoped_effect};
 use nestix_native_core::{
-    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewSource, WebViewProps,
-    dpi::LogicalSize, matched_style, resolved_view_style,
+    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext, WebViewProps,
+    WebViewSource, dpi::LogicalSize, matched_style, resolved_view_style,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
@@ -42,8 +42,28 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
     let configuration = unsafe { WKWebViewConfiguration::new(mtm) };
     let message_bridge = bridge.as_ref().map(|bridge| {
         let content_controller = unsafe { configuration.userContentController() };
-        if let Some(source) = bridge.initialization_script() {
-            let source = NSString::from_str(source);
+        let handler = ScriptMessageHandler::new(
+            mtm,
+            ScriptMessageState {
+                bridge: bridge.clone(),
+            },
+        );
+        let handler_name = NSString::from_str(bridge.message_channel_name());
+        unsafe {
+            content_controller
+                .addScriptMessageHandler_name(ProtocolObject::from_ref(&*handler), &handler_name);
+        }
+        let channel_name = bridge
+            .message_channel_name()
+            .replace('\\', "\\\\")
+            .replace('\'', "\\'");
+        let post_message_expression = format!(
+            "message => window.webkit.messageHandlers['{channel_name}'].postMessage(message)"
+        );
+        if let Some(source) = bridge.initialization_script(WebViewBridgeScriptContext {
+            post_message_expression: &post_message_expression,
+        }) {
+            let source = NSString::from_str(&source);
             let user_script = unsafe {
                 WKUserScript::initWithSource_injectionTime_forMainFrameOnly(
                     WKUserScript::alloc(mtm),
@@ -55,17 +75,6 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             unsafe {
                 content_controller.addUserScript(&user_script);
             }
-        }
-        let handler = ScriptMessageHandler::new(
-            mtm,
-            ScriptMessageState {
-                bridge: bridge.clone(),
-            },
-        );
-        let handler_name = NSString::from_str(bridge.message_handler_name());
-        unsafe {
-            content_controller
-                .addScriptMessageHandler_name(ProtocolObject::from_ref(&*handler), &handler_name);
         }
         (content_controller, handler, handler_name)
     });
