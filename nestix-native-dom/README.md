@@ -69,10 +69,10 @@ DomElement(
         DomAttribute::boolean("disabled", disabled.get()),
     ]),
     .properties = computed!([value] || vec![
-        DomProperty::new("value", JsValue::from_str(&value.get())),
+        DomProperty::new("value", value.get()),
     ]),
     .events = vec![DomEvent::new("click", move |event| {
-        // Custom events can be downcast to the appropriate web-sys type.
+        // Portable event data works in browsers and DomSurface.
     })],
     .node_ref = element_ref.clone(),
 ) {
@@ -82,11 +82,15 @@ DomElement(
 
 Attribute and property vectors may be plain or reactive. Boolean attributes
 use presence semantics, and entries removed from a reactive vector are removed
-from the element. JavaScript properties are assigned with `Reflect.set`.
+from the element. Portable properties support null, booleans, numbers, and
+strings. Browser applications can use `DomProperty::javascript` for arbitrary
+`JsValue` properties.
 
-`DomEvent` listeners are removed during unmount and support `capture`, `once`,
-and `passive` options. `DomElementRef` exposes the underlying
-`web_sys::Element` while mounted and clears itself during unmount.
+`DomEvent` listeners receive `DomEventData`, are removed during unmount, and
+support `capture`, `once`, and `passive` options. Browser applications can use
+`DomEvent::browser` when they require the raw `web_sys::Event`.
+`DomElementRef::handle` works in either renderer; on Wasm, `get` also exposes
+the underlying `web_sys::Element`. References clear during unmount.
 
 The HTML `class` and `style` attributes are reserved. Use `dom_class` for an
 emitted class and Nestix styles for presentation. Custom-element definitions
@@ -95,4 +99,6 @@ must be loaded before the Nestix tree is mounted.
 ## Example
 
 See [`examples/dom-basic`](../examples/dom-basic) for a WASM application using
-shared native components and a custom DOM element.
+shared native components and a custom DOM element. The
+[`examples/dom-surface`](../examples/dom-surface) native application defines a
+custom element in its template module and renders it through `DomSurface`.

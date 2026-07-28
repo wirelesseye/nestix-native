@@ -32,13 +32,6 @@ pub(crate) fn apply_view_style(css: &CssStyleDeclaration, style: &ResolvedStyle)
     apply_transitions(css, style);
 }
 
-pub(crate) fn apply_padding(css: &CssStyleDeclaration, style: &ResolvedStyle) {
-    set_length(css, "padding-left", style.padding_left);
-    set_length(css, "padding-right", style.padding_right);
-    set_length(css, "padding-top", style.padding_top);
-    set_length(css, "padding-bottom", style.padding_bottom);
-}
-
 pub(crate) fn apply_font(css: &CssStyleDeclaration, font: &ResolvedFontProps) {
     set_optional(css, "font-family", font.font_family.clone());
     set_optional(

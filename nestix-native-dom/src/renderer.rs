@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use nestix::{Element, Shared};
 
-use crate::{DomEventData, DomNodeHandle, DomStyle, DomValue, EmbeddedDomRuntime};
+use crate::{DomEventData, DomEventOptions, DomNodeHandle, DomStyle, DomValue, EmbeddedDomRuntime};
 
 pub(crate) type DomEventListener = Shared<dyn Fn(&DomEventData)>;
 
@@ -17,8 +17,15 @@ pub(crate) trait DomRenderer {
     fn replace_styles(&self, node: DomNodeHandle, styles: Vec<DomStyle>);
     fn set_attribute(&self, node: DomNodeHandle, name: String, value: Option<String>);
     fn set_property(&self, node: DomNodeHandle, name: String, value: DomValue);
+    fn remove_property(&self, node: DomNodeHandle, name: String);
     fn place(&self, node: DomNodeHandle, parent: DomNodeHandle, predecessor: Option<DomNodeHandle>);
-    fn listen(&self, node: DomNodeHandle, event: String, listener: DomEventListener);
+    fn listen(
+        &self,
+        node: DomNodeHandle,
+        event: String,
+        options: DomEventOptions,
+        listener: DomEventListener,
+    );
     fn remove(&self, node: DomNodeHandle);
 
     #[cfg(target_arch = "wasm32")]
@@ -74,6 +81,10 @@ impl DomRenderer for EmbeddedDomRuntime {
         self.set_property(node, name, value);
     }
 
+    fn remove_property(&self, node: DomNodeHandle, name: String) {
+        self.remove_property(node, name);
+    }
+
     fn place(
         &self,
         node: DomNodeHandle,
@@ -83,8 +94,14 @@ impl DomRenderer for EmbeddedDomRuntime {
         self.place(node, parent, predecessor);
     }
 
-    fn listen(&self, node: DomNodeHandle, event: String, listener: DomEventListener) {
-        self.listen(node, event, listener);
+    fn listen(
+        &self,
+        node: DomNodeHandle,
+        event: String,
+        options: DomEventOptions,
+        listener: DomEventListener,
+    ) {
+        self.listen_with_options(node, event, options, listener);
     }
 
     fn remove(&self, node: DomNodeHandle) {

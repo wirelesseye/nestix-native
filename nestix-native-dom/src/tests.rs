@@ -195,10 +195,7 @@ fn custom_elements_support_dom_state_events_and_refs() {
                                 DomAttribute::boolean("disabled", disabled.get()),
                             ]
                     ),
-                    .properties = nestix::computed!(
-                        [value]
-                            || vec![DomProperty::new("value", JsValue::from_str(&value.get())),]
-                    ),
+                    .properties = nestix::computed!([value] || vec![DomProperty::new("value", value.get()), ]),
                     .events = vec![DomEvent::new("click", move |_| {
                         clicks_for_event.update(|count| count + 1);
                     })],

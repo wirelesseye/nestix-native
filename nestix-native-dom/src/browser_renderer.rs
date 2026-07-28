@@ -6,15 +6,16 @@ use std::{
 
 use js_sys::{Object, Reflect};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
-use web_sys::{Event, HtmlElement, Node};
+use web_sys::{AddEventListenerOptions, Event, HtmlElement, Node};
 
 use crate::{
-    DomEventData, DomNodeHandle, DomNodeId, DomStyle, DomSurfaceId, DomValue,
+    DomEventData, DomEventOptions, DomNodeHandle, DomNodeId, DomStyle, DomSurfaceId, DomValue,
     renderer::{DomEventListener, DomRenderer},
 };
 
 struct BrowserListener {
     event: String,
+    capture: bool,
     callback: Closure<dyn FnMut(Event)>,
 }
 
@@ -60,9 +61,10 @@ impl BrowserDomRenderer {
             .expect("listener node must remain mounted");
         for listener in listeners {
             target
-                .remove_event_listener_with_callback(
+                .remove_event_listener_with_callback_and_bool(
                     &listener.event,
                     listener.callback.as_ref().unchecked_ref(),
+                    listener.capture,
                 )
                 .expect("failed to remove DOM event listener");
         }
@@ -133,6 +135,11 @@ impl DomRenderer for BrowserDomRenderer {
             .unwrap_or_else(|_| panic!("failed to set DOM property `{name}`"));
     }
 
+    fn remove_property(&self, node: DomNodeHandle, name: String) {
+        Reflect::delete_property(self.node(node).as_ref(), &JsValue::from_str(&name))
+            .unwrap_or_else(|_| panic!("failed to remove DOM property `{name}`"));
+    }
+
     fn place(
         &self,
         node: DomNodeHandle,
@@ -153,7 +160,13 @@ impl DomRenderer for BrowserDomRenderer {
         }
     }
 
-    fn listen(&self, node: DomNodeHandle, event: String, listener: DomEventListener) {
+    fn listen(
+        &self,
+        node: DomNodeHandle,
+        event: String,
+        options: DomEventOptions,
+        listener: DomEventListener,
+    ) {
         let target = self.node(node);
         let event_name = event.clone();
         let callback = Closure::<dyn FnMut(Event)>::new(move |browser_event: Event| {
@@ -175,14 +188,26 @@ impl DomRenderer for BrowserDomRenderer {
                 checked,
             });
         });
+        let browser_options = AddEventListenerOptions::new();
+        browser_options.set_capture(options.capture);
+        browser_options.set_once(options.once);
+        browser_options.set_passive(options.passive);
         target
-            .add_event_listener_with_callback(&event, callback.as_ref().unchecked_ref())
+            .add_event_listener_with_callback_and_add_event_listener_options(
+                &event,
+                callback.as_ref().unchecked_ref(),
+                &browser_options,
+            )
             .expect("failed to add DOM event listener");
         self.listeners
             .borrow_mut()
             .entry(node.node)
             .or_default()
-            .push(BrowserListener { event, callback });
+            .push(BrowserListener {
+                event,
+                capture: options.capture,
+                callback,
+            });
     }
 
     fn remove(&self, node: DomNodeHandle) {

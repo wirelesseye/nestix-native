@@ -5,7 +5,6 @@ mod browser_renderer;
 mod button;
 #[cfg(target_arch = "wasm32")]
 mod dom;
-#[cfg(target_arch = "wasm32")]
 mod dom_element;
 mod flex_view;
 mod input;
@@ -28,7 +27,6 @@ mod window;
 mod tests;
 
 pub use button::*;
-#[cfg(target_arch = "wasm32")]
 pub use dom_element::*;
 pub use flex_view::*;
 pub use input::*;

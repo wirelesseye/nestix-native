@@ -7,7 +7,7 @@ use nestix_native_core::{
 };
 
 use crate::{
-    DomEventData, DomValue,
+    DomEventData, DomEventOptions, DomValue,
     renderer::{mount_host, renderer},
     style_declarations::{appearance_styles, font_styles, padding_styles, view_styles},
 };
@@ -25,6 +25,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     renderer.listen(
         node,
         "click".to_string(),
+        DomEventOptions::default(),
         Shared::from(Rc::new(move |_: &DomEventData| {
             if let Some(on_click) = on_click.get() {
                 on_click();

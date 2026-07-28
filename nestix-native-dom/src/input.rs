@@ -4,7 +4,7 @@ use nestix::{Element, Shared, component};
 use nestix_native_core::{InputProps, StyleContext, matched_style, resolved_view_style};
 
 use crate::{
-    DomEventData, DomValue,
+    DomEventData, DomEventOptions, DomValue,
     renderer::{mount_host, renderer},
     style_declarations::view_styles,
 };
@@ -23,6 +23,7 @@ pub fn Input(props: &InputProps, element: &Element) {
     renderer.listen(
         node,
         "input".to_string(),
+        DomEventOptions::default(),
         Shared::from(Rc::new(move |event: &DomEventData| {
             if let Some(on_text_change) = on_text_change.get() {
                 on_text_change(event.value.as_deref().unwrap_or_default());

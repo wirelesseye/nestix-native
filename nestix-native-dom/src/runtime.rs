@@ -53,6 +53,26 @@ impl From<&str> for DomValue {
     }
 }
 
+impl From<f64> for DomValue {
+    fn from(value: f64) -> Self {
+        Self::Number(value)
+    }
+}
+
+impl From<i32> for DomValue {
+    fn from(value: i32) -> Self {
+        Self::Number(f64::from(value))
+    }
+}
+
+/// Registration options for a portable DOM event listener.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DomEventOptions {
+    pub capture: bool,
+    pub once: bool,
+    pub passive: bool,
+}
+
 /// A CSS declaration sent to a DOM runtime.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DomStyle {
@@ -95,6 +115,10 @@ pub enum DomCommand {
         name: String,
         value: DomValue,
     },
+    RemoveProperty {
+        node: DomNodeId,
+        name: String,
+    },
     Place {
         node: DomNodeId,
         parent: DomNodeId,
@@ -103,6 +127,7 @@ pub enum DomCommand {
     Listen {
         node: DomNodeId,
         event: String,
+        options: DomEventOptions,
     },
     Remove {
         node: DomNodeId,
@@ -213,6 +238,14 @@ impl EmbeddedDomRuntime {
         });
     }
 
+    pub fn remove_property(&self, node: DomNodeHandle, name: impl Into<String>) {
+        self.assert_surface(node);
+        self.push(DomCommand::RemoveProperty {
+            node: node.node,
+            name: name.into(),
+        });
+    }
+
     pub fn place(
         &self,
         node: DomNodeHandle,
@@ -232,6 +265,16 @@ impl EmbeddedDomRuntime {
     }
 
     pub fn listen(&self, node: DomNodeHandle, event: impl Into<String>, listener: Listener) {
+        self.listen_with_options(node, event, DomEventOptions::default(), listener);
+    }
+
+    pub fn listen_with_options(
+        &self,
+        node: DomNodeHandle,
+        event: impl Into<String>,
+        options: DomEventOptions,
+        listener: Listener,
+    ) {
         self.assert_surface(node);
         let event = event.into();
         self.listeners
@@ -240,6 +283,7 @@ impl EmbeddedDomRuntime {
         self.push(DomCommand::Listen {
             node: node.node,
             event,
+            options,
         });
     }
 
@@ -430,6 +474,7 @@ const DOM_INITIALIZATION_SCRIPT: &str = r#"(() => {
             else node.setAttribute(command.name, command.value);
             break;
           case 'setProperty': node[command.name] = command.value; break;
+          case 'removeProperty': delete node[command.name]; break;
           case 'place': {
             const parent = nodes.get(command.parent);
             const predecessor = command.predecessor == null ? null : nodes.get(command.predecessor);
@@ -441,7 +486,7 @@ const DOM_INITIALIZATION_SCRIPT: &str = r#"(() => {
               type: 'event', node: command.node, event: command.event,
               value: event.target && 'value' in event.target ? event.target.value : null,
               checked: event.target && 'checked' in event.target ? event.target.checked : null
-            }));
+            }), command.options);
             break;
           case 'remove': node.remove(); nodes.delete(command.node); break;
         }
@@ -506,6 +551,14 @@ mod tests {
             .handle_message_json(r#"{"type":"event","node":1,"event":"click"}"#)
             .unwrap();
         assert_eq!(clicks.get(), 1);
+
+        runtime.remove_property(button, "value");
+        let removal: serde_json::Value =
+            serde_json::from_str(batches.borrow().last().unwrap()).expect("valid command batch");
+        assert_eq!(
+            removal,
+            serde_json::json!([{"type": "removeProperty", "node": 1, "name": "value"}])
+        );
     }
 
     #[test]
