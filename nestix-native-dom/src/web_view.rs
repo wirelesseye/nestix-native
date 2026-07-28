@@ -1,6 +1,9 @@
-use nestix::{Element, component};
+use std::{cell::RefCell, rc::Rc};
+
+use nestix::{Element, callback, closure, component, scoped_effect};
 use nestix_native_core::{
-    StyleContext, WebViewProps, WebViewSource, matched_style, resolved_view_style,
+    StyleContext, WebViewDevToolsError, WebViewPresenter, WebViewProps, WebViewRegistration,
+    WebViewSource, matched_style, resolved_view_style,
 };
 use wasm_bindgen::JsCast;
 use web_sys::HtmlIFrameElement;
@@ -22,6 +25,32 @@ pub fn WebView(props: &WebViewProps, element: &Element) {
         .dyn_into::<HtmlIFrameElement>()
         .expect("iframe element must be an HtmlIFrameElement");
     mount_host(element, renderer, node);
+
+    let controller_registration = Rc::new(RefCell::new(None::<WebViewRegistration>));
+    scoped_effect!(
+        [props.inspectable, props.controller, controller_registration] || {
+            controller_registration.borrow_mut().take();
+            controller_registration
+                .borrow_mut()
+                .replace(controller.get().bind(WebViewPresenter {
+                    open_dev_tools: callback!(
+                        [inspectable] || {
+                            if !inspectable.get() {
+                                return Err(WebViewDevToolsError::NotInspectable);
+                            }
+                            Err(WebViewDevToolsError::Unsupported(
+                                "browser developer tools must be opened by the browser".to_string(),
+                            ))
+                        }
+                    ),
+                }));
+        }
+    );
+    element.on_unmount(closure!(
+        [controller_registration] || {
+            controller_registration.borrow_mut().take();
+        }
+    ));
 
     let matched = matched_style(
         element.context::<StyleContext>(),

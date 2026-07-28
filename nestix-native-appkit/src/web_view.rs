@@ -1,16 +1,23 @@
 use std::{
+    cell::RefCell,
     path::{Component, Path},
     rc::Rc,
 };
 
-use nestix::{Element, component, components::Fragment, create_state, layout, scoped_effect};
-use nestix_native_core::{
-    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext, WebViewProps,
-    WebViewSource, dpi::LogicalSize, matched_style, resolved_view_style,
+use nestix::{
+    Element, callback, closure, component, components::Fragment, create_state, layout,
+    scoped_effect,
 };
+use nestix_native_core::{
+    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext,
+    WebViewDevToolsError, WebViewPresenter, WebViewProps, WebViewRegistration, WebViewSource,
+    dpi::LogicalSize, matched_style, resolved_view_style,
+};
+#[cfg(any(debug_assertions, feature = "devtools"))]
+use objc2::runtime::AnyObject;
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
-    runtime::ProtocolObject,
+    runtime::ProtocolObject, sel,
 };
 use objc2_app_kit::NSView;
 use objc2_foundation::{
@@ -40,6 +47,10 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
 
     let mtm = MainThreadMarker::new().expect("AppKit WebView must be created on the main thread");
     let configuration = unsafe { WKWebViewConfiguration::new(mtm) };
+    #[cfg(any(debug_assertions, feature = "devtools"))]
+    if props.inspectable.get() {
+        enable_developer_extras(&configuration);
+    }
     let message_bridge = bridge.as_ref().map(|bridge| {
         let content_controller = unsafe { configuration.userContentController() };
         let handler = ScriptMessageHandler::new(
@@ -85,6 +96,45 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             &configuration,
         )
     };
+
+    scoped_effect!(
+        [web_view, props.inspectable] || {
+            // `inspectable` was added in macOS 13.3. Checking the selector keeps
+            // WebView usable on older supported macOS versions.
+            if web_view.respondsToSelector(sel!(setInspectable:)) {
+                unsafe {
+                    web_view.setInspectable(inspectable.get());
+                }
+            }
+        }
+    );
+
+    let controller_registration = Rc::new(RefCell::new(None::<WebViewRegistration>));
+    scoped_effect!(
+        [
+            web_view,
+            configuration,
+            props.inspectable,
+            props.controller,
+            controller_registration
+        ] || {
+            controller_registration.borrow_mut().take();
+            controller_registration
+                .borrow_mut()
+                .replace(controller.get().bind(WebViewPresenter {
+                    open_dev_tools: callback!(
+                        [web_view, configuration, inspectable] || {
+                            open_dev_tools(&web_view, &configuration, inspectable.get())
+                        }
+                    ),
+                }));
+        }
+    );
+    element.on_unmount(closure!(
+        [controller_registration] || {
+            controller_registration.borrow_mut().take();
+        }
+    ));
 
     scoped_effect!(
         [web_view, props.transparent] || {
@@ -140,6 +190,44 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
         Fragment {
             $(props.children.get())
         }
+    }
+}
+
+fn open_dev_tools(
+    web_view: &WKWebView,
+    configuration: &WKWebViewConfiguration,
+    inspectable: bool,
+) -> Result<(), WebViewDevToolsError> {
+    if !inspectable {
+        return Err(WebViewDevToolsError::NotInspectable);
+    }
+
+    #[cfg(any(debug_assertions, feature = "devtools"))]
+    unsafe {
+        // WKWebView has no public API for opening Web Inspector. This is the
+        // same private inspector path used by Wry/Tauri.
+        enable_developer_extras(configuration);
+        let inspector: Retained<AnyObject> = msg_send![web_view, _inspector];
+        let (): () = msg_send![&inspector, show];
+        Ok(())
+    }
+
+    #[cfg(not(any(debug_assertions, feature = "devtools")))]
+    {
+        let _ = (web_view, configuration);
+        Err(WebViewDevToolsError::Unsupported(
+            "opening Web Inspector in a macOS release build requires the `devtools` feature"
+                .to_string(),
+        ))
+    }
+}
+
+#[cfg(any(debug_assertions, feature = "devtools"))]
+fn enable_developer_extras(configuration: &WKWebViewConfiguration) {
+    let preferences = unsafe { configuration.preferences() };
+    let enabled = NSNumber::numberWithBool(true);
+    unsafe {
+        preferences.setValue_forKey(Some(&enabled), ns_string!("developerExtrasEnabled"));
     }
 }
 

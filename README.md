@@ -61,6 +61,30 @@ Sources are reactive, so a state or computed value containing a
 `WebViewSource` can navigate or replace the document after mounting.
 On native platforms, resource paths are relative to the packaged application
 resource directory; `development_path` is the unpackaged `cargo run` fallback.
+Set `.inspectable = true` to let users inspect a web view with Web Inspector on
+macOS or WebView2 DevTools on Windows. Developer tools are disabled by default;
+applications commonly enable them only in debug builds with
+`.inspectable = cfg!(debug_assertions)`.
+
+Pass a `WebViewController` to open the developer tools programmatically:
+
+```rust
+let web_view = WebViewController::new();
+
+layout! {
+    WebView(
+        WebViewSource::url("https://example.com"),
+        .inspectable = true,
+        .controller = web_view.clone(),
+    )
+}
+
+web_view.open_dev_tools()?;
+```
+
+On macOS, opening Web Inspector programmatically uses private WebKit APIs. It
+is available in debug builds; release builds must explicitly enable the
+`devtools` Cargo feature and may not be suitable for App Store distribution.
 
 ## Managed DOM surfaces
 
@@ -89,6 +113,8 @@ the URL-loading component and does not accept a Nestix subtree. See
 `examples/dom-surface` for a complete mixed native/DOM application.
 `DomSurface` has a transparent background by default. Set `transparent` to
 `false` to use WebKit's normal opaque background.
+It also accepts the same `.inspectable` and `.controller` options as `WebView` for
+inspecting the managed document. Inspection is disabled by default.
 
 Applications can provide the surrounding document with `DomTemplate`. Nestix
 injects its root, default styles, and bridge script at document start; the

@@ -10,10 +10,14 @@ use std::{
     },
 };
 
-use nestix::{Element, component, components::Fragment, create_state, layout, scoped_effect};
+use nestix::{
+    Element, callback, closure, component, components::Fragment, create_state, layout,
+    scoped_effect,
+};
 use nestix_native_core::{
-    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext, WebViewProps,
-    WebViewSource, dpi::LogicalSize, matched_style, resolved_view_style,
+    JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext,
+    WebViewDevToolsError, WebViewPresenter, WebViewProps, WebViewRegistration, WebViewSource,
+    dpi::LogicalSize, matched_style, resolved_view_style,
 };
 use webview2_com::{
     AddScriptToExecuteOnDocumentCreatedCompletedHandler, CoTaskMemPWSTR,
@@ -202,6 +206,57 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
+        [state, props.inspectable] || {
+            if let Some(web_view) = state.borrow().web_view.clone() {
+                let settings = unsafe {
+                    web_view
+                        .Settings()
+                        .expect("failed to access WebView2 settings")
+                };
+                unsafe {
+                    settings
+                        .SetAreDevToolsEnabled(inspectable.get())
+                        .expect("failed to update WebView2 developer tools")
+                };
+            }
+        }
+    );
+
+    let controller_registration = Rc::new(RefCell::new(None::<WebViewRegistration>));
+    scoped_effect!(
+        [
+            state,
+            props.inspectable,
+            props.controller,
+            controller_registration
+        ] || {
+            controller_registration.borrow_mut().take();
+            let weak_state = Rc::downgrade(&state);
+            controller_registration
+                .borrow_mut()
+                .replace(controller.get().bind(WebViewPresenter {
+                    open_dev_tools: callback!(
+                        [weak_state, inspectable] || {
+                            if !inspectable.get() {
+                                return Err(WebViewDevToolsError::NotInspectable);
+                            }
+                            let state = weak_state
+                                .upgrade()
+                                .ok_or(WebViewDevToolsError::NotMounted)?;
+                            let web_view = state
+                                .borrow()
+                                .web_view
+                                .clone()
+                                .ok_or(WebViewDevToolsError::NotMounted)?;
+                            unsafe { web_view.OpenDevToolsWindow() }
+                                .map_err(|error| WebViewDevToolsError::Backend(error.to_string()))
+                        }
+                    ),
+                }));
+        }
+    );
+
+    scoped_effect!(
         [state, props.transparent] || {
             let controller = state.borrow().controller.clone();
             if let Some(controller) = controller {
@@ -242,6 +297,11 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
     if let Some(bridge) = bridge {
         element.on_unmount(move || bridge.detach());
     }
+    element.on_unmount(closure!(
+        [controller_registration] || {
+            controller_registration.borrow_mut().take();
+        }
+    ));
 
     layout! {
         Fragment {

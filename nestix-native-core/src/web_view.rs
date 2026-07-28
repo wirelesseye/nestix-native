@@ -1,6 +1,11 @@
-use std::{fmt::Debug, path::PathBuf, rc::Rc};
+use std::{
+    cell::RefCell,
+    fmt::{self, Debug},
+    path::PathBuf,
+    rc::Rc,
+};
 
-use nestix::{Layout, props};
+use nestix::{Layout, Shared, props};
 
 use crate::{ClassList, ViewProps};
 
@@ -96,6 +101,112 @@ pub trait WebViewBridge: Debug {
     fn detach(&self);
 }
 
+/// Error returned when a web view's developer tools cannot be opened.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WebViewDevToolsError {
+    /// The controller is not currently connected to a mounted web view.
+    NotMounted,
+    /// The mounted web view has not opted into inspection.
+    NotInspectable,
+    /// The current backend cannot open developer tools programmatically.
+    Unsupported(String),
+    /// The native backend failed to open developer tools.
+    Backend(String),
+}
+
+impl fmt::Display for WebViewDevToolsError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotMounted => formatter.write_str("web view is not mounted"),
+            Self::NotInspectable => formatter.write_str("web view is not inspectable"),
+            Self::Unsupported(message) => {
+                write!(formatter, "developer tools are unsupported: {message}")
+            }
+            Self::Backend(message) => {
+                write!(formatter, "failed to open developer tools: {message}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for WebViewDevToolsError {}
+
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct WebViewPresenter {
+    pub open_dev_tools: Shared<dyn Fn() -> Result<(), WebViewDevToolsError>>,
+}
+
+#[derive(Default)]
+struct WebViewControllerState {
+    next_binding_id: u64,
+    presenter: Option<(u64, WebViewPresenter)>,
+}
+
+/// Cloneable controller for imperative operations on a mounted [`WebViewProps`].
+#[derive(Clone, Default)]
+pub struct WebViewController {
+    state: Rc<RefCell<WebViewControllerState>>,
+}
+
+impl Debug for WebViewController {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("WebViewController")
+            .field("mounted", &self.state.borrow().presenter.is_some())
+            .finish()
+    }
+}
+
+impl WebViewController {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Opens the platform developer tools for the mounted web view.
+    pub fn open_dev_tools(&self) -> Result<(), WebViewDevToolsError> {
+        let presenter = self
+            .state
+            .borrow()
+            .presenter
+            .as_ref()
+            .map(|(_, presenter)| presenter.clone())
+            .ok_or(WebViewDevToolsError::NotMounted)?;
+        (presenter.open_dev_tools)()
+    }
+
+    #[doc(hidden)]
+    pub fn bind(&self, presenter: WebViewPresenter) -> WebViewRegistration {
+        let mut state = self.state.borrow_mut();
+        let binding_id = state.next_binding_id;
+        state.next_binding_id = state.next_binding_id.wrapping_add(1);
+        state.presenter = Some((binding_id, presenter));
+        WebViewRegistration {
+            controller: self.clone(),
+            binding_id,
+        }
+    }
+}
+
+#[doc(hidden)]
+pub struct WebViewRegistration {
+    controller: WebViewController,
+    binding_id: u64,
+}
+
+impl Drop for WebViewRegistration {
+    fn drop(&mut self) {
+        let mut state = self.controller.state.borrow_mut();
+        if state
+            .presenter
+            .as_ref()
+            .is_some_and(|(binding_id, _)| *binding_id == self.binding_id)
+        {
+            state.presenter = None;
+        }
+    }
+}
+
 /// Properties for a native view that displays web content.
 #[props(debug)]
 #[derive(Debug, Clone)]
@@ -116,6 +227,14 @@ pub struct WebViewProps {
     #[props(default)]
     pub transparent: bool,
 
+    /// Whether users can inspect the web view with platform developer tools.
+    #[props(default)]
+    pub inspectable: bool,
+
+    /// Controller for imperative operations on the mounted web view.
+    #[props(default)]
+    pub controller: WebViewController,
+
     /// Optional native bridge installed before loading `source`.
     #[doc(hidden)]
     pub bridge: Option<Rc<dyn WebViewBridge>>,
@@ -124,4 +243,56 @@ pub struct WebViewProps {
     #[doc(hidden)]
     #[props(default)]
     pub children: Layout,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    fn presenter(calls: Rc<Cell<usize>>) -> WebViewPresenter {
+        WebViewPresenter {
+            open_dev_tools: Shared::from(Rc::new(move || {
+                calls.set(calls.get() + 1);
+                Ok(())
+            })
+                as Rc<dyn Fn() -> Result<(), WebViewDevToolsError>>),
+        }
+    }
+
+    #[test]
+    fn controller_reports_when_it_is_not_mounted() {
+        assert_eq!(
+            WebViewController::new().open_dev_tools(),
+            Err(WebViewDevToolsError::NotMounted)
+        );
+    }
+
+    #[test]
+    fn registration_connects_and_disconnects_the_controller() {
+        let controller = WebViewController::new();
+        let calls = Rc::new(Cell::new(0));
+        let registration = controller.bind(presenter(calls.clone()));
+
+        assert_eq!(controller.open_dev_tools(), Ok(()));
+        assert_eq!(calls.get(), 1);
+
+        drop(registration);
+        assert_eq!(
+            controller.open_dev_tools(),
+            Err(WebViewDevToolsError::NotMounted)
+        );
+    }
+
+    #[test]
+    fn stale_registration_does_not_disconnect_a_new_binding() {
+        let controller = WebViewController::new();
+        let first = controller.bind(presenter(Rc::new(Cell::new(0))));
+        let second_calls = Rc::new(Cell::new(0));
+        let _second = controller.bind(presenter(second_calls.clone()));
+
+        drop(first);
+        assert_eq!(controller.open_dev_tools(), Ok(()));
+        assert_eq!(second_calls.get(), 1);
+    }
 }

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use nestix::{Layout, props};
 
-use crate::{ClassList, ViewProps};
+use crate::{ClassList, ViewProps, WebViewController};
 
 /// HTML template used by a managed DOM surface.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -79,6 +79,14 @@ pub struct DomSurfaceProps {
     /// Whether the managed document has a transparent background.
     #[props(default = true)]
     pub transparent: bool,
+
+    /// Whether users can inspect the managed document with platform developer tools.
+    #[props(default)]
+    pub inspectable: bool,
+
+    /// Controller for imperative operations on the managed web view.
+    #[props(default)]
+    pub controller: WebViewController,
 
     /// Document template loaded before Nestix injects its managed DOM runtime.
     #[props(default)]

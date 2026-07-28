@@ -2,13 +2,14 @@ use nestix::{Element, callback, component, computed, create_state, layout, unmou
 use nestix_native::dom::{DomAttribute, DomElement, DomEvent, DomProperty};
 use nestix_native::{
     AlignItems, Button, DomSurface, DomTemplate, FlexDirection, FlexView, Input, Root,
-    StyleProvider, Text, Window, style,
+    StyleProvider, Text, WebViewController, Window, style,
 };
 
 #[component]
 pub fn App() -> Element {
     let count = create_state(0);
     let name = create_state("Nestix".to_string());
+    let dom_surface = WebViewController::new();
     let count_for_custom_element = count.clone();
     let styles = style! {
         .app {
@@ -79,6 +80,16 @@ pub fn App() -> Element {
                                     .title = "Reset",
                                     .on_click = callback!([count] || count.set(0)),
                                 )
+                                Button(
+                                    .title = "Open DOM DevTools",
+                                    .on_click = callback!(
+                                        [dom_surface] || {
+                                            dom_surface.open_dev_tools().expect(
+                                                "DOM surface should be inspectable and mounted",
+                                            );
+                                        }
+                                    ),
+                                )
                             }
                         }
                         // The same Nestix Native components become DOM elements:
@@ -87,6 +98,8 @@ pub fn App() -> Element {
                             .class = "dom_surface",
                             .view(.height = 330, .align_self = AlignItems::Stretch),
                             .template = DomTemplate::resource("web/index.html").with_development_path(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/web/index.html")),
+                            .inspectable = true,
+                            .controller = dom_surface,
                         ) {
                             FlexView(.class = "dom_panel") {
                                 Text("DOM elements in DomSurface", .class = "heading")

@@ -42,6 +42,8 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
             .class = props.class.clone(),
             .view = props.view.clone(),
             .transparent = props.transparent.clone(),
+            .inspectable = props.inspectable.clone(),
+            .controller = props.controller.clone(),
             .bridge = Some(bridge),
         ) {
             ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {

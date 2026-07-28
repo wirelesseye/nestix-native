@@ -9,6 +9,7 @@ appkit = ["dep:nestix-native-appkit"]
 win32 = ["dep:nestix-native-win32"]
 gtk4 = ["dep:nestix-native-gtk4"]
 dom = ["dep:nestix-native-dom"]
+devtools = ["nestix-native-appkit?/devtools"]
 
 [dependencies]
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
