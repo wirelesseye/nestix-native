@@ -1,10 +1,11 @@
 use nestix::{Element, Layout, component, computed, layout};
 use nestix_native_core::{StyleContext, StyleScope, WindowProps, dpi::LogicalSize, matched_style};
 use wasm_bindgen::{JsCast, closure::Closure};
-use web_sys::{Node, ResizeObserver};
+use web_sys::ResizeObserver;
 
 use crate::{
-    dom::{create_html_element, document, mount_host},
+    dom::document,
+    renderer::{mount_host, renderer},
     style::{apply_view_style, set},
 };
 
@@ -13,9 +14,10 @@ use crate::{
 pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__dom_Window"];
 
-    let html = create_html_element("div");
-    let node = html.clone().unchecked_into::<Node>();
-    mount_host(element, &node);
+    let renderer = renderer(element);
+    let node = renderer.create_element("div");
+    let html = renderer.html_element(node);
+    mount_host(element, renderer, node);
 
     let matched = matched_style(
         element.context::<StyleContext>(),

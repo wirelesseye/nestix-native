@@ -6,7 +6,7 @@ use std::{
 use nestix::{Element, component, components::ContextProvider, layout};
 use nestix_native_core::{Backend, WebViewBridge};
 use nestix_native_dom::{
-    DomDocumentRoot, DomRuntimeContext, DomSurfaceId, EmbeddedDomRuntime, ManagedDomBridge,
+    DomDocumentRoot, DomRendererContext, DomSurfaceId, EmbeddedDomRuntime, ManagedDomBridge,
     dom_template_source,
 };
 
@@ -44,7 +44,7 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
             .transparent = props.transparent.clone(),
             .bridge = Some(bridge),
         ) {
-            ContextProvider<DomRuntimeContext>(DomRuntimeContext { runtime }) {
+            ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {
                 ContextProvider<BackendContext>(BackendContext { backend: &DOM_BACKEND }) {
                     DomDocumentRoot(.children = props.children.clone())
                 }

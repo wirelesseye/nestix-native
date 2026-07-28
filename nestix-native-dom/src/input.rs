@@ -1,11 +1,12 @@
-use nestix::{Element, component};
+use std::rc::Rc;
+
+use nestix::{Element, Shared, component};
 use nestix_native_core::{InputProps, StyleContext, matched_style, resolved_view_style};
-use wasm_bindgen::{JsCast, closure::Closure};
-use web_sys::{Event, HtmlInputElement, Node};
 
 use crate::{
-    dom::{create_html_element, mount_host},
-    style::apply_view_style,
+    DomEventData, DomValue,
+    renderer::{mount_host, renderer},
+    style_declarations::view_styles,
 };
 
 /// DOM single-line text input.
@@ -13,28 +14,21 @@ use crate::{
 pub fn Input(props: &InputProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__dom_Input"];
 
-    let input = create_html_element("input")
-        .dyn_into::<HtmlInputElement>()
-        .expect("input element must be an HtmlInputElement");
-    input.set_type("text");
-    let node = input.clone().unchecked_into::<Node>();
-    mount_host(element, &node);
+    let renderer = renderer(element);
+    let node = renderer.create_element("input");
+    renderer.set_attribute(node, "type".to_string(), Some("text".to_string()));
+    mount_host(element, renderer.clone(), node);
 
     let on_text_change = props.on_text_change.clone();
-    let event_input = input.clone();
-    let listener = Closure::<dyn FnMut(Event)>::new(move |_| {
-        if let Some(on_text_change) = on_text_change.get() {
-            on_text_change(&event_input.value());
-        }
-    });
-    input.set_oninput(Some(listener.as_ref().unchecked_ref()));
-    element.on_unmount({
-        let input = input.clone();
-        move || {
-            input.set_oninput(None);
-            let _ = &listener;
-        }
-    });
+    renderer.listen(
+        node,
+        "input".to_string(),
+        Shared::from(Rc::new(move |event: &DomEventData| {
+            if let Some(on_text_change) = on_text_change.get() {
+                on_text_change(event.value.as_deref().unwrap_or_default());
+            }
+        }) as Rc<dyn Fn(&DomEventData)>),
+    );
 
     let matched = matched_style(
         element.context::<StyleContext>(),
@@ -44,15 +38,18 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
     let effective_style = resolved_view_style(matched, &props.view);
     element.scoped_effect({
-        let input = input.clone();
+        let renderer = renderer.clone();
         let effective_style = effective_style.clone();
         let value = props.value.clone();
         move || {
-            let next = value.get();
-            if input.value() != next {
-                input.set_value(&next);
-            }
-            apply_view_style(&input.style(), &effective_style.get().unwrap_or_default());
+            renderer.set_property(node, "value".to_string(), DomValue::String(value.get()));
+            renderer.replace_styles(
+                node,
+                view_styles(
+                    &effective_style.get().unwrap_or_default(),
+                    renderer.scale_factor(),
+                ),
+            );
         }
     });
 }

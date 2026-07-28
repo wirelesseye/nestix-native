@@ -5,10 +5,10 @@ use nestix_native_core::{
     ClassList, StyleContext, StyleScope, ViewProps, matched_style, resolved_view_style,
 };
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
-use web_sys::{AddEventListenerOptions, Event, Node};
+use web_sys::{AddEventListenerOptions, Event};
 
 use crate::{
-    dom::{create_html_element, mount_host},
+    renderer::{mount_host, renderer},
     style::{apply_padding, apply_view_style},
 };
 
@@ -217,9 +217,10 @@ pub struct DomElementProps {
 pub fn DomElement(props: &DomElementProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__DomElement", "__dom_DomElement"];
 
-    let html = create_html_element(&props.tag.get());
-    let node = html.clone().unchecked_into::<Node>();
-    mount_host(element, &node);
+    let renderer = renderer(element);
+    let node = renderer.create_element(&props.tag.get());
+    let html = renderer.html_element(node);
+    mount_host(element, renderer, node);
 
     if let Some(node_ref) = &props.node_ref {
         node_ref.set(Some(html.clone().unchecked_into()));

@@ -1,14 +1,15 @@
-use nestix::{Element, component};
+use std::rc::Rc;
+
+use nestix::{Element, Shared, component};
 use nestix_native_core::{
     ButtonProps, StyleContext, matched_style, resolve_font_props, resolved_view_style,
     style_appearance, style_padding_with_default,
 };
-use wasm_bindgen::{JsCast, closure::Closure};
-use web_sys::{Event, HtmlButtonElement, Node};
 
 use crate::{
-    dom::{create_html_element, mount_host},
-    style::{apply_appearance, apply_font, apply_padding, apply_view_style},
+    DomEventData, DomValue,
+    renderer::{mount_host, renderer},
+    style_declarations::{appearance_styles, font_styles, padding_styles, view_styles},
 };
 
 /// DOM push button.
@@ -16,26 +17,20 @@ use crate::{
 pub fn Button(props: &ButtonProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__dom_Button"];
 
-    let button = create_html_element("button")
-        .dyn_into::<HtmlButtonElement>()
-        .expect("button element must be an HtmlButtonElement");
-    let node = button.clone().unchecked_into::<Node>();
-    mount_host(element, &node);
+    let renderer = renderer(element);
+    let node = renderer.create_element("button");
+    mount_host(element, renderer.clone(), node);
 
     let on_click = props.on_click.clone();
-    let listener = Closure::<dyn FnMut(Event)>::new(move |_| {
-        if let Some(on_click) = on_click.get() {
-            on_click();
-        }
-    });
-    button.set_onclick(Some(listener.as_ref().unchecked_ref()));
-    element.on_unmount({
-        let button = button.clone();
-        move || {
-            button.set_onclick(None);
-            let _ = &listener;
-        }
-    });
+    renderer.listen(
+        node,
+        "click".to_string(),
+        Shared::from(Rc::new(move |_: &DomEventData| {
+            if let Some(on_click) = on_click.get() {
+                on_click();
+            }
+        }) as Rc<dyn Fn(&DomEventData)>),
+    );
 
     let matched = matched_style(
         element.context::<StyleContext>(),
@@ -45,7 +40,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     );
     let effective_style = resolved_view_style(matched, &props.view);
     element.scoped_effect({
-        let button = button.clone();
+        let renderer = renderer.clone();
         let effective_style = effective_style.clone();
         let title = props.title.clone();
         let disabled = props.disabled.clone();
@@ -69,22 +64,21 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             style.padding_top = Some(padding.top);
             style.padding_bottom = Some(padding.bottom);
 
-            button.set_text_content(Some(&title.get()));
-            button.set_disabled(disabled.get());
-            apply_view_style(&button.style(), &style);
-            apply_padding(&button.style(), &style);
-            apply_appearance(&button.style(), style.appearance.unwrap_or_default());
-            apply_font(
-                &button.style(),
-                &resolve_font_props(
-                    Some(&style),
-                    font_family.get(),
-                    font_size.get(),
-                    font_weight.get(),
-                    font_style.get(),
-                    text_color.get(),
-                ),
-            );
+            renderer.set_text(node, title.get());
+            renderer.set_property(node, "disabled".to_string(), DomValue::Bool(disabled.get()));
+            let scale_factor = renderer.scale_factor();
+            let mut styles = view_styles(&style, scale_factor);
+            styles.extend(padding_styles(&style, scale_factor));
+            styles.extend(appearance_styles(style.appearance.unwrap_or_default()));
+            styles.extend(font_styles(&resolve_font_props(
+                Some(&style),
+                font_family.get(),
+                font_size.get(),
+                font_weight.get(),
+                font_style.get(),
+                text_color.get(),
+            )));
+            renderer.replace_styles(node, styles);
         }
     });
 }

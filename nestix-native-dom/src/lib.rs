@@ -1,23 +1,23 @@
 //! Browser DOM backend for Nestix Native.
 
 #[cfg(target_arch = "wasm32")]
+mod browser_renderer;
 mod button;
 #[cfg(target_arch = "wasm32")]
 mod dom;
 #[cfg(target_arch = "wasm32")]
 mod dom_element;
-#[cfg(target_arch = "wasm32")]
 mod flex_view;
-#[cfg(target_arch = "wasm32")]
 mod input;
 #[cfg(not(target_arch = "wasm32"))]
 mod remote;
+mod renderer;
 #[cfg(target_arch = "wasm32")]
 mod root;
 mod runtime;
 #[cfg(target_arch = "wasm32")]
 mod style;
-#[cfg(target_arch = "wasm32")]
+mod style_declarations;
 mod text;
 #[cfg(target_arch = "wasm32")]
 mod web_view;
@@ -27,20 +27,17 @@ mod window;
 #[cfg(all(test, target_arch = "wasm32"))]
 mod tests;
 
-#[cfg(target_arch = "wasm32")]
 pub use button::*;
 #[cfg(target_arch = "wasm32")]
 pub use dom_element::*;
-#[cfg(target_arch = "wasm32")]
 pub use flex_view::*;
-#[cfg(target_arch = "wasm32")]
 pub use input::*;
 #[cfg(not(target_arch = "wasm32"))]
 pub use remote::*;
+pub use renderer::DomRendererContext;
 #[cfg(target_arch = "wasm32")]
 pub use root::*;
 pub use runtime::*;
-#[cfg(target_arch = "wasm32")]
 pub use text::*;
 #[cfg(target_arch = "wasm32")]
 pub use web_view::*;

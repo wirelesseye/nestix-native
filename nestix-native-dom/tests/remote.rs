@@ -6,7 +6,8 @@ use nestix::{
     callback, components::ContextProvider, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native_dom::{
-    Button, DomDocumentRoot, DomRuntimeContext, DomSurfaceId, EmbeddedDomRuntime,
+    Button, DomDocumentRoot, DomRendererContext, DomSurfaceId, EmbeddedDomRuntime, FlexView, Input,
+    Text,
 };
 
 #[test]
@@ -19,13 +20,23 @@ fn remote_components_emit_commands_and_route_events() {
     });
 
     let clicks = create_state(0);
+    let value = create_state(String::new());
     let app = layout! {
-        ContextProvider<DomRuntimeContext>(DomRuntimeContext { runtime: runtime.clone() }) {
+        ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime.clone())) {
             DomDocumentRoot {
-                Button(
-                    .title = "Remote",
-                    .on_click = callback!([clicks] || clicks.update(|value| value + 1)),
-                )
+                FlexView {
+                    Text("Remote controls")
+                    Button(
+                        .title = "Remote",
+                        .on_click = callback!([clicks] || clicks.update(|value| value + 1)),
+                    )
+                    Input(
+                        .value = value.clone(),
+                        .on_text_change = callback!(
+                            [value] |next: &str| value.set(next.to_string())
+                        ),
+                    )
+                }
             }
         }
     };
@@ -37,11 +48,19 @@ fn remote_components_emit_commands_and_route_events() {
     assert!(initial.contains(r#""type":"setText""#));
     assert!(initial.contains(r#""type":"listen""#));
     assert!(initial.contains(r#""type":"place""#));
+    assert!(initial.contains(r#""tag":"div""#));
+    assert!(initial.contains(r#""tag":"span""#));
+    assert!(initial.contains(r#""tag":"input""#));
+    assert!(initial.contains(r#""type":"replaceStyles""#));
 
     runtime
-        .handle_message_json(r#"{"type":"event","node":1,"event":"click"}"#)
+        .handle_message_json(r#"{"type":"event","node":3,"event":"click"}"#)
         .unwrap();
     assert_eq!(clicks.get(), 1);
+    runtime
+        .handle_message_json(r#"{"type":"event","node":4,"event":"input","value":"updated"}"#)
+        .unwrap();
+    assert_eq!(value.get(), "updated");
 
     unmount_root().unwrap();
 }

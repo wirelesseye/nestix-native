@@ -11,6 +11,12 @@ The initial backend supports `Root`, `Window`, `FlexView`, `Text`, `Button`,
 `Resource` as an HTML `iframe` URL, and `Html` through `srcdoc`. The backend
 also provides `DomElement` for arbitrary HTML and registered custom elements.
 
+`Button`, `Input`, `Text`, and `FlexView` have one shared component
+implementation. A renderer supplied through context either mutates browser DOM
+nodes directly or sends the same operations through a native `DomSurface`
+bridge. This keeps component behavior and style resolution consistent between
+browser and embedded DOM trees.
+
 ## Mounting
 
 Browser applications must mount through this backend and supply a selector for

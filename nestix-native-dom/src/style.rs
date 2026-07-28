@@ -1,6 +1,6 @@
 use nestix_native_core::{
-    AlignItems, Appearance, Color, Easing, FlexDirection, FlexWrap, FontStyle, JustifyContent,
-    Length, ResolvedFontProps, ResolvedStyle, TransitionProperty, WithAuto,
+    AlignItems, Color, Easing, FontStyle, Length, ResolvedFontProps, ResolvedStyle,
+    TransitionProperty, WithAuto,
 };
 use web_sys::CssStyleDeclaration;
 
@@ -32,48 +32,6 @@ pub(crate) fn apply_view_style(css: &CssStyleDeclaration, style: &ResolvedStyle)
     apply_transitions(css, style);
 }
 
-pub(crate) fn apply_flex_style(css: &CssStyleDeclaration, style: &ResolvedStyle) {
-    apply_view_style(css, style);
-    set(css, "display", "flex");
-    set_optional(
-        css,
-        "flex-direction",
-        style.flex_direction.map(|value| match value {
-            FlexDirection::Row => "row",
-            FlexDirection::RowReverse => "row-reverse",
-            FlexDirection::Column => "column",
-            FlexDirection::ColumnReverse => "column-reverse",
-        }),
-    );
-    set_optional(css, "align-items", style.align_items.map(align_items));
-    set_optional(
-        css,
-        "justify-content",
-        style.justify_content.map(|value| match value {
-            JustifyContent::Normal => "normal",
-            JustifyContent::Start => "start",
-            JustifyContent::End => "end",
-            JustifyContent::FlexStart => "flex-start",
-            JustifyContent::FlexEnd => "flex-end",
-            JustifyContent::Center => "center",
-            JustifyContent::Stretch => "stretch",
-            JustifyContent::SpaceBetween => "space-between",
-            JustifyContent::SpaceEvenly => "space-evenly",
-            JustifyContent::SpaceAround => "space-around",
-        }),
-    );
-    set_optional(
-        css,
-        "flex-wrap",
-        style.flex_wrap.map(|value| match value {
-            FlexWrap::NoWrap => "nowrap",
-            FlexWrap::Wrap => "wrap",
-        }),
-    );
-    set_length(css, "gap", style.gap);
-    apply_padding(css, style);
-}
-
 pub(crate) fn apply_padding(css: &CssStyleDeclaration, style: &ResolvedStyle) {
     set_length(css, "padding-left", style.padding_left);
     set_length(css, "padding-right", style.padding_right);
@@ -102,13 +60,6 @@ pub(crate) fn apply_font(css: &CssStyleDeclaration, font: &ResolvedFontProps) {
         }),
     );
     set_optional(css, "color", font.text_color.map(color));
-}
-
-pub(crate) fn apply_appearance(css: &CssStyleDeclaration, appearance: Appearance) {
-    match appearance {
-        Appearance::None => set(css, "appearance", "none"),
-        Appearance::Native | Appearance::Auto => remove(css, "appearance"),
-    }
 }
 
 pub(crate) fn set_length(

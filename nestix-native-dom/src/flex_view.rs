@@ -2,19 +2,20 @@ use nestix::{Element, component, layout};
 use nestix_native_core::{
     FlexViewProps, StyleContext, StyleScope, matched_style, resolved_flex_view_style,
 };
-use wasm_bindgen::JsCast;
-use web_sys::Node;
 
-use crate::{dom::create_html_element, dom::mount_host, style::apply_flex_style};
+use crate::{
+    renderer::{mount_host, renderer},
+    style_declarations::flex_styles,
+};
 
 /// DOM flex-layout container.
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__FlexView", "__dom_FlexView"];
 
-    let html = create_html_element("div");
-    let node = html.clone().unchecked_into::<Node>();
-    mount_host(element, &node);
+    let renderer = renderer(element);
+    let node = renderer.create_element("div");
+    mount_host(element, renderer.clone(), node);
 
     let matched = matched_style(
         element.context::<StyleContext>(),
@@ -24,9 +25,17 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
     let effective_style = resolved_flex_view_style(matched, props);
     element.scoped_effect({
-        let html = html.clone();
+        let renderer = renderer.clone();
         let effective_style = effective_style.clone();
-        move || apply_flex_style(&html.style(), &effective_style.get().unwrap_or_default())
+        move || {
+            renderer.replace_styles(
+                node,
+                flex_styles(
+                    &effective_style.get().unwrap_or_default(),
+                    renderer.scale_factor(),
+                ),
+            );
+        }
     });
 
     layout! {

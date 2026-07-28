@@ -3,10 +3,10 @@ use nestix_native_core::{
     StyleContext, WebViewProps, WebViewSource, matched_style, resolved_view_style,
 };
 use wasm_bindgen::JsCast;
-use web_sys::{HtmlIFrameElement, Node};
+use web_sys::HtmlIFrameElement;
 
 use crate::{
-    dom::{create_html_element, mount_host},
+    renderer::{mount_host, renderer},
     style::apply_view_style,
 };
 
@@ -15,11 +15,13 @@ use crate::{
 pub fn WebView(props: &WebViewProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__dom_WebView"];
 
-    let iframe = create_html_element("iframe")
+    let renderer = renderer(element);
+    let node = renderer.create_element("iframe");
+    let iframe = renderer
+        .html_element(node)
         .dyn_into::<HtmlIFrameElement>()
         .expect("iframe element must be an HtmlIFrameElement");
-    let node = iframe.clone().unchecked_into::<Node>();
-    mount_host(element, &node);
+    mount_host(element, renderer, node);
 
     let matched = matched_style(
         element.context::<StyleContext>(),

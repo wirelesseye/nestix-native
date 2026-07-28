@@ -317,12 +317,6 @@ impl EmbeddedDomRuntime {
     }
 }
 
-/// Context supplied by a native managed DOM surface.
-#[derive(Clone)]
-pub struct DomRuntimeContext {
-    pub runtime: Rc<EmbeddedDomRuntime>,
-}
-
 /// Bridge that connects a native web view to an embedded DOM runtime.
 pub struct ManagedDomBridge {
     runtime: Rc<EmbeddedDomRuntime>,
