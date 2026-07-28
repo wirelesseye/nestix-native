@@ -233,6 +233,10 @@ pub struct DomElementProps {
     #[props(default)]
     pub properties: Vec<DomProperty>,
 
+    /// Text assigned to the element's `textContent`.
+    #[props(default)]
+    pub text: String,
+
     #[props(raw, default)]
     pub events: Vec<DomEvent>,
 
@@ -356,6 +360,12 @@ pub fn DomElement(props: &DomElementProps, element: &Element) -> Element {
             }
             previous_properties.replace(current);
         }
+    });
+
+    element.scoped_effect({
+        let renderer = renderer.clone();
+        let text = props.text.clone();
+        move || renderer.set_text(node, text.get())
     });
 
     let mut event_names = HashSet::new();

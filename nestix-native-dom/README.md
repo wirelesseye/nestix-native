@@ -71,6 +71,7 @@ DomElement(
     .properties = computed!([value] || vec![
         DomProperty::new("value", value.get()),
     ]),
+    .text = "Save",
     .events = vec![DomEvent::new("click", move |event| {
         // Portable event data works in browsers and DomSurface.
     })],
@@ -83,8 +84,9 @@ DomElement(
 Attribute and property vectors may be plain or reactive. Boolean attributes
 use presence semantics, and entries removed from a reactive vector are removed
 from the element. Portable properties support null, booleans, numbers, and
-strings. Browser applications can use `DomProperty::javascript` for arbitrary
-`JsValue` properties.
+strings. The `text` prop sets `textContent` and may also be reactive. Browser
+applications can use `DomProperty::javascript` for arbitrary `JsValue`
+properties.
 
 `DomEvent` listeners receive `DomEventData`, are removed during unmount, and
 support `capture`, `once`, and `passive` options. Browser applications can use

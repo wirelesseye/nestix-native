@@ -241,3 +241,30 @@ fn custom_elements_support_dom_state_events_and_refs() {
     assert!(!target.has_child_nodes());
     target.remove();
 }
+
+#[wasm_bindgen_test]
+fn dom_element_supports_reactive_text_content() {
+    let document = web_sys::window().unwrap().document().unwrap();
+    let target = document.create_element("div").unwrap();
+    target.set_id("nestix-dom-element-text-test-root");
+    document.body().unwrap().append_child(&target).unwrap();
+
+    let text = create_state("initial".to_string());
+    let app = layout! {
+        Root {
+            Window {
+                DomElement("output", .text = text.clone())
+            }
+        }
+    };
+
+    mount_root("#nestix-dom-element-text-test-root", &app);
+    let output = target.query_selector("output").unwrap().unwrap();
+    assert_eq!(output.text_content().as_deref(), Some("initial"));
+
+    text.set("updated".to_string());
+    assert_eq!(output.text_content().as_deref(), Some("updated"));
+
+    unmount_root().unwrap();
+    target.remove();
+}
