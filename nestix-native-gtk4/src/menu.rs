@@ -7,13 +7,13 @@ use std::{
 
 use gtk4::{gio, glib, prelude::*};
 use nestix::{
-    Element, PropValue, Shared, State, callback, closure, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Shared, State, callback, closure, component,
+    components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
-    ContextMenuRegistration, MenuItemProps, MenuProps, MenuSeparatorProps, RadioMenuItemProps,
-    Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    ContextMenuRegistration, MenuBarProps, MenuItemProps, MenuProps, MenuSeparatorProps,
+    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
 };
 
 static NEXT_CONTEXT_ID: AtomicUsize = AtomicUsize::new(1);
@@ -23,6 +23,14 @@ static NEXT_ITEM_ID: AtomicUsize = AtomicUsize::new(1);
 struct ContextMenuContext {
     menu: State<Option<Rc<MenuData>>>,
     target: State<Option<Shared<dyn Any>>>,
+    actions: gio::SimpleActionGroup,
+    action_prefix: String,
+    revision: State<usize>,
+}
+
+#[derive(Clone)]
+struct MenuBarContext {
+    menu: State<Option<Rc<MenuData>>>,
     actions: gio::SimpleActionGroup,
     action_prefix: String,
     revision: State<usize>,
@@ -197,32 +205,48 @@ impl MenuData {
 #[component]
 /// Creates a GTK menu model containing the supplied entries.
 pub fn Menu(props: &MenuProps, element: &Element) -> Element {
-    let context = element.context::<ContextMenuContext>().unwrap();
-    let menu = MenuData::new(
-        context.actions.clone(),
-        context.action_prefix.clone(),
-        context.revision.clone(),
-    );
-    context.menu.set(Some(menu.clone()));
+    let menu_bar = element.context::<MenuBarContext>();
+    let context_menu = element.context::<ContextMenuContext>();
+    let (menu_slot, actions, action_prefix, revision) = if let Some(context) = &menu_bar {
+        (
+            context.menu.clone(),
+            context.actions.clone(),
+            context.action_prefix.clone(),
+            context.revision.clone(),
+        )
+    } else {
+        let context = context_menu
+            .as_ref()
+            .expect("Menu must be contained by MenuBar or ContextMenu");
+        (
+            context.menu.clone(),
+            context.actions.clone(),
+            context.action_prefix.clone(),
+            context.revision.clone(),
+        )
+    };
+    let menu = MenuData::new(actions, action_prefix, revision);
+    menu_slot.set(Some(menu.clone()));
 
-    scoped_effect!(
-        [element, context.target] || {
-            if let Some(handle) = target.get()
-                && let Some(widget) = handle.downcast_ref::<gtk4::Widget>()
-            {
-                element.provide_handle(widget.clone());
+    if let Some(context) = context_menu {
+        scoped_effect!(
+            [element, context.target] || {
+                if let Some(handle) = target.get()
+                    && let Some(widget) = handle.downcast_ref::<gtk4::Widget>()
+                {
+                    element.provide_handle(widget.clone());
+                }
             }
-        }
-    );
+        );
+    }
     element.on_unmount(closure!(
-        [context, menu] || {
-            if context
-                .menu
+        [menu_slot, menu] || {
+            if menu_slot
                 .get()
                 .as_ref()
                 .is_some_and(|current| Rc::ptr_eq(current, &menu))
             {
-                context.menu.set(None);
+                menu_slot.set(None);
             }
         }
     ));
@@ -230,6 +254,89 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<MenuContext>(MenuContext(menu)) {
             $(props.children.clone())
+        }
+    }
+}
+
+#[component]
+/// Installs a GTK menu bar on the containing window.
+pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
+    let context_id = NEXT_CONTEXT_ID.fetch_add(1, Ordering::Relaxed);
+    let window = element.context::<crate::WindowContext>();
+    let context = Rc::new(MenuBarContext {
+        menu: create_state(None),
+        actions: gio::SimpleActionGroup::new(),
+        action_prefix: format!("nestix-menu-bar-{context_id}"),
+        revision: create_state(0),
+    });
+    let menu_bar = gtk4::PopoverMenuBar::from_model(None::<&gio::MenuModel>);
+    let shortcuts = Rc::new(RefCell::new(None::<gtk4::ShortcutController>));
+
+    if let Some(window) = &window {
+        if let Some(previous) = window.menu_bar.replace(Some(menu_bar.clone())) {
+            window.menu_bar_container.remove(&previous);
+        }
+        window
+            .menu_bar_container
+            .insert_child_after(&menu_bar, gtk4::Widget::NONE);
+        window
+            .window
+            .insert_action_group(&context.action_prefix, Some(&context.actions));
+        window.correct_content_size.set(true);
+        element.provide_handle(menu_bar.clone());
+    }
+
+    scoped_effect!(
+        [
+            window,
+            context,
+            context.menu,
+            context.revision,
+            menu_bar,
+            shortcuts
+        ] || {
+            let _ = revision.get();
+            let menu = menu.get();
+            menu_bar.set_menu_model(menu.as_ref().map(|menu| &menu.model));
+            let Some(window) = &window else { return };
+            window.correct_content_size.set(true);
+            if let Some(previous) = shortcuts.borrow_mut().take() {
+                window.window.remove_controller(&previous);
+            }
+            let controller = gtk4::ShortcutController::new();
+            if let Some(menu) = &menu {
+                add_shortcuts(&controller, menu);
+            }
+            window.window.add_controller(controller.clone());
+            shortcuts.replace(Some(controller));
+        }
+    );
+
+    element.on_unmount(closure!(
+        [window, context, menu_bar, shortcuts] || {
+            let Some(window) = &window else { return };
+            if let Some(controller) = shortcuts.borrow_mut().take() {
+                window.window.remove_controller(&controller);
+            }
+            window
+                .window
+                .insert_action_group(&context.action_prefix, gio::ActionGroup::NONE);
+            let owns_slot = window
+                .menu_bar
+                .borrow()
+                .as_ref()
+                .is_some_and(|current| current == &menu_bar);
+            if owns_slot {
+                window.menu_bar.borrow_mut().take();
+                window.menu_bar_container.remove(&menu_bar);
+                window.correct_content_size.set(true);
+            }
+        }
+    ));
+
+    layout! {
+        ContextProvider<MenuBarContext>(context) {
+            $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
         }
     }
 }

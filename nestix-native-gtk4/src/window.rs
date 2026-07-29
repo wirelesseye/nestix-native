@@ -27,6 +27,9 @@ pub struct WindowContext {
     pub scale_factor: Readonly<f64>,
     pub animation: Rc<AnimationRuntime>,
     pub(crate) radio_buttons: Rc<RefCell<Vec<crate::radio_button::RegisteredRadioButton>>>,
+    pub(crate) menu_bar_container: gtk4::Box,
+    pub(crate) menu_bar: Rc<RefCell<Option<gtk4::PopoverMenuBar>>>,
+    pub(crate) correct_content_size: Rc<Cell<bool>>,
 }
 
 #[component]
@@ -39,7 +42,11 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let scale_factor = create_state(1.0);
     let window = gtk4::Window::new();
     let radio_buttons = Rc::new(RefCell::new(Vec::new()));
+    let menu_bar = Rc::new(RefCell::new(None::<gtk4::PopoverMenuBar>));
+    let window_content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     let overlay = gtk4::Overlay::new();
+    overlay.set_hexpand(true);
+    overlay.set_vexpand(true);
     let content = AllocationBin::new();
     let header_bar = gtk4::HeaderBar::new();
     let header_title = gtk4::Label::new(None);
@@ -48,8 +55,10 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     header_bar.set_valign(gtk4::Align::Start);
     overlay.add_overlay(&header_bar);
     overlay.set_child(Some(&content));
-    window.set_child(Some(&overlay));
+    window_content.append(&overlay);
+    window.set_child(Some(&window_content));
     let unmounting = Rc::new(Cell::new(false));
+    let handling_close_request = Rc::new(Cell::new(false));
     scale_factor.set(window.scale_factor() as f64);
     element.provide_handle(window.clone());
 
@@ -59,21 +68,25 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     ));
     window.connect_close_request(closure!(
-        [unmounting, props.desktop.on_close_requested] | _ | {
-            if unmounting.get() {
-                glib::Propagation::Proceed
-            } else {
-                if let Some(on_close_requested) = on_close_requested.get() {
-                    on_close_requested();
-                }
-                glib::Propagation::Stop
+        [
+            unmounting,
+            handling_close_request,
+            props.desktop.on_close_requested
+        ] | _
+            | {
+                handle_close_request(
+                    &unmounting,
+                    &handling_close_request,
+                    on_close_requested.get(),
+                )
             }
-        }
     ));
     element.on_unmount(closure!(
-        [window, unmounting] || {
+        [window, unmounting, handling_close_request] || {
             unmounting.set(true);
-            window.close();
+            if !handling_close_request.get() {
+                window.close();
+            }
         }
     ));
 
@@ -86,7 +99,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
     let requested_content_size = Rc::new(Cell::new((-1, -1)));
     let decoration_size = Rc::new(Cell::new((0, 0)));
-    let correct_system_title_bar_size = Rc::new(Cell::new(false));
+    let correct_content_size = Rc::new(Cell::new(false));
     let native_size_override = Rc::new(Cell::new(false));
     let style_props = matched_style(
         element.context::<StyleContext>(),
@@ -163,13 +176,14 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             window,
             header_bar,
             decoration_size,
-            correct_system_title_bar_size,
+            correct_content_size,
+            menu_bar,
             props.desktop.title_bar_mode
         ] || {
             let mode = title_bar_mode.get();
             apply_title_bar_mode(&window, &header_bar, mode);
             decoration_size.set((0, 0));
-            correct_system_title_bar_size.set(mode == TitleBarMode::System);
+            correct_content_size.set(mode == TitleBarMode::System || menu_bar.borrow().is_some());
         }
     );
 
@@ -186,7 +200,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             last_content_height,
             requested_content_size,
             decoration_size,
-            correct_system_title_bar_size,
+            correct_content_size,
             native_size_override,
             animated_size,
             presented_size
@@ -196,8 +210,8 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             let height = window.height();
             let content_width = content.width();
             let content_height = content.height();
-            let correcting_system_title_bar = correct_system_title_bar_size.get();
-            if correcting_system_title_bar && content_width > 0 && content_height > 0 {
+            let correcting_content_size = correct_content_size.get();
+            if correcting_content_size && content_width > 0 && content_height > 0 {
                 let requested_size = requested_content_size.get();
                 // GTK includes client-side system decorations in the window
                 // allocation. Preserve the requested content size by adding the
@@ -209,7 +223,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     requested_size.0 + decoration.0,
                     requested_size.1 + decoration.1,
                 );
-                correct_system_title_bar_size.set(false);
+                correct_content_size.set(false);
             }
             let requested_size = requested_content_size.get();
             let native_size = (content_width, content_height);
@@ -217,7 +231,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 || (native_size.1 - requested_size.1).abs() > 1;
             if content_width > 0
                 && content_height > 0
-                && !correcting_system_title_bar
+                && !correcting_content_size
                 && (native_size_override.get() || animated_size.is_active() && differs_from_request)
             {
                 native_size_override.set(true);
@@ -269,6 +283,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         scale_factor: scale_factor.into_readonly(),
         animation,
         radio_buttons,
+        menu_bar_container: window_content,
+        menu_bar,
+        correct_content_size,
     });
 
     layout! {
@@ -318,6 +335,28 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     }
 }
 
+fn handle_close_request(
+    unmounting: &Cell<bool>,
+    handling_close_request: &Cell<bool>,
+    on_close_requested: Option<nestix::Shared<dyn Fn()>>,
+) -> glib::Propagation {
+    if unmounting.get() {
+        return glib::Propagation::Proceed;
+    }
+    handling_close_request.set(true);
+    if let Some(on_close_requested) = on_close_requested {
+        on_close_requested();
+    }
+    handling_close_request.set(false);
+    if unmounting.get() {
+        // The callback synchronously unmounted this component. Let the
+        // original GTK close request finish closing the window.
+        glib::Propagation::Proceed
+    } else {
+        glib::Propagation::Stop
+    }
+}
+
 fn logical_length(
     value: Option<NativeLengthWithAuto<Length>>,
     fallback: i32,
@@ -349,5 +388,39 @@ fn apply_title_bar_mode(
             window.set_decorated(false);
             overlay_header.set_visible(true);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nestix::Shared;
+
+    #[test]
+    fn close_proceeds_when_callback_synchronously_unmounts() {
+        let unmounting = Rc::new(Cell::new(false));
+        let handling_close_request = Rc::new(Cell::new(false));
+        let callback = Shared::from(Rc::new({
+            let unmounting = unmounting.clone();
+            let handling_close_request = handling_close_request.clone();
+            move || {
+                assert!(handling_close_request.get());
+                unmounting.set(true);
+            }
+        }) as Rc<dyn Fn()>);
+
+        assert_eq!(
+            handle_close_request(&unmounting, &handling_close_request, Some(callback)),
+            glib::Propagation::Proceed
+        );
+        assert!(!handling_close_request.get());
+    }
+
+    #[test]
+    fn close_stops_when_component_remains_mounted() {
+        assert_eq!(
+            handle_close_request(&Cell::new(false), &Cell::new(false), None),
+            glib::Propagation::Stop
+        );
     }
 }
