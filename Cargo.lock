@@ -903,6 +903,7 @@ name = "nestix-native-core"
 version = "0.1.0"
 dependencies = [
  "dpi",
+ "log",
  "nestix",
  "nestix-native-macros",
  "taffy",

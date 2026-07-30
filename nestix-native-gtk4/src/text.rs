@@ -11,6 +11,7 @@ use crate::{WindowContext, layout::mount_leaf};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
+    require_visual_mount!(element, Text);
     const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__gtk4_Text"];
 
     let window_context = element.context::<WindowContext>().unwrap();

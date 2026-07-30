@@ -250,14 +250,18 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     .default_classes = DEFAULT_CLASSES,
                     .effective_style = target_size,
                 ) {
-                    ContextProvider<ParentContext>(
-                        ParentContext {
-                            surface: surface.clone(),
-                            parent_visual: None,
-                            parent_node: None,
-                        },
+                    ContextProvider<nestix_native_core::NativeVisualMount>(
+                        nestix_native_core::NativeVisualMount::allowed(crate::WIN32_BACKEND_ID),
                     ) {
-                        $(props.children.clone().map(|element| Layout::from(element.clone())))
+                        ContextProvider<ParentContext>(
+                            ParentContext {
+                                surface: surface.clone(),
+                                parent_visual: None,
+                                parent_node: None,
+                            },
+                        ) {
+                            $(props.children.clone().map(|element| Layout::from(element.clone())))
+                        }
                     }
                 }
             }

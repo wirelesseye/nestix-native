@@ -12,6 +12,7 @@ use crate::{WindowContext, layout::mount_leaf};
 
 #[component]
 pub fn Button(props: &ButtonProps, element: &Element) {
+    require_visual_mount!(element, Button);
     const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__gtk4_Button"];
 
     let window_context = element.context::<WindowContext>().unwrap();

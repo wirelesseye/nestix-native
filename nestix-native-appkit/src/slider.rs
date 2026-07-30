@@ -16,6 +16,7 @@ thread_local! {
 
 #[component]
 pub fn Slider(props: &SliderProps, element: &Element) {
+    require_visual_mount!(element, Slider);
     const DEFAULT_CLASSES: [&str; 2] = ["__Slider", "__appkit_Slider"];
 
     let style_props = matched_style(

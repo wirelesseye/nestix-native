@@ -16,6 +16,7 @@ thread_local! {
 
 #[component]
 pub fn Switch(props: &SwitchProps, element: &Element) {
+    require_visual_mount!(element, Switch);
     const DEFAULT_CLASSES: [&str; 2] = ["__Switch", "__appkit_Switch"];
 
     let style_props = matched_style(

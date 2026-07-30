@@ -32,6 +32,7 @@ use crate::{AppState, WindowContext, contexts::ParentContext, font::resolved_fon
 #[component]
 /// Renders read-only text in a native Win32 control.
 pub fn Text(props: &TextProps, element: &Element) {
+    require_visual_mount!(element, Text);
     const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__win32_Text"];
 
     let window_context = element.context::<WindowContext>().unwrap();

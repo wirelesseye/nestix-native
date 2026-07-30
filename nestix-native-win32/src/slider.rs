@@ -36,6 +36,7 @@ fn init_trackbar_class() {
 #[component]
 /// Renders a native Win32 slider.
 pub fn Slider(props: &SliderProps, element: &Element) {
+    require_visual_mount!(element, Slider);
     const DEFAULT_CLASSES: [&str; 2] = ["__Slider", "__win32_Slider"];
     let app_state = element.context::<AppState>().unwrap();
     init_trackbar_class();

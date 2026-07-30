@@ -26,6 +26,7 @@ static NEXT_CSS_CLASS: AtomicUsize = AtomicUsize::new(0);
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, FlexView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__FlexView", "__gtk4_FlexView"];
 
     let window_context = element.context::<WindowContext>().unwrap();

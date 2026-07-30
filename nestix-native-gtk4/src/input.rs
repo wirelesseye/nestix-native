@@ -10,6 +10,7 @@ use crate::{WindowContext, layout::mount_leaf_with_intrinsic_size};
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
+    require_visual_mount!(element, Input);
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__gtk4_Input"];
 
     let style_context = element.context::<StyleContext>();

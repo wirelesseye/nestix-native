@@ -19,6 +19,7 @@ use crate::{WindowContext, contexts::ParentContext};
 
 #[component]
 pub fn ImageView(props: &ImageViewProps, element: &Element) {
+    require_visual_mount!(element, ImageView);
     const DEFAULT_CLASSES: [&str; 2] = ["__ImageView", "__appkit_ImageView"];
 
     let window_context = element.context::<WindowContext>().unwrap();

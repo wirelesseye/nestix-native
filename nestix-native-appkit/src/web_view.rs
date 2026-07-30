@@ -31,6 +31,7 @@ use crate::native_control;
 /// AppKit web view backed by WebKit.
 #[component]
 pub fn WebView(props: &WebViewProps, element: &Element) {
+    require_visual_mount!(element, WebView);
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__appkit_WebView"];
 
     let bridge = props.bridge.get();

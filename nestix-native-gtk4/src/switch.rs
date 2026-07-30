@@ -11,6 +11,7 @@ use crate::{WindowContext, layout::mount_leaf};
 #[component]
 /// Renders a native GTK switch.
 pub fn Switch(props: &SwitchProps, element: &Element) {
+    require_visual_mount!(element, Switch);
     const DEFAULT_CLASSES: [&str; 2] = ["__Switch", "__gtk4_Switch"];
 
     let window_context = element.context::<WindowContext>().unwrap();

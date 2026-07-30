@@ -61,6 +61,7 @@ struct TabViewContext {
 #[component]
 /// Renders a native Win32 tab view.
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, TabView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__win32_TabView"];
 
     let app_state = element.context::<AppState>().unwrap();
@@ -327,6 +328,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
 #[component]
 /// Renders one page and tab label within a [`TabView`].
 pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
+    require_visual_mount!(element, TabViewItem, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__TabViewItem", "__win32_TabViewItem"];
 
     let window_context = element.context::<WindowContext>().unwrap();

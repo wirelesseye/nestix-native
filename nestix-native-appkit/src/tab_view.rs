@@ -32,6 +32,7 @@ struct TabViewContext {
 
 #[component]
 pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, TabView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__TabView", "__appkit_TabView"];
 
     let window_context = element.context::<WindowContext>().unwrap();
@@ -387,6 +388,7 @@ impl TabViewDelegate {
 
 #[component]
 pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
+    require_visual_mount!(element, TabViewItem, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__TabViewItem", "__appkit_TabViewItem"];
 
     let tree_context = element.context::<TreeContext>().unwrap();

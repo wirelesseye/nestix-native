@@ -20,6 +20,7 @@ use crate::{WindowContext, contexts::ParentContext};
 
 #[component]
 pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, ScrollView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__ScrollView", "__appkit_ScrollView"];
 
     let window = element.context::<WindowContext>().unwrap();

@@ -23,6 +23,7 @@ pub(crate) struct RegisteredRadioButton {
 #[component]
 /// Renders a native GTK radio button.
 pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
+    require_visual_mount!(element, RadioButton);
     const DEFAULT_CLASSES: [&str; 2] = ["__RadioButton", "__gtk4_RadioButton"];
 
     let window_context = element.context::<WindowContext>().unwrap();

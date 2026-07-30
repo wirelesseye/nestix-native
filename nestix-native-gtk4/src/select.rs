@@ -36,6 +36,7 @@ struct OptionEntry {
 #[component]
 /// Renders a native GTK selection control.
 pub fn Select(props: &SelectProps, element: &Element) -> Element {
+    require_visual_mount!(element, Select, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__Select", "__gtk4_Select"];
 
     let window_context = element.context::<WindowContext>().unwrap();
@@ -110,6 +111,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
 #[component]
 /// Registers an option with its containing [`Select`].
 pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
+    require_visual_mount!(element, SelectOption);
     let context = element.context::<SelectContext>().unwrap();
     let id = NEXT_OPTION_ID.fetch_add(1, Ordering::Relaxed);
     let initial = OptionEntry {

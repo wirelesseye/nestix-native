@@ -1,5 +1,28 @@
 //! Win32 backend components for Nestix Native.
 
+pub const WIN32_BACKEND_ID: &str = "nestix-native-win32";
+
+macro_rules! require_visual_mount {
+    ($element:expr, $component:ident) => {
+        if !nestix_native_core::native_visual_mount_allowed(
+            $element,
+            crate::WIN32_BACKEND_ID,
+            stringify!($component),
+        ) {
+            return;
+        }
+    };
+    ($element:expr, $component:ident, output) => {
+        if !nestix_native_core::native_visual_mount_allowed(
+            $element,
+            crate::WIN32_BACKEND_ID,
+            stringify!($component),
+        ) {
+            return nestix_native_core::empty_visual_output();
+        }
+    };
+}
+
 /// Win32 push-button component.
 pub mod button;
 /// Win32 checkbox component.
@@ -73,7 +96,7 @@ pub struct Win32Backend;
 
 impl Backend for Win32Backend {
     fn backend_id(&self) -> &'static str {
-        "nestix-native-win32"
+        WIN32_BACKEND_ID
     }
 
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {

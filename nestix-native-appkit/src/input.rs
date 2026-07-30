@@ -28,6 +28,7 @@ const DEFAULT_INPUT_HEIGHT: f32 = 22.0;
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
+    require_visual_mount!(element, Input);
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__appkit_Input"];
 
     let window_context = element.context::<WindowContext>().unwrap();

@@ -22,6 +22,7 @@ use crate::layout::mount_leaf_with_intrinsic_size;
 /// GTK4 web view backed by WebKitGTK.
 #[component]
 pub fn WebView(props: &WebViewProps, element: &Element) {
+    require_visual_mount!(element, WebView);
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__gtk4_WebView"];
 
     let bridge = props.bridge.get();

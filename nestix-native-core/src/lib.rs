@@ -65,7 +65,72 @@ pub use window::*;
 pub use dpi;
 pub use nestix_native_macros::*;
 
-use nestix::Element;
+use nestix::{Component, Element, create_element};
+
+/// Controls whether native visual components may mount in a logical subtree.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NativeVisualMount {
+    /// Native visuals from this backend may mount in the subtree.
+    Allowed { backend_id: &'static str },
+    /// No native visual may cross this renderer boundary.
+    Blocked { boundary: &'static str },
+}
+
+impl NativeVisualMount {
+    pub const fn allowed(backend_id: &'static str) -> Self {
+        Self::Allowed { backend_id }
+    }
+
+    pub const fn blocked(boundary: &'static str) -> Self {
+        Self::Blocked { boundary }
+    }
+}
+
+/// Checks the visual-mount policy inherited by a concrete backend component.
+///
+/// A missing policy permits mounting so concrete backend crates remain usable
+/// without the `nestix-native` facade. Platform roots should provide an
+/// [`NativeVisualMount::Allowed`] policy to prevent visuals from another
+/// backend from crossing into their native tree.
+pub fn native_visual_mount_allowed(
+    element: &Element,
+    backend_id: &'static str,
+    component: &'static str,
+) -> bool {
+    match element.context::<NativeVisualMount>().as_deref() {
+        None => true,
+        Some(NativeVisualMount::Allowed {
+            backend_id: allowed,
+        }) if *allowed == backend_id => true,
+        Some(NativeVisualMount::Allowed {
+            backend_id: allowed,
+        }) => {
+            log::warn!(
+                "{component} from backend {backend_id} was not mounted in visual tree owned by {allowed}"
+            );
+            false
+        }
+        Some(NativeVisualMount::Blocked { boundary }) => {
+            log::warn!(
+                "{component} from backend {backend_id} was not mounted across {boundary} boundary"
+            );
+            false
+        }
+    }
+}
+
+struct EmptyVisualOutput;
+
+impl Component for EmptyVisualOutput {
+    type Props = ();
+
+    fn on_mount(_: &Element) {}
+}
+
+#[doc(hidden)]
+pub fn empty_visual_output() -> Element {
+    create_element::<EmptyVisualOutput>(())
+}
 
 /// Context that selects the backend used by descendant facade components.
 #[derive(Clone)]

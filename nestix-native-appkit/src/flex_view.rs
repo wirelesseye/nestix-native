@@ -19,6 +19,7 @@ use nestix_native_core::utils::{gap_to_taffy, inset_to_taffy, margin_to_taffy, p
 
 #[component]
 pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, FlexView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__FlexView", "__appkit_FlexView"];
 
     let window_context = element.context::<WindowContext>().unwrap();

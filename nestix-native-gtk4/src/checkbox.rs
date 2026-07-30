@@ -11,6 +11,7 @@ use crate::{WindowContext, layout::mount_leaf};
 #[component]
 /// Renders a native GTK checkbox.
 pub fn Checkbox(props: &CheckboxProps, element: &Element) {
+    require_visual_mount!(element, Checkbox);
     const DEFAULT_CLASSES: [&str; 2] = ["__Checkbox", "__gtk4_Checkbox"];
 
     let window_context = element.context::<WindowContext>().unwrap();

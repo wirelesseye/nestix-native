@@ -1,3 +1,26 @@
+pub const GTK4_BACKEND_ID: &str = "nestix-native-gtk4";
+
+macro_rules! require_visual_mount {
+    ($element:expr, $component:ident) => {
+        if !nestix_native_core::native_visual_mount_allowed(
+            $element,
+            crate::GTK4_BACKEND_ID,
+            stringify!($component),
+        ) {
+            return;
+        }
+    };
+    ($element:expr, $component:ident, output) => {
+        if !nestix_native_core::native_visual_mount_allowed(
+            $element,
+            crate::GTK4_BACKEND_ID,
+            stringify!($component),
+        ) {
+            return nestix_native_core::empty_visual_output();
+        }
+    };
+}
+
 pub mod button;
 pub mod checkbox;
 pub mod flex_view;
@@ -45,7 +68,7 @@ pub struct Gtk4Backend;
 
 impl Backend for Gtk4Backend {
     fn backend_id(&self) -> &'static str {
-        "nestix-native-gtk4"
+        GTK4_BACKEND_ID
     }
 
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {

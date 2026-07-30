@@ -22,6 +22,7 @@ use crate::{
 
 #[component]
 pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, ScrollView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__ScrollView", "__gtk4_ScrollView"];
 
     let window_context = element.context::<WindowContext>().unwrap();

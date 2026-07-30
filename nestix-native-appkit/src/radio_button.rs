@@ -26,6 +26,7 @@ thread_local! {
 
 #[component]
 pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
+    require_visual_mount!(element, RadioButton);
     const DEFAULT_CLASSES: [&str; 2] = ["__RadioButton", "__appkit_RadioButton"];
 
     let window = element.context::<WindowContext>().unwrap();

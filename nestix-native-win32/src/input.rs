@@ -33,6 +33,7 @@ use crate::{
 #[component]
 /// Renders a native Win32 single-line text input.
 pub fn Input(props: &InputProps, element: &Element) {
+    require_visual_mount!(element, Input);
     const DEFAULT_CLASSES: [&str; 2] = ["__Input", "__win32_Input"];
 
     let app_state = element.context::<AppState>().unwrap();

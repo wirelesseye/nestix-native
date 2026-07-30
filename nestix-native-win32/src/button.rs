@@ -45,6 +45,7 @@ const DEFAULT_PADDING_Y: f32 = 3.0;
 #[component]
 /// Renders a native Win32 push button.
 pub fn Button(props: &ButtonProps, element: &Element) {
+    require_visual_mount!(element, Button);
     const DEFAULT_CLASSES: [&str; 2] = ["__Button", "__win32_Button"];
 
     let app_state = element.context::<AppState>().unwrap();

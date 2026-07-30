@@ -228,6 +228,7 @@ pub(crate) fn load_icon(source: ImageSource) -> Option<HICON> {
 #[component]
 /// Renders an image in a native Win32 control.
 pub fn ImageView(props: &ImageViewProps, element: &Element) {
+    require_visual_mount!(element, ImageView);
     const DEFAULT_CLASSES: [&str; 2] = ["__ImageView", "__win32_ImageView"];
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();

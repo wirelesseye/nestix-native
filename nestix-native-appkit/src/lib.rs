@@ -1,5 +1,28 @@
 //! macOS AppKit backend for `nestix-native`.
 
+pub const APPKIT_BACKEND_ID: &str = "nestix-native-appkit";
+
+macro_rules! require_visual_mount {
+    ($element:expr, $component:ident) => {
+        if !nestix_native_core::native_visual_mount_allowed(
+            $element,
+            crate::APPKIT_BACKEND_ID,
+            stringify!($component),
+        ) {
+            return;
+        }
+    };
+    ($element:expr, $component:ident, output) => {
+        if !nestix_native_core::native_visual_mount_allowed(
+            $element,
+            crate::APPKIT_BACKEND_ID,
+            stringify!($component),
+        ) {
+            return nestix_native_core::empty_visual_output();
+        }
+    };
+}
+
 pub mod button;
 pub mod checkbox;
 pub mod drag_drop;
@@ -57,7 +80,7 @@ pub struct AppKitBackend;
 
 impl Backend for AppKitBackend {
     fn backend_id(&self) -> &'static str {
-        "nestix-native-appkit"
+        APPKIT_BACKEND_ID
     }
 
     fn create_root(&self, props: nestix_native_core::RootProps) -> Option<nestix::Element> {

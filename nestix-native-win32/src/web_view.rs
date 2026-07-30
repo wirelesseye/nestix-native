@@ -138,6 +138,7 @@ extern "system" fn web_view_proc(
 /// Displays web content in a child WebView2 control.
 #[component]
 pub fn WebView(props: &WebViewProps, element: &Element) {
+    require_visual_mount!(element, WebView);
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__win32_WebView"];
     let parent = element.context::<ParentContext>().unwrap();
     let matched = matched_style(

@@ -25,6 +25,7 @@ struct SelectContext {
 
 #[component]
 pub fn Select(props: &SelectProps, element: &Element) -> Element {
+    require_visual_mount!(element, Select, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__Select", "__appkit_Select"];
 
     let style_props = matched_style(
@@ -100,6 +101,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
 
 #[component]
 pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
+    require_visual_mount!(element, SelectOption);
     let context = element.context::<SelectContext>().unwrap();
     let mtm = MainThreadMarker::new().unwrap();
     let item = unsafe {

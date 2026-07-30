@@ -88,6 +88,7 @@ fn window_classname(hinstance: HINSTANCE) -> PCWSTR {
 #[component]
 /// Renders a native Win32 scrollable container.
 pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
+    require_visual_mount!(element, ScrollView, output);
     const DEFAULT_CLASSES: [&str; 2] = ["__ScrollView", "__win32_ScrollView"];
 
     let window = element.context::<WindowContext>().unwrap();

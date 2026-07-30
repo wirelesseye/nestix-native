@@ -42,9 +42,13 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
     // the WebView in a private list that would hide DomSurface's predecessor.
     let managed_tree = layout! {
         DetachedTree {
-            ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {
-                ContextProvider<BackendContext>(BackendContext { backend: &DOM_BACKEND }) {
-                    DomDocumentRoot(.children = props.children.clone())
+            ContextProvider<nestix_native_core::NativeVisualMount>(
+                nestix_native_core::NativeVisualMount::blocked("DomSurface"),
+            ) {
+                ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {
+                    ContextProvider<BackendContext>(BackendContext { backend: &DOM_BACKEND }) {
+                        DomDocumentRoot(.children = props.children.clone())
+                    }
                 }
             }
         }

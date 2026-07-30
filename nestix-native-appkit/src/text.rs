@@ -20,6 +20,7 @@ use nestix_native_core::utils::{inset_to_taffy, margin_to_taffy};
 
 #[component]
 pub fn Text(props: &TextProps, element: &Element) {
+    require_visual_mount!(element, Text);
     const DEFAULT_CLASSES: [&str; 2] = ["__Text", "__appkit_Text"];
 
     let window_context = element.context::<WindowContext>().unwrap();

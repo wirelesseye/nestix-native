@@ -11,6 +11,7 @@ use crate::{WindowContext, layout::mount_leaf};
 #[component]
 /// Renders a native horizontal GTK slider.
 pub fn Slider(props: &SliderProps, element: &Element) {
+    require_visual_mount!(element, Slider);
     const DEFAULT_CLASSES: [&str; 2] = ["__Slider", "__gtk4_Slider"];
 
     let window_context = element.context::<WindowContext>().unwrap();

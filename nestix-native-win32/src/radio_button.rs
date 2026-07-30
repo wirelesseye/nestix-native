@@ -46,6 +46,7 @@ thread_local! {
 #[component]
 /// Renders a native Win32 radio button.
 pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
+    require_visual_mount!(element, RadioButton);
     const DEFAULT_CLASSES: [&str; 2] = ["__RadioButton", "__win32_RadioButton"];
     let app_state = element.context::<AppState>().unwrap();
     let window = element.context::<WindowContext>().unwrap();

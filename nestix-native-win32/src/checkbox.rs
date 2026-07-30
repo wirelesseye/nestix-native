@@ -33,6 +33,7 @@ use crate::{
 #[component]
 /// Renders a native Win32 checkbox.
 pub fn Checkbox(props: &CheckboxProps, element: &Element) {
+    require_visual_mount!(element, Checkbox);
     const DEFAULT_CLASSES: [&str; 2] = ["__Checkbox", "__win32_Checkbox"];
     let app_state = element.context::<AppState>().unwrap();
     let window = element.context::<WindowContext>().unwrap();
