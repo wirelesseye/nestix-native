@@ -1,7 +1,7 @@
 use env_logger::Env;
 use nestix::{
-    Element, callback, component, computed, create_state, layout, mount_root, scoped_effect,
-    unmount_root,
+    Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
+    scoped_effect, unmount_root,
 };
 use nestix_native::{
     AlignItems, CheckMenuItem, Color, FlexView, JustifyContent, Menu, MenuBar, MenuItem,
@@ -11,6 +11,39 @@ use nestix_native::{
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
     mount_root(&layout! { MenuBarExample });
+}
+
+#[props]
+struct ApplicationMenuProps {
+    #[props(raw)]
+    set_status: Shared<dyn Fn(String)>,
+}
+
+// Each menu bar needs its own element tree because cloned elements share mount identity.
+#[component]
+fn ApplicationMenu(props: &ApplicationMenuProps) -> Element {
+    layout! {
+        Submenu("Application") {
+            MenuItem(
+                "About Menu Bar Example",
+                .on_activate = callback!(
+                    [props.set_status] || {
+                        set_status("Application-wide About selected".to_string());
+                    }
+                ),
+            )
+            MenuSeparator()
+            MenuItem(
+                "Application Action",
+                .shortcut = Shortcut::primary('A'),
+                .on_activate = callback!(
+                    [props.set_status] || {
+                        set_status("Application-wide action selected".to_string());
+                    }
+                ),
+            )
+        }
+    }
 }
 
 #[component]
@@ -28,34 +61,15 @@ fn MenuBarExample() -> Element {
         }
     );
 
-    let application_menu = layout! {
-        Submenu("Application") {
-            MenuItem(
-                "About Menu Bar Example",
-                .on_activate = callback!(
-                    [status] || {
-                        status.set("Application-wide About selected".to_string());
-                    }
-                ),
-            )
-            MenuSeparator()
-            MenuItem(
-                "Application Action",
-                .shortcut = Shortcut::primary('A'),
-                .on_activate = callback!(
-                    [status] || {
-                        status.set("Application-wide action selected".to_string());
-                    }
-                ),
-            )
-        }
-    };
+    let set_status = callback!([status] |value: String| {
+        status.set(value);
+    });
 
     layout! {
         Root {
             // macOS only: This menu bar is available application-wide.
             // A window without its own menu bar uses it when focused.
-            MenuBar(.menu = layout!{ Menu { $(application_menu.clone()) } })
+            MenuBar(.menu = layout!{ Menu { ApplicationMenu(.set_status = set_status.clone()) } })
             Window(
                 $if = window_menu_open.get(),
                 .title = "Window-specific menu",
@@ -79,7 +93,7 @@ fn MenuBarExample() -> Element {
                     MenuBar(
                         .menu = layout! {
                             Menu {
-                                $(application_menu)
+                                ApplicationMenu(.set_status = set_status)
                                 Submenu("File") {
                                     MenuItem(
                                         "New Document",
