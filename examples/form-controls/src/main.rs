@@ -3,7 +3,7 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    AlignItems, BackendOverride, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton,
+    AlignItems, BackendCase, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton,
     Root, Select, SelectOption, Slider, StyleProvider, Switch, Text, Window, style,
 };
 
@@ -167,7 +167,7 @@ fn FormControlsApp() -> Element {
                             .flex_direction = FlexDirection::Row,
                             .align_items = AlignItems::Center,
                         ) {
-                            BackendOverride(
+                            BackendCase(
                                 "nestix-native-win32",
                                 .replacement = layout! {
                                     Checkbox(

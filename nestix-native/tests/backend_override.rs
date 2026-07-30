@@ -4,7 +4,7 @@ use nestix::{
     ContextProvider, Element, component, components::Fragment, layout, mount_root, props,
     unmount_root,
 };
-use nestix_native::{Backend, BackendContext, BackendOverride, Root, RootProps};
+use nestix_native::{Backend, BackendContext, BackendCase, Root, RootProps};
 
 struct TestBackend(&'static str);
 
@@ -43,7 +43,7 @@ struct AppProps {
 fn App(props: &AppProps) -> Element {
     layout! {
         Root {
-            BackendOverride(
+            BackendCase(
                 "matching",
                 .replacement = layout! {
                     Counter(.count = props.replacement.get())
@@ -84,7 +84,7 @@ fn renders_default_children_for_a_different_backend() {
         ContextProvider::<
         BackendContext
         >(Rc::new(BackendContext { backend: &MATCHING_BACKEND })) {
-            BackendOverride(
+            BackendCase(
                 "different",
                 .replacement = layout! {
                     Counter(.count = replacement.clone())
@@ -105,9 +105,9 @@ fn renders_default_children_for_a_different_backend() {
 }
 
 #[test]
-#[should_panic(expected = "BackendOverride must be mounted beneath Root")]
+#[should_panic(expected = "BackendCase must be mounted beneath Root")]
 fn requires_backend_context() {
     mount_root(&layout! {
-        BackendOverride("matching")
+        BackendCase("matching")
     });
 }

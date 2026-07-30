@@ -28,7 +28,7 @@ macro_rules! delegate {
     };
 }
 
-pub mod backend_override;
+pub mod backend_case;
 pub mod button;
 pub mod checkbox;
 #[cfg(all(feature = "dom", not(target_arch = "wasm32")))]
@@ -51,7 +51,7 @@ pub mod tray_icon;
 pub mod web_view;
 pub mod window;
 
-pub use backend_override::*;
+pub use backend_case::*;
 pub use button::*;
 pub use checkbox::*;
 #[cfg(all(feature = "dom", not(target_arch = "wasm32")))]

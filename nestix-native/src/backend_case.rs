@@ -5,7 +5,7 @@ use crate::BackendContext;
 /// Properties for [`BackendOverride`].
 #[props(debug)]
 #[derive(Debug, Clone)]
-pub struct BackendOverrideProps {
+pub struct BackendCaseProps {
     /// Stable identifier of the backend that receives the replacement layout.
     #[props(start)]
     pub backend_id: String,
@@ -26,10 +26,10 @@ pub struct BackendOverrideProps {
 /// [`crate::Backend::backend_id`], so third-party backends require no central
 /// registration.
 #[component]
-pub fn BackendOverride(props: &BackendOverrideProps, element: &Element) -> Element {
+pub fn BackendCase(props: &BackendCaseProps, element: &Element) -> Element {
     let backend = element
         .context::<BackendContext>()
-        .expect("BackendOverride must be mounted beneath Root")
+        .expect("BackendCase must be mounted beneath Root")
         .backend;
     let selected = if backend.backend_id() == props.backend_id.get() {
         props.replacement.clone()
