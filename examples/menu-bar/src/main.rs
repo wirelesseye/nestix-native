@@ -48,10 +48,10 @@ fn ApplicationMenu(props: &ApplicationMenuProps) -> Element {
 
 #[component]
 fn MenuBarExample() -> Element {
-    let status = create_state("Choose a menu command".to_string());
-    let show_status = create_state(true);
-    let window_menu_open = create_state(true);
-    let plain_window_open = create_state(true);
+    let (status, write_status) = create_state("Choose a menu command".to_string());
+    let (show_status, set_show_status) = create_state(true);
+    let (window_menu_open, set_window_menu_open) = create_state(true);
+    let (plain_window_open, set_plain_window_open) = create_state(true);
 
     scoped_effect!(
         [window_menu_open, plain_window_open] || {
@@ -61,8 +61,8 @@ fn MenuBarExample() -> Element {
         }
     );
 
-    let set_status = callback!([status] |value: String| {
-        status.set(value);
+    let set_status = callback!([write_status] |value: String| {
+        write_status.set(value);
     });
 
     layout! {
@@ -83,8 +83,8 @@ fn MenuBarExample() -> Element {
                     .width = 480,
                     .height = 300,
                     .on_close_requested = callback!(
-                        [window_menu_open] || {
-                            window_menu_open.set(false);
+                        [set_window_menu_open] || {
+                            set_window_menu_open.set(false);
                         }
                     ),
                 ),
@@ -99,14 +99,14 @@ fn MenuBarExample() -> Element {
                     MenuBar(
                         .menu = layout! {
                             Menu {
-                                ApplicationMenu(.set_status = set_status)
+                                ApplicationMenu(.set_status = set_status.clone())
                                 Submenu("File") {
                                     MenuItem(
                                         "New Document",
                                         .shortcut = Shortcut::primary('N'),
                                         .on_activate = callback!(
-                                            [status] || {
-                                                status.set("New Document selected".to_string());
+                                            [set_status] || {
+                                                set_status("New Document selected".to_string());
                                             }
                                         ),
                                     )
@@ -114,8 +114,8 @@ fn MenuBarExample() -> Element {
                                         "Save",
                                         .shortcut = Shortcut::primary('S'),
                                         .on_activate = callback!(
-                                            [status] || {
-                                                status.set("Save selected".to_string());
+                                            [set_status] || {
+                                                set_status("Save selected".to_string());
                                             }
                                         ),
                                     )
@@ -124,8 +124,8 @@ fn MenuBarExample() -> Element {
                                         "Show status",
                                         .checked = show_status.clone(),
                                         .on_checked_change = callback!(
-                                            [show_status] | checked | {
-                                                show_status.set(checked);
+                                            [set_show_status] | checked | {
+                                                set_show_status.set(checked);
                                             }
                                         ),
                                     )
@@ -147,8 +147,8 @@ fn MenuBarExample() -> Element {
                     .width = 480,
                     .height = 240,
                     .on_close_requested = callback!(
-                        [plain_window_open] || {
-                            plain_window_open.set(false);
+                        [set_plain_window_open] || {
+                            set_plain_window_open.set(false);
                         }
                     ),
                 ),

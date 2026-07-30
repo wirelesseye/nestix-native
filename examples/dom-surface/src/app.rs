@@ -7,10 +7,10 @@ use nestix_native::{
 
 #[component]
 pub fn App() -> Element {
-    let count = create_state(0);
-    let name = create_state("Nestix".to_string());
+    let (count, set_count) = create_state(0);
+    let (name, set_name) = create_state("Nestix".to_string());
     let dom_surface = WebViewController::new();
-    let count_for_custom_element = count.clone();
+    let set_count_for_custom_element = set_count.clone();
     let styles = style! {
         .app {
             padding: 20 px;
@@ -59,8 +59,8 @@ pub fn App() -> Element {
                             Input(
                                 .value = name.clone(),
                                 .on_text_change = callback!(
-                                    [name] |value: &str| {
-                                        name.set(value.to_string());
+                                    [set_name] |value: &str| {
+                                        set_name.set(value.to_string());
                                     }
                                 ),
                             )
@@ -71,14 +71,14 @@ pub fn App() -> Element {
                                 Button(
                                     .title = "Increment natively",
                                     .on_click = callback!(
-                                        [count] || {
-                                            count.update(|value| value + 1)
+                                        [set_count] || {
+                                            set_count.update(|value| value + 1)
                                         }
                                     ),
                                 )
                                 Button(
                                     .title = "Reset",
-                                    .on_click = callback!([count] || count.set(0)),
+                                    .on_click = callback!([set_count] || set_count.set(0)),
                                 )
                                 Button(
                                     .title = "Open DOM DevTools",
@@ -112,8 +112,8 @@ pub fn App() -> Element {
                                 Input(
                                     .value = name.clone(),
                                     .on_text_change = callback!(
-                                        [name] |value: &str| {
-                                            name.set(value.to_string());
+                                        [set_name] |value: &str| {
+                                            set_name.set(value.to_string());
                                         }
                                     ),
                                 )
@@ -135,7 +135,7 @@ pub fn App() -> Element {
                                             || vec![DomProperty::new("currentCount", count.get()),]
                                     ),
                                     .events = vec![DomEvent::new("increment", move |_| {
-                                        count_for_custom_element.update(|value| value + 1)
+                                        set_count_for_custom_element.update(|value| value + 1)
                                     })],
                                 ) {
                                     Text(
@@ -155,12 +155,12 @@ pub fn App() -> Element {
                                     Button(
                                         .title = "Add ten in the DOM",
                                         .on_click = callback!(
-                                            [count] || { count.update(|value| value + 10) }
+                                            [set_count] || { set_count.update(|value| value + 10) }
                                         ),
                                     )
                                     Button(
                                         .title = "Reset",
-                                        .on_click = callback!([count] || count.set(0)),
+                                        .on_click = callback!([set_count] || set_count.set(0)),
                                     )
                                 }
                             }

@@ -1,6 +1,6 @@
 use nestix::{
-    Element, State, closure, component, components::ContextProvider, create_state, layout,
-    scoped_effect,
+    Element, State, StateSetter, closure, component, components::ContextProvider, create_state,
+    layout, scoped_effect,
 };
 use nestix_native_core::{RootProps, StyleScope};
 use objc2::{MainThreadMarker, rc::Retained};
@@ -11,7 +11,9 @@ use objc2_foundation::NSObject;
 pub struct RootContext {
     pub ns_application: Retained<NSApplication>,
     pub(crate) app_menu: State<Option<Retained<NSMenu>>>,
+    pub(crate) set_app_menu: StateSetter<Option<Retained<NSMenu>>>,
     pub(crate) active_window_menu: State<Option<Retained<NSMenu>>>,
+    pub(crate) set_active_window_menu: StateSetter<Option<Retained<NSMenu>>>,
 }
 
 #[component]
@@ -20,8 +22,8 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
 
     let mtm = MainThreadMarker::new().unwrap();
     let ns_application = NSApplication::sharedApplication(mtm);
-    let app_menu = create_state(None::<Retained<NSMenu>>);
-    let active_window_menu = create_state(None::<Retained<NSMenu>>);
+    let (app_menu, set_app_menu) = create_state(None::<Retained<NSMenu>>);
+    let (active_window_menu, set_active_window_menu) = create_state(None::<Retained<NSMenu>>);
 
     ns_application.setActivationPolicy(NSApplicationActivationPolicy::Regular);
 
@@ -46,7 +48,7 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<RootContext>(RootContext { ns_application, app_menu, active_window_menu,  }) {
+        ContextProvider<RootContext>(RootContext { ns_application, app_menu, set_app_menu, active_window_menu, set_active_window_menu,  }) {
             StyleScope(
                 .class = props.class.clone(),
                 .default_classes = DEFAULT_CLASSES,

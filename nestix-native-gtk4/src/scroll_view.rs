@@ -48,7 +48,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
     scrolled.set_vexpand(true);
     let content = gtk4::Fixed::new();
     scrolled.set_child(Some(&content));
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     mount_leaf_with_stretchable_width(
         element,
         scrolled.upcast_ref(),
@@ -69,7 +69,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             let policy = (scroll_x.get(), scroll_y.get());
             scrolled.set_policy(scrollbar_policy(policy.0), scrollbar_policy(policy.1));
             if last_scroll_policy.replace(Some(policy)) != Some(policy) {
-                content_revision.mutate(|revision| *revision += 1);
+                set_content_revision.mutate(|revision| *revision += 1);
             }
         }
     );
@@ -126,7 +126,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
                 );
                 if last_content_size.replace(size) != size {
                     content.set_size_request(size.0, size.1);
-                    content_revision.mutate(|revision| *revision += 1);
+                    set_content_revision.mutate(|revision| *revision += 1);
                 }
             }
         }

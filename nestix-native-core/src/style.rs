@@ -12,8 +12,8 @@ use std::{
 };
 
 use nestix::{
-    ContextProvider, Element, Layout, PropValue, State, component, computed, create_state, layout,
-    props,
+    ContextProvider, Element, Layout, PropValue, State, StateSetter, component, computed,
+    create_state, layout, props,
 };
 
 use crate::{
@@ -1038,7 +1038,7 @@ fn matched_style_for_class_list(
     class_list: PropValue<ClassList>,
     initial_font_size_override: Option<f64>,
 ) -> nestix::Computed<Option<ResolvedStyle>> {
-    let placement_version = create_state(0);
+    let (placement_version, set_placement_version) = create_state(0);
     let style_sheet = style_context
         .as_ref()
         .and_then(|style_context| style_context.style_sheet.clone());
@@ -1064,9 +1064,14 @@ fn matched_style_for_class_list(
     let class_registry = style_context
         .as_ref()
         .map(|style_context| style_context.class_registry.clone());
-    let structure_version = style_context
+    let (structure_version, set_structure_version) = style_context
         .as_ref()
-        .map(|style_context| style_context.structure_version.clone())
+        .map(|style_context| {
+            (
+                style_context.structure_version.clone(),
+                style_context.set_structure_version.clone(),
+            )
+        })
         .unwrap_or_else(|| create_state(0));
     let style_element = element.clone();
 
@@ -1075,11 +1080,11 @@ fn matched_style_for_class_list(
             element,
             class_list.clone(),
             class_registry,
-            &structure_version,
+            &set_structure_version,
         );
         element.on_place({
-            let placement_version = placement_version.clone();
-            move |_| placement_version.update(|version| version + 1)
+            let set_placement_version = set_placement_version.clone();
+            move |_| set_placement_version.update(|version| version + 1)
         });
     }
 
@@ -1568,6 +1573,7 @@ pub struct StyleContext {
     pub initial_font_size: f64,
     class_registry: ClassRegistry,
     structure_version: State<usize>,
+    set_structure_version: StateSetter<usize>,
 }
 
 /// Properties for [`StyleProvider`].
@@ -1616,9 +1622,14 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
         .as_ref()
         .map(|style_context| style_context.class_registry.clone())
         .unwrap_or_else(|| Rc::new(RefCell::new(HashMap::new())));
-    let structure_version = parent_style_context
+    let (structure_version, set_structure_version) = parent_style_context
         .as_ref()
-        .map(|style_context| style_context.structure_version.clone())
+        .map(|style_context| {
+            (
+                style_context.structure_version.clone(),
+                style_context.set_structure_version.clone(),
+            )
+        })
         .unwrap_or_else(|| create_state(0));
     let inherited_style = parent_style_context
         .as_ref()
@@ -1638,6 +1649,7 @@ pub fn StyleProvider(props: &StyleProviderProps, element: &Element) -> Element {
                 initial_font_size,
                 class_registry,
                 structure_version,
+                set_structure_version,
             },
         ) {
             $(props.children.clone())
@@ -1685,9 +1697,14 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
         .as_ref()
         .map(|style_context| style_context.class_registry.clone())
         .unwrap_or_else(|| Rc::new(RefCell::new(HashMap::new())));
-    let structure_version = parent_style_context
+    let (structure_version, set_structure_version) = parent_style_context
         .as_ref()
-        .map(|style_context| style_context.structure_version.clone())
+        .map(|style_context| {
+            (
+                style_context.structure_version.clone(),
+                style_context.set_structure_version.clone(),
+            )
+        })
         .unwrap_or_else(|| create_state(0));
     let initial_font_size = props.initial_font_size.get().unwrap_or_else(|| {
         parent_style_context
@@ -1727,7 +1744,7 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
             element,
             class_list.clone(),
             &class_registry,
-            &structure_version,
+            &set_structure_version,
         );
     }
     let inherited_style = PropValue::from_signal(computed!(
@@ -1749,6 +1766,7 @@ pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
                 initial_font_size,
                 class_registry,
                 structure_version,
+                set_structure_version,
             },
         ) {
             $(props.children.clone())
@@ -1777,7 +1795,7 @@ fn register_style_element(
     element: &Element,
     class_list: PropValue<ClassList>,
     class_registry: &ClassRegistry,
-    structure_version: &State<usize>,
+    set_structure_version: &StateSetter<usize>,
 ) {
     class_registry
         .borrow_mut()
@@ -1785,17 +1803,17 @@ fn register_style_element(
 
     element.on_unmount({
         let class_registry = class_registry.clone();
-        let structure_version = structure_version.clone();
+        let set_structure_version = set_structure_version.clone();
         let element = element.clone();
         move || {
             class_registry.borrow_mut().remove(&element);
-            structure_version.update(|version| version + 1);
+            set_structure_version.update(|version| version + 1);
         }
     });
 
     element.on_place({
-        let structure_version = structure_version.clone();
-        move |_| structure_version.update(|version| version + 1)
+        let set_structure_version = set_structure_version.clone();
+        move |_| set_structure_version.update(|version| version + 1)
     });
 }
 
@@ -1899,10 +1917,10 @@ mod tests {
 
     fn ancestor_position_recomputation_count(
         selector: StyleSelector,
-    ) -> (State<usize>, Rc<Cell<usize>>) {
+    ) -> (State<usize>, StateSetter<usize>, Rc<Cell<usize>>) {
         let element = create_element::<Empty>(());
         let class_registry: ClassRegistry = Rc::new(RefCell::new(HashMap::new()));
-        let structure_version = create_state(0);
+        let (structure_version, set_structure_version) = create_state(0);
         let positions = scope_ancestor_positions(
             PropValue::from_plain(Vec::new()),
             Some(PropValue::from_plain(StyleSheet::new(vec![StyleRule {
@@ -1921,26 +1939,27 @@ mod tests {
                 recomputations.set(recomputations.get() + 1);
             }
         });
-        (structure_version, recomputations)
+        (structure_version, set_structure_version, recomputations)
     }
 
     #[test]
     fn ordinary_styles_ignore_unrelated_structure_changes() {
-        let (structure_version, recomputations) =
+        let (_structure_version, set_structure_version, recomputations) =
             ancestor_position_recomputation_count(StyleSelector::Class("item".to_string()));
 
-        structure_version.update(|version| version + 1);
+        set_structure_version.update(|version| version + 1);
 
         assert_eq!(recomputations.get(), 1);
     }
 
     #[test]
     fn structural_styles_track_structure_changes() {
-        let (structure_version, recomputations) = ancestor_position_recomputation_count(
-            StyleSelector::Not(Box::new(StyleSelector::FirstChild)),
-        );
+        let (_structure_version, set_structure_version, recomputations) =
+            ancestor_position_recomputation_count(StyleSelector::Not(Box::new(
+                StyleSelector::FirstChild,
+            )));
 
-        structure_version.update(|version| version + 1);
+        set_structure_version.update(|version| version + 1);
 
         assert_eq!(recomputations.get(), 2);
     }
@@ -1951,18 +1970,18 @@ mod tests {
         let second = create_element::<Empty>(());
         let third = create_element::<Empty>(());
         let registry: ClassRegistry = Rc::new(RefCell::new(HashMap::new()));
-        let structure_version = create_state(0);
+        let (structure_version, set_structure_version) = create_state(0);
 
         for (element, class) in [(&first, "first"), (&second, "second"), (&third, "third")] {
             register_style_element(
                 element,
                 PropValue::from_plain(ClassList::from(class)),
                 &registry,
-                &structure_version,
+                &set_structure_version,
             );
         }
 
-        let children = create_state(Layout::from(vec![
+        let (children, set_children) = create_state(Layout::from(vec![
             first.clone(),
             second.clone(),
             third.clone(),
@@ -1986,7 +2005,7 @@ mod tests {
         );
         let mounted_version = structure_version.get();
 
-        children.set_unchecked(Layout::from(vec![second.clone(), first.clone()]));
+        set_children.set_unchecked(Layout::from(vec![second.clone(), first.clone()]));
 
         assert_eq!(
             logical_child_position(&second, Some(&registry)),

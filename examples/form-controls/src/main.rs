@@ -14,13 +14,13 @@ fn main() {
 
 #[component]
 fn FormControlsApp() -> Element {
-    let name = create_state(String::new());
-    let newsletter = create_state(false);
-    let notifications = create_state(true);
-    let density = create_state("comfortable".to_string());
-    let country = create_state(None::<String>);
-    let volume = create_state(50.0);
-    let status = create_state("Complete the form, then press Save.".to_string());
+    let (name, set_name) = create_state(String::new());
+    let (newsletter, set_newsletter) = create_state(false);
+    let (notifications, set_notifications) = create_state(true);
+    let (density, set_density) = create_state("comfortable".to_string());
+    let (country, set_country) = create_state(None::<String>);
+    let (volume, set_volume) = create_state(50.0);
+    let (status, set_status) = create_state("Complete the form, then press Save.".to_string());
 
     let styles = style! {
         .content {
@@ -83,8 +83,8 @@ fn FormControlsApp() -> Element {
                             .view(.width = 320),
                             .value = name.clone(),
                             .on_text_change = callback!(
-                                [name] |value: &str| {
-                                    name.set(value.to_string());
+                                [set_name] |value: &str| {
+                                    set_name.set(value.to_string());
                                 }
                             ),
                         )
@@ -93,8 +93,8 @@ fn FormControlsApp() -> Element {
                             .class = "field",
                             .checked = newsletter.clone(),
                             .on_checked_change = callback!(
-                                [newsletter] | checked | {
-                                    newsletter.set(checked);
+                                [set_newsletter] | checked | {
+                                    set_newsletter.set(checked);
                                 }
                             ),
                         )
@@ -112,8 +112,8 @@ fn FormControlsApp() -> Element {
                                     [density] || density.get() == "compact"
                                 ),
                                 .on_select = callback!(
-                                    [density] || {
-                                        density.set("compact".to_string());
+                                    [set_density] || {
+                                        set_density.set("compact".to_string());
                                     }
                                 ),
                             )
@@ -124,8 +124,8 @@ fn FormControlsApp() -> Element {
                                     [density] || density.get() == "comfortable"
                                 ),
                                 .on_select = callback!(
-                                    [density] || {
-                                        density.set("comfortable".to_string());
+                                    [set_density] || {
+                                        set_density.set("comfortable".to_string());
                                     }
                                 ),
                             )
@@ -136,8 +136,8 @@ fn FormControlsApp() -> Element {
                             .view(.width = 220),
                             .value = country.clone(),
                             .on_value_change = callback!(
-                                [country] |value: &str| {
-                                    country.set(Some(value.to_string()));
+                                [set_country] |value: &str| {
+                                    set_country.set(Some(value.to_string()));
                                 }
                             ),
                         ) {
@@ -161,8 +161,8 @@ fn FormControlsApp() -> Element {
                             .minimum = 0.0,
                             .maximum = 100.0,
                             .on_value_change = callback!(
-                                [volume] | value | {
-                                    volume.set(value);
+                                [set_volume] | value | {
+                                    set_volume.set(value);
                                 }
                             ),
                         )
@@ -178,8 +178,8 @@ fn FormControlsApp() -> Element {
                                         "Enable notifications",
                                         .checked = notifications.clone(),
                                         .on_checked_change = callback!(
-                                            [notifications] | checked | {
-                                                notifications.set(checked);
+                                            [set_notifications] | checked | {
+                                                set_notifications.set(checked);
                                             }
                                         ),
                                     )
@@ -189,8 +189,8 @@ fn FormControlsApp() -> Element {
                                 Switch(
                                     .checked = notifications.clone(),
                                     .on_checked_change = callback!(
-                                        [notifications] | checked | {
-                                            notifications.set(checked);
+                                        [set_notifications] | checked | {
+                                            set_notifications.set(checked);
                                         }
                                     ),
                                 )
@@ -214,12 +214,12 @@ fn FormControlsApp() -> Element {
                                         density,
                                         country,
                                         volume,
-                                        status,
+                                        set_status,
                                     ] || {
                                         let country = country
                                             .get()
                                             .unwrap_or_else(|| "not selected".to_string());
-                                        status.set(format!(
+                                        set_status.set(format!(
                                             "Saved: name={:?}, newsletter={}, notifications={}, density={}, country={}, volume={:.0}",
                                             name.get(),
                                             newsletter.get(),
@@ -246,21 +246,21 @@ fn FormControlsApp() -> Element {
                                 ),
                                 .on_click = callback!(
                                     [
-                                        name,
-                                        newsletter,
-                                        notifications,
-                                        density,
-                                        country,
-                                        volume,
-                                        status
+                                        set_name,
+                                        set_newsletter,
+                                        set_notifications,
+                                        set_density,
+                                        set_country,
+                                        set_volume,
+                                        set_status
                                     ] || {
-                                        name.set(String::new());
-                                        newsletter.set(false);
-                                        notifications.set(true);
-                                        density.set("comfortable".to_string());
-                                        country.set(None);
-                                        volume.set(50.0);
-                                        status.set("Form reset.".to_string());
+                                        set_name.set(String::new());
+                                        set_newsletter.set(false);
+                                        set_notifications.set(true);
+                                        set_density.set("comfortable".to_string());
+                                        set_country.set(None);
+                                        set_volume.set(50.0);
+                                        set_status.set("Form reset.".to_string());
                                     }
                                 ),
                             )

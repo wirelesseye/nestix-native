@@ -1,8 +1,8 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{
-    Element, Layout, Readonly, State, callback, closure, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, Readonly, StateSetter, callback, closure, component,
+    components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     AnimatedStyle, StyleContext, StyleScope, WithAuto, matched_style, resolved_view_style,
@@ -57,7 +57,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     );
 
-    let current_selected = create_state(None);
+    let (current_selected, set_current_selected) = create_state(None);
     let subtrees = Rc::new(RefCell::new(HashMap::new()));
 
     let mtm = MainThreadMarker::new().unwrap();
@@ -70,7 +70,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let delegate = TabViewDelegate::new(
         mtm,
         TabViewState {
-            current_selected: current_selected.clone(),
+            set_current_selected,
         },
     );
     view.setDelegate(Some(ProtocolObject::from_ref(&*delegate)));
@@ -353,7 +353,7 @@ impl AsRef<NSObject> for NNTabView {
 }
 
 struct TabViewState {
-    current_selected: State<Option<String>>,
+    set_current_selected: StateSetter<Option<String>>,
 }
 
 define_class!(
@@ -372,7 +372,7 @@ define_class!(
             if let Some(id) = id {
                 let ns_string = id.downcast_ref::<NSString>().unwrap();
                 self.ivars()
-                    .current_selected
+                    .set_current_selected
                     .set(Some(ns_string.to_string()));
             }
         }

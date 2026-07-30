@@ -7,7 +7,7 @@ use std::{
 };
 
 use nestix::{
-    Element, Layout, PropValue, Shared, State, callback, closure, component,
+    Element, Layout, PropValue, Shared, State, StateSetter, callback, closure, component,
     components::ContextProvider, create_state, layout, props, scoped_effect,
 };
 
@@ -526,6 +526,7 @@ impl MenuEntry {
 struct MenuModelData {
     entries: RefCell<Vec<MenuEntry>>,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
 }
 
 /// Reactive platform-neutral description produced by [`Menu`].
@@ -541,9 +542,11 @@ impl PartialEq for MenuModel {
 
 impl MenuModel {
     fn new() -> Self {
+        let (revision, set_revision) = create_state(0);
         Self(Rc::new(MenuModelData {
             entries: RefCell::new(Vec::new()),
-            revision: create_state(0),
+            revision,
+            set_revision,
         }))
     }
 
@@ -562,7 +565,7 @@ impl MenuModel {
 
     fn changed(&self) {
         self.0
-            .revision
+            .set_revision
             .mutate(|revision| *revision = revision.wrapping_add(1));
     }
 }
@@ -572,6 +575,7 @@ impl MenuModel {
 #[derive(Clone)]
 pub struct MenuHostContext {
     pub menu: State<Option<MenuModel>>,
+    pub set_menu: StateSetter<Option<MenuModel>>,
 }
 
 #[derive(Clone)]
@@ -639,7 +643,7 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
         .context::<MenuHostContext>()
         .expect("Menu must be contained by MenuBar, ContextMenu, or a menu host");
     let menu = MenuModel::new();
-    host.menu.set(Some(menu.clone()));
+    host.set_menu.set(Some(menu.clone()));
     element.on_unmount(closure!(
         [host, menu] || {
             if host
@@ -648,7 +652,7 @@ pub fn Menu(props: &MenuProps, element: &Element) -> Element {
                 .as_ref()
                 .is_some_and(|current| current.ptr_eq(&menu))
             {
-                host.menu.set(None);
+                host.set_menu.set(None);
             }
         }
     ));

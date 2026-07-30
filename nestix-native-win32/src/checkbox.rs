@@ -61,7 +61,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
         )
         .unwrap()
     };
-    let intrinsic = create_state(LogicalSize::new(24.0, 22.0));
+    let (intrinsic, set_intrinsic) = create_state(LogicalSize::new(24.0, 22.0));
     native_control::mount(
         element,
         hwnd,
@@ -152,7 +152,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
             GetTextExtentPoint32W(dc, &measure, &mut size).unwrap();
             SelectObject(dc, old);
             ReleaseDC(Some(hwnd), dc);
-            intrinsic.set(LogicalSize::new(
+            set_intrinsic.set(LogicalSize::new(
                 PhysicalUnit::new(size.cx + 24).to_logical::<f32>(scale).0,
                 PhysicalUnit::new((size.cy + 6).max(20))
                     .to_logical::<f32>(scale)

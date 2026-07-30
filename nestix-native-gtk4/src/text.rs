@@ -39,13 +39,13 @@ pub fn Text(props: &TextProps, element: &Element) {
     label
         .style_context()
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     let last_css = Rc::new(RefCell::new(None::<String>));
 
     scoped_effect!(
         [label, props.text, content_revision] || {
             label.set_text(&text.get());
-            content_revision.mutate(|revision| *revision += 1);
+            set_content_revision.mutate(|revision| *revision += 1);
         }
     );
     scoped_effect!(
@@ -109,7 +109,7 @@ pub fn Text(props: &TextProps, element: &Element) {
             }
             css.load_from_data(&css_rule);
             last_css.replace(Some(css_rule));
-            content_revision.mutate(|revision| *revision += 1);
+            set_content_revision.mutate(|revision| *revision += 1);
         }
     );
 

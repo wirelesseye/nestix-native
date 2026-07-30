@@ -66,7 +66,7 @@ pub fn Slider(props: &SliderProps, element: &Element) {
         slider.upcast_ref(),
         style.into_readonly(),
         &props.view,
-        create_state(0usize).into_readonly(),
+        create_state(0usize).0.into_readonly(),
     );
 }
 

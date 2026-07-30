@@ -5,15 +5,17 @@ mod taffy {
         collections::HashMap,
     };
 
-    use nestix::{Readonly, State, create_state};
+    use nestix::{Readonly, State, StateSetter, create_state};
     use taffy::{NodeId, Size, Style, TaffyTree};
 
     pub struct TreeContext {
         tree: RefCell<TaffyTree>,
         root_node: Cell<Option<NodeId>>,
-        node_layouts: RefCell<HashMap<NodeId, State<taffy::Layout>>>,
+        node_layouts: RefCell<HashMap<NodeId, (State<taffy::Layout>, StateSetter<taffy::Layout>)>>,
         layout_revision: State<u64>,
+        set_layout_revision: StateSetter<u64>,
         refresh_request_revision: State<u64>,
+        set_refresh_request_revision: StateSetter<u64>,
         defer_refreshes: Cell<bool>,
         batch_depth: Cell<usize>,
         refresh_pending: Cell<bool>,
@@ -65,12 +67,16 @@ mod taffy {
 
     impl TreeContext {
         pub fn new() -> Self {
+            let (layout_revision, set_layout_revision) = create_state(0);
+            let (refresh_request_revision, set_refresh_request_revision) = create_state(0);
             Self {
                 tree: RefCell::new(TaffyTree::new()),
                 root_node: Cell::new(None),
                 node_layouts: RefCell::new(HashMap::new()),
-                layout_revision: create_state(0),
-                refresh_request_revision: create_state(0),
+                layout_revision,
+                set_layout_revision,
+                refresh_request_revision,
+                set_refresh_request_revision,
                 defer_refreshes: Cell::new(false),
                 batch_depth: Cell::new(0),
                 refresh_pending: Cell::new(false),
@@ -117,8 +123,8 @@ mod taffy {
 
         /// Signal setter
         pub fn set_layout(&self, node: NodeId, layout: taffy::Layout) {
-            let state = self.node_layouts.borrow_mut().get(&node).unwrap().clone();
-            state.set(layout);
+            let set_state = self.node_layouts.borrow_mut().get(&node).unwrap().1.clone();
+            set_state.set(layout);
         }
 
         /// Returns a signal incremented after each completed layout pass.
@@ -141,7 +147,7 @@ mod taffy {
             self.node_layouts
                 .borrow()
                 .get(&node)
-                .map(|state| state.get())
+                .map(|(state, _)| state.get())
         }
 
         pub fn update_style(&self, node: NodeId, updater: impl FnOnce(Style) -> Style) {
@@ -156,7 +162,7 @@ mod taffy {
         pub fn refresh(&self) {
             if self.batch_depth.get() > 0 || self.defer_refreshes.get() {
                 if !self.refresh_pending.replace(true) && self.defer_refreshes.get() {
-                    self.refresh_request_revision
+                    self.set_refresh_request_revision
                         .update(|revision| revision.wrapping_add(1));
                 }
                 return;
@@ -201,7 +207,7 @@ mod taffy {
                 tree.compute_layout(node, Size::max_content()).unwrap();
             }
             self.update_node_recursive(node);
-            self.layout_revision
+            self.set_layout_revision
                 .update(|revision| revision.wrapping_add(1));
         }
 

@@ -2,7 +2,7 @@ use std::{cell::Cell, rc::Rc};
 
 use gtk4::prelude::*;
 use nestix::{
-    Element, Layout, State, callback, closure, component, components::ContextProvider,
+    Element, Layout, State, StateSetter, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -22,6 +22,7 @@ use crate::{
 struct TabViewContext {
     notebook: gtk4::Notebook,
     content_revision: State<usize>,
+    set_content_revision: StateSetter<usize>,
 }
 
 #[component]
@@ -51,7 +52,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let notebook = gtk4::Notebook::new();
     notebook.set_hexpand(true);
     notebook.set_vexpand(true);
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     let node_id = mount_leaf_with_stretchable_width(
         element,
         notebook.upcast_ref(),
@@ -70,18 +71,19 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                 TabViewContext {
                     notebook: notebook.clone(),
                     content_revision: content_revision.clone(),
+                    set_content_revision: set_content_revision.clone(),
                 },
             ) {
                 ContextProvider<ParentContext>(
                     ParentContext {
                         fixed: None,
-                        add_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget,
+                        add_child: Some(callback!([notebook, set_content_revision] |child: &gtk4::Widget,
                         _: Option<NodeId> | {
                             remove_page(&notebook, child);
                             notebook.append_page(child, gtk4::Widget::NONE);
-                            content_revision.mutate(|revision| *revision += 1);
+                            set_content_revision.mutate(|revision| *revision += 1);
                         })),
-                        insert_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget,
+                        insert_child: Some(callback!([notebook, set_content_revision] |child: &gtk4::Widget,
                         _: Option<NodeId>,
                         predecessor: Option<gtk4::Widget> | {
                             remove_page(&notebook, child);
@@ -90,12 +92,12 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                                 .and_then(|predecessor| notebook.page_num(predecessor))
                                 .map_or(0, |position| position + 1);
                             notebook.insert_page(child, gtk4::Widget::NONE, Some(position));
-                            content_revision.mutate(|revision| *revision += 1);
+                            set_content_revision.mutate(|revision| *revision += 1);
                         })),
-                        remove_child: Some(callback!([notebook, content_revision] |child: &gtk4::Widget,
+                        remove_child: Some(callback!([notebook, set_content_revision] |child: &gtk4::Widget,
                         _: Option<NodeId> | {
                             remove_page(&notebook, child);
-                            content_revision.mutate(|revision| *revision += 1);
+                            set_content_revision.mutate(|revision| *revision += 1);
                         })),
                         parent_node: Some(node_id)
                     },
@@ -141,7 +143,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
         [tab_view_context, label, props.title] || {
             label.set_text(&title.get());
             tab_view_context
-                .content_revision
+                .set_content_revision
                 .mutate(|revision| *revision += 1);
         }
     );

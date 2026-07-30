@@ -17,7 +17,7 @@ fn TrayMenu() -> Element {
 
 #[test]
 fn tray_icon_compiles_through_layout() {
-    let visible = nestix::create_state(true);
+    let (visible, _) = nestix::create_state(true);
     let _root = layout! {
         Root {
             TrayIcon(

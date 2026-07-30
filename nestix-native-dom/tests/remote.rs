@@ -19,10 +19,10 @@ fn remote_components_emit_commands_and_route_events() {
         move |json| batches.borrow_mut().push(json.to_string())
     });
 
-    let clicks = create_state(0);
-    let value = create_state(String::new());
-    let custom_activations = create_state(0);
-    let custom_activations_for_event = custom_activations.clone();
+    let (clicks, set_clicks) = create_state(0);
+    let (value, set_value) = create_state(String::new());
+    let (custom_activations, set_custom_activations) = create_state(0);
+    let set_custom_activations_for_event = set_custom_activations.clone();
     let app = layout! {
         ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime.clone())) {
             DomDocumentRoot {
@@ -31,13 +31,13 @@ fn remote_components_emit_commands_and_route_events() {
                     Button(
                         .title = "Remote",
                         .on_click = callback!(
-                            [clicks] || clicks.update(|value| value + 1)
+                            [set_clicks] || set_clicks.update(|value| value + 1)
                         ),
                     )
                     Input(
                         .value = value.clone(),
                         .on_text_change = callback!(
-                            [value] |next: &str| value.set(next.to_string())
+                            [set_value] |next: &str| set_value.set(next.to_string())
                         ),
                     )
                     DomElement(
@@ -46,7 +46,7 @@ fn remote_components_emit_commands_and_route_events() {
                         .properties = vec![DomProperty::new("currentCount", 7)],
                         .events = vec![
                             DomEvent::new("activate", move |_| {
-                                custom_activations_for_event.update(|value| value + 1)
+                                set_custom_activations_for_event.update(|value| value + 1)
                             })
                             .capture(true)
                             .once(true)

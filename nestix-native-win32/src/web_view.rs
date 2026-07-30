@@ -290,7 +290,9 @@ pub fn WebView(props: &WebViewProps, element: &Element) {
         hwnd,
         style,
         &props.view,
-        create_state(LogicalSize::new(300.0, 150.0)).into_readonly(),
+        create_state(LogicalSize::new(300.0, 150.0))
+            .0
+            .into_readonly(),
     );
     if let Some(bridge) = bridge {
         element.on_unmount(move || bridge.detach());

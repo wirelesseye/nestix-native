@@ -56,7 +56,7 @@ pub fn Slider(props: &SliderProps, element: &Element) {
         slider.clone().into_super().into_super(),
         style_props,
         &props.view,
-        create_state(0usize).into_readonly(),
+        create_state(0usize).0.into_readonly(),
     );
 
     scoped_effect!(

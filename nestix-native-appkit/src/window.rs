@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, State, callback, closure, component,
+    Element, Layout, PropValue, Readonly, Shared, State, StateSetter, callback, closure, component,
     components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -28,7 +28,9 @@ pub struct WindowContext {
     pub scale_factor: Readonly<f64>,
     pub animation: Rc<AnimationRuntime>,
     pub(crate) menu: State<Option<Retained<NSMenu>>>,
+    pub(crate) set_menu: StateSetter<Option<Retained<NSMenu>>>,
     pub(crate) toolbar: State<Option<Retained<NSToolbar>>>,
+    pub(crate) set_toolbar: StateSetter<Option<Retained<NSToolbar>>>,
 }
 
 #[component]
@@ -36,9 +38,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     const DEFAULT_CLASSES: [&str; 2] = ["__Window", "__appkit_Window"];
 
     let mtm = MainThreadMarker::new().unwrap();
-    let scale_factor = create_state(1.0);
-    let menu = create_state(None::<Retained<NSMenu>>);
-    let toolbar = create_state(None::<Retained<NSToolbar>>);
+    let (scale_factor, set_scale_factor) = create_state(1.0);
+    let (menu, set_menu) = create_state(None::<Retained<NSMenu>>);
+    let (toolbar, set_toolbar) = create_state(None::<Retained<NSToolbar>>);
     let root_context = element.context::<RootContext>().unwrap();
     let style_context = element.context::<StyleContext>();
 
@@ -67,7 +69,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         scale_factor: scale_factor.clone().into_readonly(),
         animation: animation.clone(),
         menu: menu.clone(),
+        set_menu: set_menu.clone(),
         toolbar,
+        set_toolbar,
     });
 
     let window_delegate = WindowDelegate::new(
@@ -78,6 +82,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             on_close_requested: props.desktop.on_close_requested.clone(),
             menu,
             active_window_menu: root_context.active_window_menu.clone(),
+            set_active_window_menu: root_context.set_active_window_menu.clone(),
         },
     );
     let style_mask = NSWindowStyleMask::Closable
@@ -103,7 +108,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         }
     ));
 
-    scale_factor.set(ns_window.backingScaleFactor());
+    set_scale_factor.set(ns_window.backingScaleFactor());
 
     element.provide_handle(ns_window.as_ref() as *const NSObject);
 
@@ -313,6 +318,7 @@ struct WindowState {
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
     menu: State<Option<Retained<NSMenu>>>,
     active_window_menu: State<Option<Retained<NSMenu>>>,
+    set_active_window_menu: StateSetter<Option<Retained<NSMenu>>>,
 }
 
 define_class!(
@@ -341,7 +347,9 @@ define_class!(
 
         #[unsafe(method(windowDidBecomeKey:))]
         fn window_did_become_key(&self, _: &NSNotification) {
-            self.ivars().active_window_menu.set(self.ivars().menu.get());
+            self.ivars()
+                .set_active_window_menu
+                .set(self.ivars().menu.get());
         }
 
         #[unsafe(method(windowDidResignKey:))]
@@ -349,7 +357,7 @@ define_class!(
             let menu = self.ivars().menu.get();
             let active = self.ivars().active_window_menu.get();
             if same_menu(&active, &menu) {
-                self.ivars().active_window_menu.set(None);
+                self.ivars().set_active_window_menu.set(None);
             }
         }
 

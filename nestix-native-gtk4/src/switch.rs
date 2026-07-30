@@ -61,6 +61,6 @@ pub fn Switch(props: &SwitchProps, element: &Element) {
         switch.upcast_ref(),
         style.into_readonly(),
         &props.view,
-        create_state(0usize).into_readonly(),
+        create_state(0usize).0.into_readonly(),
     );
 }

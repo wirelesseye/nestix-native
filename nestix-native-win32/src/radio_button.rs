@@ -75,7 +75,7 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
         )
         .unwrap()
     };
-    let intrinsic = create_state(LogicalSize::new(24.0, 22.0));
+    let (intrinsic, set_intrinsic) = create_state(LogicalSize::new(24.0, 22.0));
     native_control::mount(
         element,
         hwnd,
@@ -198,7 +198,7 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
                     cy: (text_size.cy + 6).max(20),
                 }
             };
-            intrinsic.set(LogicalSize::new(
+            set_intrinsic.set(LogicalSize::new(
                 PhysicalUnit::new(measured_size.cx)
                     .to_logical::<f32>(scale)
                     .0,

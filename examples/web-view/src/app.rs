@@ -6,8 +6,8 @@ use nestix_native::{
 
 #[component]
 pub fn App() -> Element {
-    let address = create_state("https://example.com".to_string());
-    let loaded_url = create_state(address.get());
+    let (address, set_address) = create_state("https://example.com".to_string());
+    let (loaded_url, set_loaded_url) = create_state(address.get());
     let styles = style! {
         .content {
             padding: 16 px;
@@ -53,16 +53,16 @@ pub fn App() -> Element {
                                 .class = "address",
                                 .value = address.clone(),
                                 .on_text_change = callback!(
-                                    [address] |value: &str| {
-                                        address.set(value.to_string());
+                                    [set_address] |value: &str| {
+                                        set_address.set(value.to_string());
                                     }
                                 ),
                             )
                             Button(
                                 .title = "Go",
                                 .on_click = callback!(
-                                    [address, loaded_url] || {
-                                        loaded_url.set(address.get().trim().to_string());
+                                    [address, set_loaded_url] || {
+                                        set_loaded_url.set(address.get().trim().to_string());
                                     }
                                 ),
                             )

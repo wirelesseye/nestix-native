@@ -1,8 +1,8 @@
 use std::{rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, PropValue, Readonly, Shared, State, component, components::ContextProvider,
-    computed, create_state, layout, scoped_effect,
+    Element, Layout, PropValue, Readonly, Shared, State, StateSetter, component,
+    components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
@@ -74,7 +74,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let app_state = element.context::<AppState>().unwrap();
     let style_context = element.context::<StyleContext>();
 
-    let scale_factor = create_state(1.0);
+    let (scale_factor, set_scale_factor) = create_state(1.0);
 
     let tree_context = Rc::new(TreeContext::new());
     let animation = Rc::new(AnimationRuntime::new());
@@ -120,6 +120,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         _surface: surface.clone(),
         animation: animation.clone(),
         scale_factor: scale_factor.clone(),
+        set_scale_factor,
         on_resize: props.on_resize.clone(),
         on_close_requested: props.desktop.on_close_requested.clone(),
     });
@@ -143,7 +144,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     });
 
     if let Some(value) = get_scale_factor_for_window(hwnd) {
-        scale_factor.set(value);
+        set_scale_factor.set(value);
     }
 
     scoped_effect!(
@@ -326,6 +327,7 @@ pub(crate) struct WindowState {
     _surface: Rc<VisualSurface>,
     animation: Rc<AnimationRuntime>,
     scale_factor: State<f64>,
+    set_scale_factor: StateSetter<f64>,
     on_resize: PropValue<Option<Shared<dyn Fn(Size)>>>,
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
 }
@@ -420,7 +422,7 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
                     && let Some(scale) = get_scale_factor_for_window(hwnd)
                     && window_state.scale_factor.get() != scale
                 {
-                    window_state.scale_factor.set(scale);
+                    window_state.set_scale_factor.set(scale);
                 }
                 DefWindowProcW(hwnd, msg, wparam, lparam)
             }
@@ -469,7 +471,7 @@ extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPA
 
                     let scale_factor = get_scale_factor_for_window(hwnd).unwrap_or(1.0);
                     if window_state.scale_factor.get() != scale_factor {
-                        window_state.scale_factor.set(scale_factor);
+                        window_state.set_scale_factor.set(scale_factor);
                     }
                     if let Some(root_node) = window_state.tree_context.root_node() {
                         let size: LogicalSize<f32> =

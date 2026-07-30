@@ -56,7 +56,7 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
     host.set_child(Some(picture_host.upcast_ref()));
     let widget: gtk4::Widget = host.clone().upcast();
     let node_id = tree_context.create_node(true);
-    let natural_size = create_state((0, 0));
+    let (natural_size, set_natural_size) = create_state((0, 0));
     element.provide_handle(widget.clone());
 
     element.on_place(closure!(
@@ -76,10 +76,10 @@ pub fn ImageView(props: &ImageViewProps, element: &Element) {
         [picture, natural_size, props.source] || {
             if let Some((texture, width, height)) = load_image(source.get()) {
                 picture.set_paintable(Some(&texture));
-                natural_size.set((width, height));
+                set_natural_size.set((width, height));
             } else {
                 picture.set_paintable(gtk4::gdk::Paintable::NONE);
-                natural_size.set((0, 0));
+                set_natural_size.set((0, 0));
             }
         }
     );

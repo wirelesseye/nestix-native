@@ -69,7 +69,9 @@ pub fn Slider(props: &SliderProps, element: &Element) {
         hwnd,
         style,
         &props.view,
-        create_state(LogicalSize::new(120.0, 30.0)).into_readonly(),
+        create_state(LogicalSize::new(120.0, 30.0))
+            .0
+            .into_readonly(),
     );
     unsafe {
         SendMessageW(hwnd, TBM_SETRANGEMIN, Some(WPARAM(0)), Some(LPARAM(0)));

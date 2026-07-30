@@ -7,8 +7,8 @@ use std::{
 
 use gtk4::{gio, glib, prelude::*};
 use nestix::{
-    Element, Layout, Shared, State, callback, closure, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, Shared, State, StateSetter, callback, closure, component,
+    components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     ContextMenuPosition, ContextMenuPresenter, ContextMenuProps, ContextMenuRegistration,
@@ -27,18 +27,23 @@ static NEXT_ITEM_ID: AtomicUsize = AtomicUsize::new(1);
 #[derive(Clone)]
 struct ContextMenuContext {
     menu: State<Option<Rc<MenuData>>>,
+    set_menu: StateSetter<Option<Rc<MenuData>>>,
     target: State<Option<Shared<dyn Any>>>,
+    set_target: StateSetter<Option<Shared<dyn Any>>>,
     actions: gio::SimpleActionGroup,
     action_prefix: String,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
 }
 
 #[derive(Clone)]
 struct MenuBarContext {
     menu: State<Option<Rc<MenuData>>>,
+    set_menu: StateSetter<Option<Rc<MenuData>>>,
     actions: gio::SimpleActionGroup,
     action_prefix: String,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
 }
 
 struct MenuData {
@@ -47,6 +52,7 @@ struct MenuData {
     actions: gio::SimpleActionGroup,
     action_prefix: String,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
 }
 
 impl PartialEq for MenuData {
@@ -113,6 +119,7 @@ impl MenuData {
         actions: gio::SimpleActionGroup,
         action_prefix: String,
         revision: State<usize>,
+        set_revision: StateSetter<usize>,
     ) -> Rc<Self> {
         Rc::new(Self {
             model: gio::Menu::new(),
@@ -120,6 +127,7 @@ impl MenuData {
             actions,
             action_prefix,
             revision,
+            set_revision,
         })
     }
 
@@ -198,7 +206,7 @@ impl MenuData {
         for section in sections {
             self.model.append_section(None, &section);
         }
-        self.revision
+        self.set_revision
             .mutate(|revision| *revision = revision.wrapping_add(1));
     }
 }
@@ -208,8 +216,9 @@ fn render_menu_model(
     actions: gio::SimpleActionGroup,
     action_prefix: String,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
 ) -> Rc<MenuData> {
-    let menu = MenuData::new(actions, action_prefix, revision);
+    let menu = MenuData::new(actions, action_prefix, revision, set_revision);
     let mut entries = Vec::new();
     for description in model.entries().into_iter().filter(|entry| entry.visible()) {
         let kind = match description.kind() {
@@ -220,6 +229,7 @@ fn render_menu_model(
                     menu.actions.clone(),
                     menu.action_prefix.clone(),
                     menu.revision.clone(),
+                    menu.set_revision.clone(),
                 );
                 let (action_name, action) = new_action(&menu, false);
                 EntryKind::Submenu {
@@ -288,26 +298,39 @@ fn clear_actions(actions: &gio::SimpleActionGroup) {
 pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let context_id = NEXT_CONTEXT_ID.fetch_add(1, Ordering::Relaxed);
     let window = element.context::<crate::WindowContext>();
+    let (menu, set_menu) = create_state(None);
+    let (revision, set_revision) = create_state(0);
     let context = Rc::new(MenuBarContext {
-        menu: create_state(None),
+        menu,
+        set_menu,
         actions: gio::SimpleActionGroup::new(),
         action_prefix: format!("nestix-menu-bar-{context_id}"),
-        revision: create_state(0),
+        revision,
+        set_revision,
     });
-    let description = create_state(None::<MenuModel>);
-    let native_menu = context.menu.clone();
+    let (description, set_description) = create_state(None::<MenuModel>);
+    let set_native_menu = context.set_menu.clone();
     let actions = context.actions.clone();
     let action_prefix = context.action_prefix.clone();
     let revision = context.revision.clone();
+    let set_revision = context.set_revision.clone();
     scoped_effect!(
-        [description, native_menu, actions, action_prefix, revision] || {
+        [
+            description,
+            set_native_menu,
+            actions,
+            action_prefix,
+            revision,
+            set_revision
+        ] || {
             clear_actions(&actions);
-            native_menu.set(description.get().map(|model| {
+            set_native_menu.set(description.get().map(|model| {
                 render_menu_model(
                     &model,
                     actions.clone(),
                     action_prefix.clone(),
                     revision.clone(),
+                    set_revision.clone(),
                 )
             }));
         }
@@ -378,7 +401,7 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: description }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: description, set_menu: set_description }) {
             $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
         }
     }
@@ -388,27 +411,42 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
 /// Attaches a GTK context menu to a visual element.
 pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let context_id = NEXT_CONTEXT_ID.fetch_add(1, Ordering::Relaxed);
+    let (menu, set_menu) = create_state(None);
+    let (target, set_target) = create_state(None);
+    let (revision, set_revision) = create_state(0);
     let context = Rc::new(ContextMenuContext {
-        menu: create_state(None),
-        target: create_state(None),
+        menu,
+        set_menu,
+        target,
+        set_target,
         actions: gio::SimpleActionGroup::new(),
         action_prefix: format!("nestix-context-{context_id}"),
-        revision: create_state(0),
+        revision,
+        set_revision,
     });
-    let description = create_state(None::<MenuModel>);
-    let native_menu = context.menu.clone();
+    let (description, set_description) = create_state(None::<MenuModel>);
+    let set_native_menu = context.set_menu.clone();
     let actions = context.actions.clone();
     let action_prefix = context.action_prefix.clone();
     let revision = context.revision.clone();
+    let set_revision = context.set_revision.clone();
     scoped_effect!(
-        [description, native_menu, actions, action_prefix, revision] || {
+        [
+            description,
+            set_native_menu,
+            actions,
+            action_prefix,
+            revision,
+            set_revision
+        ] || {
             clear_actions(&actions);
-            native_menu.set(description.get().map(|model| {
+            set_native_menu.set(description.get().map(|model| {
                 render_menu_model(
                     &model,
                     actions.clone(),
                     action_prefix.clone(),
                     revision.clone(),
+                    set_revision.clone(),
                 )
             }));
         }
@@ -423,7 +461,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         [context, props.children] || {
             children.get().on_last_handle_change(closure!(
                 [context] | handle | {
-                    context.target.set(handle);
+                    context.set_target.set(handle);
                 }
             ));
         }
@@ -540,7 +578,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone() }) {
+            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone(), set_menu: set_description.clone() }) {
                 $(menu.get())
             }
         }

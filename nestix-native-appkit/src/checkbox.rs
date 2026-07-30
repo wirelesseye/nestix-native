@@ -54,7 +54,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
         }
     ));
 
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     native_control::mount(
         element,
         checkbox.clone().into_super().into_super(),
@@ -77,7 +77,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
             props.font.text_color,
             original_font,
             original_color,
-            content_revision
+            set_content_revision
         ] || {
             checkbox.setTitle(&NSString::from_str(&title.get()));
             checkbox.setEnabled(enabled.get());
@@ -100,7 +100,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
             } else {
                 checkbox.setContentTintColor(original_color.as_deref());
             }
-            content_revision.mutate(|revision| *revision = revision.wrapping_add(1));
+            set_content_revision.mutate(|revision| *revision = revision.wrapping_add(1));
         }
     );
 }

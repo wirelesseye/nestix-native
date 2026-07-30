@@ -35,7 +35,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
 
     let checkbox = gtk4::CheckButton::with_label(&props.title.get());
     let updating = Rc::new(Cell::new(false));
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     checkbox.connect_toggled(closure!(
         [props.on_checked_change, updating] | checkbox | {
             if !updating.get()
@@ -50,7 +50,7 @@ pub fn Checkbox(props: &CheckboxProps, element: &Element) {
     scoped_effect!(
         [checkbox, props.title, content_revision] || {
             checkbox.set_label(Some(&title.get()));
-            content_revision.mutate(|revision| *revision = revision.wrapping_add(1));
+            set_content_revision.mutate(|revision| *revision = revision.wrapping_add(1));
         }
     );
     scoped_effect!(

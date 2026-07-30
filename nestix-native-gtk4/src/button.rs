@@ -39,7 +39,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     button
         .style_context()
         .add_provider(&css, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     let last_css = Rc::new(RefCell::new(None::<String>));
 
     button.connect_clicked(closure!(
@@ -58,7 +58,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
     scoped_effect!(
         [button, props.title, content_revision] || {
             button.set_label(&title.get());
-            content_revision.mutate(|revision| *revision += 1);
+            set_content_revision.mutate(|revision| *revision += 1);
         }
     );
     scoped_effect!(
@@ -144,7 +144,7 @@ pub fn Button(props: &ButtonProps, element: &Element) {
             }
             css.load_from_data(&css_rule);
             last_css.replace(Some(css_rule));
-            content_revision.mutate(|revision| *revision += 1);
+            set_content_revision.mutate(|revision| *revision += 1);
         }
     );
 

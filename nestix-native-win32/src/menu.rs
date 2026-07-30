@@ -6,7 +6,7 @@ use std::{
 };
 
 use nestix::{
-    Element, Shared, State, callback, closure, component, components::ContextProvider,
+    Element, Shared, State, StateSetter, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -94,6 +94,7 @@ struct Entry {
 #[derive(Clone)]
 struct ContextMenuContext {
     target: State<Option<Shared<dyn Any>>>,
+    set_target: StateSetter<Option<Shared<dyn Any>>>,
 }
 
 fn new_menu(popup: bool) -> Rc<MenuData> {
@@ -343,13 +344,13 @@ fn shortcut_text(shortcut: Shortcut) -> String {
 /// Installs a native Win32 menu bar on the containing window.
 pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let window = element.context::<crate::WindowContext>();
-    let menu = create_state(None::<Rc<MenuData>>);
-    let description = create_state(None::<MenuModel>);
+    let (menu, set_menu) = create_state(None::<Rc<MenuData>>);
+    let (description, set_description) = create_state(None::<MenuModel>);
     let attached = Rc::new(RefCell::new(None::<Rc<MenuData>>));
 
     scoped_effect!(
         [description, menu] || {
-            menu.set(
+            set_menu.set(
                 description
                     .get()
                     .map(|model| render_menu_model(&model, false)),
@@ -388,7 +389,7 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: description }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: description, set_menu: set_description }) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }
@@ -543,14 +544,14 @@ unsafe extern "system" fn context_subclass(
 #[component]
 /// Attaches a native Win32 context menu to a visual element.
 pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
-    let menu = create_state(None::<Rc<MenuData>>);
-    let target = create_state(None::<Shared<dyn Any>>);
+    let (menu, set_menu) = create_state(None::<Rc<MenuData>>);
+    let (target, set_target) = create_state(None::<Shared<dyn Any>>);
     let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
-    let description = create_state(None::<MenuModel>);
-    let native_menu = menu.clone();
+    let (description, set_description) = create_state(None::<MenuModel>);
+    let set_native_menu = set_menu.clone();
     scoped_effect!(
-        [description, native_menu] || {
-            native_menu.set(
+        [description, set_native_menu] || {
+            set_native_menu.set(
                 description
                     .get()
                     .map(|model| render_menu_model(&model, true)),
@@ -560,12 +561,13 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let registered_target = Rc::new(RefCell::new(None::<(HWND, Weak<MenuData>)>));
     let context = Rc::new(ContextMenuContext {
         target: target.clone(),
+        set_target,
     });
     scoped_effect!(
         [context, props.children] || {
-            children
-                .get()
-                .on_last_handle_change(closure!([context] | handle | context.target.set(handle)));
+            children.get().on_last_handle_change(closure!(
+                [context] | handle | context.set_target.set(handle)
+            ));
         }
     );
     scoped_effect!(
@@ -655,7 +657,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone() }) {
+            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone(), set_menu: set_description.clone() }) {
                 $(menu.get())
             }
         }

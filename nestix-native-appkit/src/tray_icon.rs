@@ -195,12 +195,12 @@ fn process_name() -> String {
 #[component]
 pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
-    let menu = create_state(None::<Retained<NSMenu>>);
-    let menu_description = create_state(None::<MenuModel>);
+    let (menu, set_menu) = create_state(None::<Retained<NSMenu>>);
+    let (menu_description, set_menu_description) = create_state(None::<MenuModel>);
     let menu_handlers = Rc::new(RefCell::new(HashMap::new()));
     scoped_effect!(
-        [menu_description, menu, menu_handlers] || {
-            menu.set(
+        [menu_description, set_menu, menu_handlers] || {
+            set_menu.set(
                 menu_description
                     .get()
                     .map(|model| render_menu_model(&model, &menu_handlers)),
@@ -285,7 +285,7 @@ pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     element.on_unmount(closure!([state] || state.borrow_mut().remove_item()));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: menu_description }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: menu_description, set_menu: set_menu_description }) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }

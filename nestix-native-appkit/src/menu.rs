@@ -1,8 +1,8 @@
 use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{
-    Element, Layout, Shared, State, callback, closure, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, Layout, Shared, State, StateSetter, callback, closure, component,
+    components::ContextProvider, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     ContextMenuPosition, ContextMenuPresenter, ContextMenuProps, ContextMenuRegistration,
@@ -28,7 +28,9 @@ use crate::{root::RootContext, window::WindowContext};
 #[derive(Clone)]
 pub(crate) struct ContextMenuContext {
     menu: State<Option<Retained<NSMenu>>>,
+    set_menu: StateSetter<Option<Retained<NSMenu>>>,
     target: State<Option<Shared<dyn Any>>>,
+    set_target: StateSetter<Option<Shared<dyn Any>>>,
 }
 
 fn new_menu(mtm: MainThreadMarker) -> Retained<NSMenu> {
@@ -41,14 +43,14 @@ fn new_menu(mtm: MainThreadMarker) -> Retained<NSMenu> {
 pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let root = element.context::<RootContext>().unwrap();
     let window = element.context::<WindowContext>();
-    let menu = create_state(None::<Retained<NSMenu>>);
-    let description = create_state(None::<MenuModel>);
+    let (menu, set_menu) = create_state(None::<Retained<NSMenu>>);
+    let (description, set_description) = create_state(None::<MenuModel>);
     let handlers = Rc::new(RefCell::new(HashMap::new()));
     let registered = Rc::new(RefCell::new(None::<Retained<NSMenu>>));
 
     scoped_effect!(
-        [description, menu, handlers] || {
-            menu.set(
+        [description, set_menu, handlers] || {
+            set_menu.set(
                 description
                     .get()
                     .map(|model| render_menu_model(&model, &handlers)),
@@ -62,12 +64,12 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
             if let Some(current) = current {
                 registered.replace(Some(current.clone()));
                 if let Some(window) = &window {
-                    window.menu.set(Some(current.clone()));
+                    window.set_menu.set(Some(current.clone()));
                     if window.ns_window.isKeyWindow() {
-                        root.active_window_menu.set(Some(current));
+                        root.set_active_window_menu.set(Some(current));
                     }
                 } else {
-                    root.app_menu.set(Some(current));
+                    root.set_app_menu.set(Some(current));
                 }
             } else if let Some(previous) = registered.take() {
                 unregister_menu(&root, window.as_deref(), &previous);
@@ -84,7 +86,7 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: description }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: description, set_menu: set_description }) {
             $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
         }
     }
@@ -98,30 +100,34 @@ fn contains_menu(slot: &Option<Retained<NSMenu>>, menu: &NSMenu) -> bool {
 fn unregister_menu(root: &RootContext, window: Option<&WindowContext>, menu: &NSMenu) {
     if let Some(window) = window {
         if contains_menu(&window.menu.get(), menu) {
-            window.menu.set(None);
+            window.set_menu.set(None);
         }
         if contains_menu(&root.active_window_menu.get(), menu) {
-            root.active_window_menu.set(None);
+            root.set_active_window_menu.set(None);
         }
     } else if contains_menu(&root.app_menu.get(), menu) {
-        root.app_menu.set(None);
+        root.set_app_menu.set(None);
     }
 }
 
 #[component]
 pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
+    let (menu, set_menu) = create_state(None);
+    let (target, set_target) = create_state(None);
     let context = Rc::new(ContextMenuContext {
-        menu: create_state(None),
-        target: create_state(None),
+        menu,
+        set_menu,
+        target,
+        set_target,
     });
     let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
-    let description = create_state(None::<MenuModel>);
+    let (description, set_description) = create_state(None::<MenuModel>);
     let handlers = Rc::new(RefCell::new(HashMap::new()));
-    let native_menu = context.menu.clone();
+    let set_native_menu = context.set_menu.clone();
 
     scoped_effect!(
-        [description, native_menu, handlers] || {
-            native_menu.set(
+        [description, set_native_menu, handlers] || {
+            set_native_menu.set(
                 description
                     .get()
                     .map(|model| render_menu_model(&model, &handlers)),
@@ -133,7 +139,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         [context, props.children] || {
             children.get().on_last_handle_change(closure!(
                 [context] | handle | {
-                    context.target.set(handle);
+                    context.set_target.set(handle);
                 }
             ));
         }
@@ -203,7 +209,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone() }) {
+            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone(), set_menu: set_description.clone() }) {
                 $(menu.get())
             }
         }

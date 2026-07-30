@@ -5,8 +5,8 @@ use std::{
 };
 
 use nestix::{
-    Element, State, callback, closure, component, components::ContextProvider, create_state,
-    layout, scoped_effect,
+    Element, State, StateSetter, callback, closure, component, components::ContextProvider,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
     SelectOptionProps, SelectProps, StyleContext, dpi::LogicalSize, matched_style,
@@ -47,6 +47,7 @@ struct SelectContext {
     hwnd: windows::Win32::Foundation::HWND,
     options: Rc<RefCell<Vec<OptionEntry>>>,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
 }
 
 #[component]
@@ -80,7 +81,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
         )
         .unwrap()
     };
-    let intrinsic = create_state(LogicalSize::new(120.0, 28.0));
+    let (intrinsic, set_intrinsic) = create_state(LogicalSize::new(120.0, 28.0));
     native_control::mount(
         element,
         hwnd,
@@ -90,7 +91,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     let options = Rc::new(RefCell::new(Vec::<OptionEntry>::new()));
-    let revision = create_state(0usize);
+    let (revision, set_revision) = create_state(0usize);
     unsafe {
         SendMessageW(hwnd, CB_SETMINVISIBLE, Some(WPARAM(8)), None);
     }
@@ -152,7 +153,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
                 .map(|option| option.label.chars().count())
                 .max()
                 .unwrap_or(10);
-            intrinsic.set(LogicalSize::new(
+            set_intrinsic.set(LogicalSize::new(
                 (width as f32 * 7.0 + 40.0).max(120.0),
                 28.0,
             ));
@@ -160,7 +161,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<SelectContext>(SelectContext { hwnd, options, revision }) {
+        ContextProvider<SelectContext>(SelectContext { hwnd, options, revision, set_revision }) {
             $(props.children.clone())
         }
     }
@@ -237,7 +238,7 @@ fn rebuild(context: &SelectContext) {
         }
     }
     context
-        .revision
+        .set_revision
         .mutate(|revision| *revision = revision.wrapping_add(1));
 }
 

@@ -39,7 +39,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let tree_context = Rc::new(TreeContext::new());
     let layout_refresh = LayoutRefreshContext::new(tree_context.clone());
     let animation = Rc::new(AnimationRuntime::new());
-    let scale_factor = create_state(1.0);
+    let (scale_factor, set_scale_factor) = create_state(1.0);
     let window = gtk4::Window::new();
     let radio_buttons = Rc::new(RefCell::new(Vec::new()));
     let menu_bar = Rc::new(RefCell::new(None::<gtk4::PopoverMenuBar>));
@@ -59,12 +59,12 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     window.set_child(Some(&window_content));
     let unmounting = Rc::new(Cell::new(false));
     let handling_close_request = Rc::new(Cell::new(false));
-    scale_factor.set(window.scale_factor() as f64);
+    set_scale_factor.set(window.scale_factor() as f64);
     element.provide_handle(window.clone());
 
     window.connect_scale_factor_notify(closure!(
         [scale_factor] | window | {
-            scale_factor.set(window.scale_factor() as f64);
+            set_scale_factor.set(window.scale_factor() as f64);
         }
     ));
     window.connect_close_request(closure!(

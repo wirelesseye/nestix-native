@@ -765,7 +765,7 @@ fn style_macro_embeds_style_sheets_in_source_order() {
 
 #[test]
 fn style_macro_with_inserted_value_builds_style_sheet() {
-    let bg_color = nestix::create_state(Color::WHITE);
+    let (bg_color, set_bg_color) = nestix::create_state(Color::WHITE);
     let sheet = style! {
         .counter {
             bg_color: $(bg_color.get());
@@ -777,7 +777,7 @@ fn style_macro_with_inserted_value_builds_style_sheet() {
     assert_eq!(props.bg_color, Some(Color::WHITE));
     assert_eq!(props.custom("--label"), Some("count-1"));
 
-    bg_color.set(Color::BLACK);
+    set_bg_color.set(Color::BLACK);
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
@@ -785,7 +785,7 @@ fn style_macro_with_inserted_value_builds_style_sheet() {
 
 #[test]
 fn style_macro_can_be_wrapped_in_computed_for_dynamic_style_sheets() {
-    let bg_color = nestix::create_state(Color::WHITE);
+    let (bg_color, set_bg_color) = nestix::create_state(Color::WHITE);
     let sheet = nestix::computed!(
         [bg_color]
             || style! {
@@ -800,7 +800,7 @@ fn style_macro_can_be_wrapped_in_computed_for_dynamic_style_sheets() {
         .matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
 
-    bg_color.set(Color::BLACK);
+    set_bg_color.set(Color::BLACK);
 
     let props = sheet
         .get()
@@ -810,7 +810,7 @@ fn style_macro_can_be_wrapped_in_computed_for_dynamic_style_sheets() {
 
 #[test]
 fn computed_style_macro_builds_a_dynamic_style_sheet() {
-    let bg_color = nestix::create_state(Color::WHITE);
+    let (bg_color, set_bg_color) = nestix::create_state(Color::WHITE);
     let sheet = computed_style! {
         [bg_color]
 
@@ -824,7 +824,7 @@ fn computed_style_macro_builds_a_dynamic_style_sheet() {
         .matched_props(&MatchContext::new(ClassList::from("counter")));
     assert_eq!(props.bg_color, Some(Color::WHITE));
 
-    bg_color.set(Color::BLACK);
+    set_bg_color.set(Color::BLACK);
 
     let props = sheet
         .get()

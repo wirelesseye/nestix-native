@@ -13,7 +13,7 @@ use proc_macro::TokenStream;
 ///
 /// ```rust,ignore
 /// # use nestix_native_core::*;
-/// let bg_color = nestix::create_state(Color::WHITE);
+/// let (bg_color, _) = nestix::create_state(Color::WHITE);
 ///
 /// let styles = computed_style! {
 ///     [bg_color]
@@ -85,7 +85,7 @@ pub fn computed_style(input: TokenStream) -> TokenStream {
 ///
 /// ```rust,ignore
 /// # use nestix_native_core::*;
-/// let bg_color = nestix::create_state(Color::WHITE);
+/// let (bg_color, _) = nestix::create_state(Color::WHITE);
 ///
 /// let styles = nestix::computed!([bg_color] || style! {
 ///     .counter {

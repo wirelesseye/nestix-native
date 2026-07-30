@@ -5,7 +5,7 @@ use nestix_native::{WebView, WebViewController, WebViewDevToolsError, WebViewSou
 
 #[component]
 fn Browser() -> Element {
-    let url = create_state("https://example.com".to_string());
+    let (url, _) = create_state("https://example.com".to_string());
     let controller = WebViewController::new();
     layout! {
         WebView(

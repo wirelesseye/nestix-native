@@ -168,7 +168,7 @@ pub fn WebView(props: &WebViewProps, element: &Element) {
         view,
         style_props,
         &props.view,
-        create_state(0usize).into_readonly(),
+        create_state(0usize).0.into_readonly(),
         LogicalSize::new(300.0, 150.0),
     );
 

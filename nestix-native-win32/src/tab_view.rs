@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc, sync::Once};
 
 use nestix::{
-    Element, Layout, State, callback, closure, component, components::ContextProvider,
+    Element, Layout, State, StateSetter, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -54,6 +54,7 @@ fn init_common_controls() {
 struct TabViewContext {
     hwnd: HWND,
     current_selected: State<Option<String>>,
+    set_current_selected: StateSetter<Option<String>>,
     tab_ids: RefCell<Vec<String>>,
     pages: RefCell<Vec<(HWND, Rc<TreeContext>)>>,
 }
@@ -87,7 +88,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
         }
     );
 
-    let current_selected = create_state(None);
+    let (current_selected, set_current_selected) = create_state(None);
 
     init_common_controls();
     let hwnd = unsafe {
@@ -120,6 +121,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
     let tab_view_context = Rc::new(TabViewContext {
         hwnd,
         current_selected: current_selected.clone(),
+        set_current_selected: set_current_selected.clone(),
         tab_ids: RefCell::new(Vec::new()),
         pages: RefCell::new(Vec::new()),
     });
@@ -148,7 +150,7 @@ pub fn TabView(props: &TabViewProps, element: &Element) -> Element {
                     if nmhdr.code == TCN_SELCHANGE {
                         let selected_index = SendMessageW(hwnd, TCM_GETCURSEL, None, None).0 as usize;
                         let id = tab_view_context.tab_ids.borrow().get(selected_index).cloned();
-                        current_selected.set(id);
+                        set_current_selected.set(id);
                     }
                 },
                 _ => (),
@@ -396,7 +398,7 @@ pub fn TabViewItem(props: &TabViewItemProps, element: &Element) -> Element {
                 .borrow_mut()
                 .insert(index, id.clone());
             if tab_view_context.current_selected.borrow().is_none() {
-                tab_view_context.current_selected.set(Some(id));
+                tab_view_context.set_current_selected.set(Some(id));
             }
         }
     ));

@@ -40,8 +40,8 @@ fn Target() -> Element {
 
 #[test]
 fn menu_bar_and_context_menu_compile_through_layout() {
-    let visible = nestix::create_state(true);
-    let resizable = nestix::create_state(true);
+    let (visible, _) = nestix::create_state(true);
+    let (resizable, _) = nestix::create_state(true);
     let context_menu = ContextMenuController::new();
     let _window = layout! {
         Window(.visible = visible, .desktop(.resizable = resizable)) {

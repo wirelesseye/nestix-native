@@ -299,7 +299,7 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
         active,
     };
 
-    window.toolbar.set(Some(toolbar.clone()));
+    window.set_toolbar.set(Some(toolbar.clone()));
     window.ns_window.setToolbar(Some(&toolbar));
 
     scoped_effect!(
@@ -329,7 +329,7 @@ pub fn AppKitToolbar(props: &AppKitToolbarProps, element: &Element) -> Element {
                 return;
             };
             if contains_toolbar(&window.toolbar.get(), &toolbar) {
-                window.toolbar.set(None);
+                window.set_toolbar.set(None);
             }
             if window.ns_window.toolbar().is_some_and(|current| {
                 std::ptr::eq::<NSToolbar>(current.as_ref(), toolbar.as_ref())

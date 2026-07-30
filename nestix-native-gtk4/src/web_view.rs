@@ -100,16 +100,16 @@ pub fn WebView(props: &WebViewProps, element: &Element) {
         web_view.upcast_ref(),
         style_props.into_readonly(),
         &props.view,
-        create_state(0usize).into_readonly(),
+        create_state(0usize).0.into_readonly(),
         LogicalSize::new(300.0, 150.0),
     );
     let tree_context = element
         .context::<nestix_native_core::TreeContext>()
         .unwrap();
-    let mapped = create_state(web_view.is_mapped());
+    let (mapped, set_mapped) = create_state(web_view.is_mapped());
     web_view.connect_map(closure!(
         [mapped] | _ | {
-            mapped.set(true);
+            set_mapped.set(true);
         }
     ));
     let last_loaded_source = Rc::new(RefCell::new(None::<WebViewSource>));

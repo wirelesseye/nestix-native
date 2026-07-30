@@ -34,7 +34,7 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
     let input = gtk4::Entry::new();
     input.set_text(&props.value.get());
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     let updating_value = Rc::new(Cell::new(false));
 
     input.connect_changed(closure!(
@@ -55,7 +55,7 @@ pub fn Input(props: &InputProps, element: &Element) {
                 input.set_text(&value);
                 updating_value.set(false);
             }
-            content_revision.mutate(|revision| *revision += 1);
+            set_content_revision.mutate(|revision| *revision += 1);
         }
     );
 

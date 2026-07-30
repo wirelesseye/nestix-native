@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use nestix::{
-    Element, PropValue, Shared, State, closure, component, components::ContextProvider,
+    Element, PropValue, Shared, StateSetter, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{SelectOptionProps, SelectProps, StyleContext, matched_style};
@@ -20,7 +20,7 @@ thread_local! {
 #[derive(Clone)]
 struct SelectContext {
     popup: Retained<NSPopUpButton>,
-    revision: State<usize>,
+    set_revision: StateSetter<usize>,
 }
 
 #[component]
@@ -59,7 +59,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
         }
     ));
 
-    let revision = create_state(0usize);
+    let (revision, set_revision) = create_state(0usize);
     native_control::mount(
         element,
         popup.clone().into_super().into_super().into_super(),
@@ -93,7 +93,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<SelectContext>(SelectContext { popup, revision }) {
+        ContextProvider<SelectContext>(SelectContext { popup, set_revision }) {
             $(props.children.clone())
         }
     }
@@ -125,7 +125,7 @@ pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
                 .min(menu.numberOfItems() as usize);
             menu.insertItem_atIndex(&item, index as _);
             context
-                .revision
+                .set_revision
                 .mutate(|revision| *revision = revision.wrapping_add(1));
         }
     ));
@@ -135,7 +135,7 @@ pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
             if menu.indexOfItem(&item) >= 0 {
                 menu.removeItem(&item);
                 context
-                    .revision
+                    .set_revision
                     .mutate(|revision| *revision = revision.wrapping_add(1));
             }
         }
@@ -148,7 +148,7 @@ pub fn SelectOption(props: &SelectOptionProps, element: &Element) {
             let value = NSString::from_str(&value.get());
             unsafe { item.setRepresentedObject(Some(&value)) };
             context
-                .revision
+                .set_revision
                 .mutate(|revision| *revision = revision.wrapping_add(1));
         }
     );

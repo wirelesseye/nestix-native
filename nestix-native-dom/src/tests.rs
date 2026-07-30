@@ -18,8 +18,8 @@ fn mounts_reacts_and_cleans_up() {
     target.set_id("nestix-dom-test-root");
     document.body().unwrap().append_child(&target).unwrap();
 
-    let count = create_state(0);
-    let input_value = create_state(String::new());
+    let (count, set_count) = create_state(0);
+    let (input_value, set_input_value) = create_state(String::new());
     let styles = style! {
         .rust_only_class {
             gap: 7 px;
@@ -39,14 +39,14 @@ fn mounts_reacts_and_cleans_up() {
                         Button(
                             .title = "Increment",
                             .on_click = callback!(
-                                [count] || count.update(|value| value + 1)
+                                [set_count] || set_count.update(|value| value + 1)
                             ),
                         )
                         Input(
                             .value = input_value.clone(),
                             .on_text_change = callback!(
-                                [input_value] |value: &str| {
-                                    input_value.set(value.to_string());
+                                [set_input_value] |value: &str| {
+                                    set_input_value.set(value.to_string());
                                 }
                             ),
                         )
@@ -134,7 +134,7 @@ fn web_view_uses_a_reactive_iframe_and_cleans_up() {
     target.set_id("nestix-web-view-test-root");
     document.body().unwrap().append_child(&target).unwrap();
 
-    let source = create_state(WebViewSource::url("https://example.com/first"));
+    let (source, set_source) = create_state(WebViewSource::url("https://example.com/first"));
     let app = layout! {
         Root {
             Window {
@@ -160,7 +160,7 @@ fn web_view_uses_a_reactive_iframe_and_cleans_up() {
         "180px"
     );
 
-    source.set(WebViewSource::url("https://example.com/second"));
+    set_source.set(WebViewSource::url("https://example.com/second"));
     assert_eq!(
         iframe.get_attribute("src").as_deref(),
         Some("https://example.com/second")
@@ -178,10 +178,10 @@ fn custom_elements_support_dom_state_events_and_refs() {
     target.set_id("nestix-custom-element-test-root");
     document.body().unwrap().append_child(&target).unwrap();
 
-    let disabled = create_state(false);
-    let value = create_state("initial".to_string());
-    let clicks = create_state(0);
-    let clicks_for_event = clicks.clone();
+    let (disabled, set_disabled) = create_state(false);
+    let (value, set_value) = create_state("initial".to_string());
+    let (clicks, set_clicks) = create_state(0);
+    let set_clicks_for_event = set_clicks.clone();
     let node_ref = DomElementRef::new();
     let app = layout! {
         Root {
@@ -199,7 +199,7 @@ fn custom_elements_support_dom_state_events_and_refs() {
                     ),
                     .properties = nestix::computed!([value] || vec![DomProperty::new("value", value.get())]),
                     .events = vec![DomEvent::new("click", move |_| {
-                        clicks_for_event.update(|count| count + 1);
+                        set_clicks_for_event.update(|count| count + 1);
                     })],
                     .node_ref = node_ref.clone(),
                 ) {
@@ -223,8 +223,8 @@ fn custom_elements_support_dom_state_events_and_refs() {
         Some("initial")
     );
 
-    disabled.set(true);
-    value.set("updated".to_string());
+    set_disabled.set(true);
+    set_value.set("updated".to_string());
     assert!(custom.has_attribute("disabled"));
     assert_eq!(
         js_sys::Reflect::get(custom.as_ref(), &JsValue::from_str("value"))
@@ -251,7 +251,7 @@ fn dom_element_supports_reactive_text_content() {
     target.set_id("nestix-dom-element-text-test-root");
     document.body().unwrap().append_child(&target).unwrap();
 
-    let text = create_state("initial".to_string());
+    let (text, set_text) = create_state("initial".to_string());
     let app = layout! {
         Root {
             Window {
@@ -264,7 +264,7 @@ fn dom_element_supports_reactive_text_content() {
     let output = target.query_selector("output").unwrap().unwrap();
     assert_eq!(output.text_content().as_deref(), Some("initial"));
 
-    text.set("updated".to_string());
+    set_text.set("updated".to_string());
     assert_eq!(output.text_content().as_deref(), Some("updated"));
 
     unmount_root().unwrap();

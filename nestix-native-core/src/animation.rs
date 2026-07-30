@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use nestix::{Shared, State, create_state, untrack};
+use nestix::{Shared, State, StateSetter, create_state, untrack};
 
 use crate::{DEFAULT_ROOT_FONT_SIZE, Length, ResolvedStyle, TransitionProperty, WithAuto};
 
@@ -304,16 +304,19 @@ pub struct AnimatedStyle {
     owner: u64,
     runtime: Rc<AnimationRuntime>,
     value: State<Option<ResolvedStyle>>,
+    set_value: StateSetter<Option<ResolvedStyle>>,
     scale_factor: Cell<Option<f64>>,
 }
 
 impl AnimatedStyle {
     pub fn new(runtime: Rc<AnimationRuntime>, initial: Option<ResolvedStyle>) -> Self {
         static NEXT_OWNER: AtomicU64 = AtomicU64::new(1);
+        let (value, set_value) = create_state(initial);
         Self {
             owner: NEXT_OWNER.fetch_add(1, Ordering::Relaxed),
             runtime,
-            value: create_state(initial),
+            value,
+            set_value,
             scale_factor: Cell::new(None),
         }
     }
@@ -330,19 +333,19 @@ impl AnimatedStyle {
     #[doc(hidden)]
     pub fn interrupt(&self, presentation: Option<ResolvedStyle>) {
         self.runtime.cancel_owner(self.owner);
-        self.value.set(presentation);
+        self.set_value.set(presentation);
     }
 
     pub fn set_target(&self, target: Option<ResolvedStyle>, scale_factor: f64) {
         let previous_scale_factor = self.scale_factor.replace(Some(scale_factor));
         if previous_scale_factor.is_some_and(|previous| previous != scale_factor) {
             self.runtime.cancel_owner(self.owner);
-            self.value.set(target);
+            self.set_value.set(target);
             return;
         }
         let Some(target) = target else {
             self.runtime.cancel_owner(self.owner);
-            self.value.set(None);
+            self.set_value.set(None);
             return;
         };
         // Presentation updates are written by the frame clock. Reading them
@@ -378,9 +381,9 @@ impl AnimatedStyle {
                 continue;
             };
             property.set_length_with_auto(&mut presentation, WithAuto::from(from));
-            let state = self.value.clone();
+            let set_state = self.set_value.clone();
             let update: Rc<dyn Fn(f64)> = Rc::new(move |value| {
-                state.mutate(|style| {
+                set_state.mutate(|style| {
                     if let Some(style) = style {
                         property.set_length_with_auto(style, WithAuto::from(value));
                     }
@@ -397,7 +400,7 @@ impl AnimatedStyle {
             );
         }
 
-        self.value.set(Some(presentation));
+        self.set_value.set(Some(presentation));
     }
 }
 
@@ -440,11 +443,8 @@ mod tests {
     #[test]
     fn zero_duration_applies_immediately() {
         let runtime = Rc::new(AnimationRuntime::new());
-        let value = create_state(0.0);
-        let update: Rc<dyn Fn(f64)> = Rc::new({
-            let value = value.clone();
-            move |next| value.set(next)
-        });
+        let (value, set_value) = create_state(0.0);
+        let update: Rc<dyn Fn(f64)> = Rc::new(move |next| set_value.set(next));
         runtime.transition(
             (1, TransitionProperty::Width),
             0.0,
@@ -466,11 +466,8 @@ mod tests {
             move || origin + elapsed.get()
         });
         let runtime = Rc::new(AnimationRuntime::with_clock(Shared::from(clock)));
-        let value = create_state(0.0);
-        let update: Rc<dyn Fn(f64)> = Rc::new({
-            let value = value.clone();
-            move |next| value.set(next)
-        });
+        let (value, set_value) = create_state(0.0);
+        let update: Rc<dyn Fn(f64)> = Rc::new(move |next| set_value.set(next));
         runtime.transition(
             (1, TransitionProperty::Width),
             0.0,
@@ -538,7 +535,7 @@ mod tests {
         let mut initial = ResolvedStyle::default();
         initial.width = Some(WithAuto::from(0));
         initial.transitions = vec![transition];
-        let target = create_state(Some(initial));
+        let (target, set_target) = create_state(Some(initial));
         let animated = Rc::new(AnimatedStyle::new(runtime.clone(), target.get()));
         let runs = Rc::new(Cell::new(0));
         let effect_handle = effect({
@@ -554,7 +551,7 @@ mod tests {
         let mut next = ResolvedStyle::default();
         next.width = Some(WithAuto::from(10));
         next.transitions = vec![transition];
-        target.set(Some(next));
+        set_target.set(Some(next));
         assert_eq!(runs.get(), 2);
         elapsed.set(Duration::from_millis(50));
         runtime.tick();

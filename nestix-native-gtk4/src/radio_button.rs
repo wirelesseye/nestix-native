@@ -66,7 +66,7 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
     ));
 
     let updating = Rc::new(Cell::new(false));
-    let content_revision = create_state(0usize);
+    let (content_revision, set_content_revision) = create_state(0usize);
     radio.connect_toggled(closure!(
         [props.on_select, updating] | radio | {
             if radio.is_active()
@@ -82,7 +82,7 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
     scoped_effect!(
         [radio, props.title, content_revision] || {
             radio.set_label(Some(&title.get()));
-            content_revision.mutate(|revision| *revision = revision.wrapping_add(1));
+            set_content_revision.mutate(|revision| *revision = revision.wrapping_add(1));
         }
     );
     scoped_effect!(

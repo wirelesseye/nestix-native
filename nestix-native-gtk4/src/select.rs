@@ -6,8 +6,8 @@ use std::{
 
 use gtk4::prelude::*;
 use nestix::{
-    Element, State, closure, component, components::ContextProvider, create_state, layout,
-    scoped_effect,
+    Element, State, StateSetter, closure, component, components::ContextProvider, create_state,
+    layout, scoped_effect,
 };
 use nestix_native_core::{
     AnimatedStyle, SelectOptionProps, SelectProps, StyleContext, matched_style, resolved_view_style,
@@ -22,6 +22,7 @@ struct SelectContext {
     combo: gtk4::ComboBoxText,
     options: Rc<RefCell<Vec<OptionEntry>>>,
     revision: State<usize>,
+    set_revision: StateSetter<usize>,
     updating: Rc<Cell<bool>>,
 }
 
@@ -60,7 +61,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
 
     let combo = gtk4::ComboBoxText::new();
     let options = Rc::new(RefCell::new(Vec::<OptionEntry>::new()));
-    let revision = create_state(0usize);
+    let (revision, set_revision) = create_state(0usize);
     let updating = Rc::new(Cell::new(false));
     combo.connect_changed(closure!(
         [props.value, props.on_value_change, options, updating] | combo | {
@@ -102,7 +103,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<SelectContext>(SelectContext { combo, options, revision, updating }) {
+        ContextProvider<SelectContext>(SelectContext { combo, options, revision, set_revision, updating }) {
             $(props.children.clone())
         }
     }
@@ -174,7 +175,7 @@ fn rebuild(context: &SelectContext) {
     }
     context.updating.set(false);
     context
-        .revision
+        .set_revision
         .mutate(|revision| *revision = revision.wrapping_add(1));
 }
 

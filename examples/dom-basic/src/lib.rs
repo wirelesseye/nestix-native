@@ -18,8 +18,8 @@ pub fn start() {
 
 #[component]
 fn App() -> Element {
-    let count = create_state(0);
-    let name = create_state(String::new());
+    let (count, set_count) = create_state(0);
+    let (name, set_name) = create_state(String::new());
     let styles = style! {
         .app {
             padding: 24 px;
@@ -50,7 +50,7 @@ fn App() -> Element {
                             .value = name.clone(),
                             .on_text_change = callback!(
                                 [name] |value: &str| {
-                                    name.set(value.to_string());
+                                    set_name.set(value.to_string());
                                 }
                             ),
                         )
@@ -63,16 +63,16 @@ fn App() -> Element {
                             Button(
                                 .title = "Increment",
                                 .on_click = callback!(
-                                    [count] || count.update(|value| value + 1)
+                                    [count] || set_count.update(|value| value + 1)
                                 ),
                             )
-                            Button(.title = "Reset", .on_click = callback!([count] || count.set(0)))
+                            Button(.title = "Reset", .on_click = callback!([count] || set_count.set(0)))
                             DomElement(
                                 "demo-button",
                                 .attributes = vec![DomAttribute::string("variant", "accent")],
                                 .events = vec![DomEvent::new("click", {
                                     let count = count.clone();
-                                    move |_| count.update(|value| value + 10)
+                                    move |_| set_count.update(|value| value + 10)
                                 })],
                             ) {
                                 Text("Add ten (custom element)")
