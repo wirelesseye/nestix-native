@@ -120,7 +120,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         _surface: surface.clone(),
         animation: animation.clone(),
         scale_factor: scale_factor.clone(),
-        set_scale_factor,
+        set_scale_factor: set_scale_factor.clone(),
         on_resize: props.on_resize.clone(),
         on_close_requested: props.desktop.on_close_requested.clone(),
     });

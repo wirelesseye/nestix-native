@@ -6,7 +6,7 @@ use std::{
 };
 
 use nestix::{
-    Element, Shared, State, StateSetter, callback, closure, component, components::ContextProvider,
+    Element, Shared, StateSetter, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -93,7 +93,6 @@ struct Entry {
 
 #[derive(Clone)]
 struct ContextMenuContext {
-    target: State<Option<Shared<dyn Any>>>,
     set_target: StateSetter<Option<Shared<dyn Any>>>,
 }
 
@@ -349,7 +348,7 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let attached = Rc::new(RefCell::new(None::<Rc<MenuData>>));
 
     scoped_effect!(
-        [description, menu] || {
+        [description] || {
             set_menu.set(
                 description
                     .get()
@@ -560,7 +559,6 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     );
     let registered_target = Rc::new(RefCell::new(None::<(HWND, Weak<MenuData>)>));
     let context = Rc::new(ContextMenuContext {
-        target: target.clone(),
         set_target,
     });
     scoped_effect!(

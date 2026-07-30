@@ -147,7 +147,6 @@ pub fn RadioButton(props: &RadioButtonProps, element: &Element) {
             props.font.font_weight,
             props.font.font_style,
             props.font.text_color,
-            intrinsic,
             font
         ] || unsafe {
             let scale = scale_factor.get();

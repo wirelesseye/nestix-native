@@ -5,7 +5,7 @@ use std::{
 };
 
 use nestix::{
-    Element, State, StateSetter, callback, closure, component, components::ContextProvider,
+    Element, StateSetter, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
@@ -46,7 +46,6 @@ struct OptionEntry {
 struct SelectContext {
     hwnd: windows::Win32::Foundation::HWND,
     options: Rc<RefCell<Vec<OptionEntry>>>,
-    revision: State<usize>,
     set_revision: StateSetter<usize>,
 }
 
@@ -144,7 +143,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
             }
     );
     scoped_effect!(
-        [options, revision, props.value, intrinsic] || {
+        [options, revision, props.value] || {
             let _ = revision.get();
             let options = options.borrow();
             select_value(hwnd, &options, value.get().as_deref());
@@ -161,7 +160,7 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<SelectContext>(SelectContext { hwnd, options, revision, set_revision }) {
+        ContextProvider<SelectContext>(SelectContext { hwnd, options, set_revision }) {
             $(props.children.clone())
         }
     }
