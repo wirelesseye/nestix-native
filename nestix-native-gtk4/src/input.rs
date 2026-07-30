@@ -1,12 +1,12 @@
 use std::{cell::Cell, rc::Rc};
 
-use gtk4::prelude::*;
+use gtk4::{Orientation, prelude::*};
 use nestix::{Element, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
-    AnimatedStyle, InputProps, StyleContext, matched_style, resolved_view_style,
+    AnimatedStyle, InputProps, StyleContext, dpi::LogicalSize, matched_style, resolved_view_style,
 };
 
-use crate::{WindowContext, layout::mount_leaf};
+use crate::{WindowContext, layout::mount_leaf_with_intrinsic_size};
 
 #[component]
 pub fn Input(props: &InputProps, element: &Element) {
@@ -58,11 +58,14 @@ pub fn Input(props: &InputProps, element: &Element) {
         }
     );
 
-    mount_leaf(
+    let (_, natural_width, _, _) = input.measure(Orientation::Horizontal, -1);
+    let (_, natural_height, _, _) = input.measure(Orientation::Vertical, natural_width);
+    mount_leaf_with_intrinsic_size(
         element,
         input.upcast_ref(),
         style_props.into_readonly(),
         &props.view,
         content_revision.into_readonly(),
+        LogicalSize::new(natural_width.max(0) as f32, natural_height.max(0) as f32),
     );
 }
