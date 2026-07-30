@@ -10,7 +10,7 @@ use nestix::{
     Element, PropValue, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
-use nestix_native_core::{TrayIconError, TrayIconEvent, TrayIconProps};
+use nestix_native_core::{MenuHostContext, MenuModel, TrayIconError, TrayIconEvent, TrayIconProps};
 use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, POINT, RECT, WPARAM},
@@ -34,7 +34,7 @@ use windows::{
 
 use crate::{
     image_view::load_icon,
-    menu::{MenuData, TrayMenuContext, show_tray_menu},
+    menu::{MenuData, render_menu_model, show_tray_menu},
 };
 
 const CALLBACK_MESSAGE: u32 = WM_APP + 0x4e5;
@@ -255,6 +255,16 @@ extern "system" fn window_proc(
 /// Adds an application icon to the Windows notification area.
 pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     let menu = create_state(None::<Rc<MenuData>>);
+    let menu_description = create_state(None::<MenuModel>);
+    scoped_effect!(
+        [menu_description, menu] || {
+            menu.set(
+                menu_description
+                    .get()
+                    .map(|model| render_menu_model(&model, true)),
+            );
+        }
+    );
     let state = Rc::new(RefCell::new(TrayIconState {
         hwnd: HWND::default(),
         icon: None,
@@ -311,7 +321,7 @@ pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<TrayMenuContext>(TrayMenuContext { menu }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: menu_description }) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }

@@ -1,11 +1,17 @@
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     fmt,
     ops::{BitOr, BitOrAssign},
-    rc::Rc,
+    rc::{Rc, Weak},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
-use nestix::{Element, Layout, Shared, props};
+use nestix::{
+    Element, Layout, PropValue, Shared, State, callback, closure, component,
+    components::ContextProvider, create_state, layout, props, scoped_effect,
+};
+
+static NEXT_MENU_ENTRY_ID: AtomicUsize = AtomicUsize::new(1);
 
 /// A key which can be used in a native menu shortcut.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -448,6 +454,352 @@ pub struct MenuSeparatorProps {
     /// Whether the separator is displayed.
     #[props(default = true)]
     pub visible: bool,
+}
+
+/// The platform-neutral kind of a descriptive menu entry.
+#[doc(hidden)]
+#[derive(Clone)]
+pub enum MenuEntryKind {
+    Item,
+    Check,
+    Radio,
+    Submenu(MenuModel),
+    Separator,
+}
+
+struct MenuEntryData {
+    id: usize,
+    kind: MenuEntryKind,
+    label: RefCell<String>,
+    enabled: Cell<bool>,
+    visible: Cell<bool>,
+    checked: Cell<bool>,
+    shortcut: Cell<Option<Shortcut>>,
+    group: RefCell<Option<String>>,
+    activate: RefCell<Option<Shared<dyn Fn()>>>,
+}
+
+/// A snapshot-capable, reactive description of one menu entry.
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct MenuEntry(Rc<MenuEntryData>);
+
+impl MenuEntry {
+    pub fn id(&self) -> usize {
+        self.0.id
+    }
+
+    pub fn kind(&self) -> MenuEntryKind {
+        self.0.kind.clone()
+    }
+
+    pub fn label(&self) -> String {
+        self.0.label.borrow().clone()
+    }
+
+    pub fn enabled(&self) -> bool {
+        self.0.enabled.get()
+    }
+
+    pub fn visible(&self) -> bool {
+        self.0.visible.get()
+    }
+
+    pub fn checked(&self) -> bool {
+        self.0.checked.get()
+    }
+
+    pub fn shortcut(&self) -> Option<Shortcut> {
+        self.0.shortcut.get()
+    }
+
+    pub fn activate(&self) {
+        if self.enabled()
+            && self.visible()
+            && let Some(activate) = self.0.activate.borrow().clone()
+        {
+            activate();
+        }
+    }
+}
+
+struct MenuModelData {
+    entries: RefCell<Vec<MenuEntry>>,
+    revision: State<usize>,
+}
+
+/// Reactive platform-neutral description produced by [`Menu`].
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct MenuModel(Rc<MenuModelData>);
+
+impl PartialEq for MenuModel {
+    fn eq(&self, other: &Self) -> bool {
+        self.ptr_eq(other)
+    }
+}
+
+impl MenuModel {
+    fn new() -> Self {
+        Self(Rc::new(MenuModelData {
+            entries: RefCell::new(Vec::new()),
+            revision: create_state(0),
+        }))
+    }
+
+    pub fn entries(&self) -> Vec<MenuEntry> {
+        let _ = self.0.revision.get();
+        self.0.entries.borrow().clone()
+    }
+
+    pub fn revision(&self) -> State<usize> {
+        self.0.revision.clone()
+    }
+
+    pub fn ptr_eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+
+    fn changed(&self) {
+        self.0
+            .revision
+            .mutate(|revision| *revision = revision.wrapping_add(1));
+    }
+}
+
+/// Context installed by backend-owned menu presenters.
+#[doc(hidden)]
+#[derive(Clone)]
+pub struct MenuHostContext {
+    pub menu: State<Option<MenuModel>>,
+}
+
+#[derive(Clone)]
+struct MenuModelContext(MenuModel);
+
+fn place_entry(element: &Element, menu: MenuModel, entry: MenuEntry) {
+    element.on_place(closure!(
+        [menu, entry] | placement | {
+            let mut entries = menu.0.entries.borrow_mut();
+            entries.retain(|current| !Rc::ptr_eq(&current.0, &entry.0));
+            let index = placement.index.unwrap_or(entries.len()).min(entries.len());
+            entries.insert(index, entry.clone());
+            drop(entries);
+            menu.changed();
+        }
+    ));
+    element.on_unmount(closure!(
+        [menu, entry] || {
+            menu.0
+                .entries
+                .borrow_mut()
+                .retain(|current| !Rc::ptr_eq(&current.0, &entry.0));
+            menu.changed();
+        }
+    ));
+}
+
+fn common_effects(
+    menu: MenuModel,
+    entry: MenuEntry,
+    label: PropValue<String>,
+    enabled: PropValue<bool>,
+    visible: PropValue<bool>,
+    shortcut: PropValue<Option<Shortcut>>,
+) {
+    scoped_effect!(
+        [menu, entry, label, enabled, visible, shortcut] || {
+            *entry.0.label.borrow_mut() = label.get();
+            entry.0.enabled.set(enabled.get());
+            entry.0.visible.set(visible.get());
+            entry.0.shortcut.set(shortcut.get());
+            menu.changed();
+        }
+    );
+}
+
+fn new_entry(kind: MenuEntryKind) -> MenuEntry {
+    MenuEntry(Rc::new(MenuEntryData {
+        id: NEXT_MENU_ENTRY_ID.fetch_add(1, Ordering::Relaxed),
+        kind,
+        label: RefCell::new(String::new()),
+        enabled: Cell::new(true),
+        visible: Cell::new(true),
+        checked: Cell::new(false),
+        shortcut: Cell::new(None),
+        group: RefCell::new(None),
+        activate: RefCell::new(None),
+    }))
+}
+
+/// Groups descriptive menu entries without selecting a native backend.
+#[component]
+pub fn Menu(props: &MenuProps, element: &Element) -> Element {
+    let host = element
+        .context::<MenuHostContext>()
+        .expect("Menu must be contained by MenuBar, ContextMenu, or a menu host");
+    let menu = MenuModel::new();
+    host.menu.set(Some(menu.clone()));
+    element.on_unmount(closure!(
+        [host, menu] || {
+            if host
+                .menu
+                .get()
+                .as_ref()
+                .is_some_and(|current| current.ptr_eq(&menu))
+            {
+                host.menu.set(None);
+            }
+        }
+    ));
+
+    layout! {
+        ContextProvider<MenuModelContext>(MenuModelContext(menu)) {
+            $(props.children.clone())
+        }
+    }
+}
+
+/// Adds a descriptive submenu without selecting a native backend.
+#[component]
+pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
+    let parent = element.context::<MenuModelContext>().unwrap().0.clone();
+    let submenu = MenuModel::new();
+    let entry = new_entry(MenuEntryKind::Submenu(submenu.clone()));
+    place_entry(element, parent.clone(), entry.clone());
+    common_effects(
+        parent,
+        entry,
+        props.label.clone(),
+        props.enabled.clone(),
+        props.visible.clone(),
+        PropValue::from_plain(None),
+    );
+
+    layout! {
+        ContextProvider<MenuModelContext>(MenuModelContext(submenu)) {
+            $(props.children.clone())
+        }
+    }
+}
+
+/// Adds a descriptive actionable menu item.
+#[component]
+pub fn MenuItem(props: &MenuItemProps, element: &Element) {
+    let menu = element.context::<MenuModelContext>().unwrap().0.clone();
+    let entry = new_entry(MenuEntryKind::Item);
+    entry.0.activate.replace(Some(callback!(
+        [props.on_activate] || {
+            if let Some(activate) = on_activate.get() {
+                activate();
+            }
+        }
+    )));
+    place_entry(element, menu.clone(), entry.clone());
+    common_effects(
+        menu,
+        entry,
+        props.label.clone(),
+        props.enabled.clone(),
+        props.visible.clone(),
+        props.shortcut.clone(),
+    );
+}
+
+/// Adds a descriptive checkable menu item.
+#[component]
+pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
+    let menu = element.context::<MenuModelContext>().unwrap().0.clone();
+    let entry = new_entry(MenuEntryKind::Check);
+    let weak_entry: Weak<MenuEntryData> = Rc::downgrade(&entry.0);
+    entry.0.activate.replace(Some(callback!(
+        [menu, weak_entry, props.on_checked_change] || {
+            if let Some(entry) = weak_entry.upgrade() {
+                let checked = !entry.checked.get();
+                entry.checked.set(checked);
+                menu.changed();
+                if let Some(change) = on_checked_change.get() {
+                    change(checked);
+                }
+            }
+        }
+    )));
+    place_entry(element, menu.clone(), entry.clone());
+    common_effects(
+        menu.clone(),
+        entry.clone(),
+        props.label.clone(),
+        props.enabled.clone(),
+        props.visible.clone(),
+        props.shortcut.clone(),
+    );
+    scoped_effect!(
+        [menu, entry, props.checked] || {
+            entry.0.checked.set(checked.get());
+            menu.changed();
+        }
+    );
+}
+
+/// Adds a descriptive mutually exclusive menu item.
+#[component]
+pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
+    let menu = element.context::<MenuModelContext>().unwrap().0.clone();
+    let entry = new_entry(MenuEntryKind::Radio);
+    let weak_entry: Weak<MenuEntryData> = Rc::downgrade(&entry.0);
+    entry.0.activate.replace(Some(callback!(
+        [menu, weak_entry, props.group, props.on_select] || {
+            if let Some(selected) = weak_entry.upgrade() {
+                let group = group.get();
+                for entry in menu.0.entries.borrow().iter() {
+                    if matches!(entry.0.kind, MenuEntryKind::Radio)
+                        && entry.0.group.borrow().as_deref() == Some(group.as_str())
+                    {
+                        entry.0.checked.set(Rc::ptr_eq(&entry.0, &selected));
+                    }
+                }
+                menu.changed();
+                if let Some(select) = on_select.get() {
+                    select();
+                }
+            }
+        }
+    )));
+    place_entry(element, menu.clone(), entry.clone());
+    common_effects(
+        menu.clone(),
+        entry.clone(),
+        props.label.clone(),
+        props.enabled.clone(),
+        props.visible.clone(),
+        props.shortcut.clone(),
+    );
+    scoped_effect!(
+        [menu, entry, props.selected] || {
+            entry.0.checked.set(selected.get());
+            menu.changed();
+        }
+    );
+    scoped_effect!(
+        [menu, entry, props.group] || {
+            *entry.0.group.borrow_mut() = Some(group.get());
+            menu.changed();
+        }
+    );
+}
+
+/// Adds a descriptive separator between adjacent menu entries.
+#[component]
+pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
+    let menu = element.context::<MenuModelContext>().unwrap().0.clone();
+    let entry = new_entry(MenuEntryKind::Separator);
+    place_entry(element, menu.clone(), entry.clone());
+    scoped_effect!(
+        [menu, entry, props.visible] || {
+            entry.0.visible.set(visible.get());
+            menu.changed();
+        }
+    );
 }
 
 /// Properties for a menu presented from a visual element.

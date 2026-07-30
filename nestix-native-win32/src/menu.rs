@@ -3,17 +3,21 @@ use std::{
     cell::{Cell, RefCell},
     collections::HashMap,
     rc::{Rc, Weak},
-    sync::atomic::{AtomicUsize, Ordering},
 };
 
 use nestix::{
-    Element, PropValue, Shared, State, callback, closure, component, components::ContextProvider,
+    Element, Shared, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
-    ContextMenuRegistration, MenuBarProps, MenuItemProps, MenuProps, MenuSeparatorProps,
-    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    ContextMenuPosition, ContextMenuPresenter, ContextMenuProps, ContextMenuRegistration,
+    MenuBarProps, MenuEntryKind, MenuHostContext, MenuModel, Shortcut, ShortcutKey,
+    ShortcutModifiers,
+};
+
+pub use nestix_native_core::{
+    CheckMenuItem, CheckMenuItemProps, Menu, MenuItem, MenuItemProps, MenuProps, MenuSeparator,
+    MenuSeparatorProps, RadioMenuItem, RadioMenuItemProps, Submenu, SubmenuProps,
 };
 use windows::{
     Win32::{
@@ -40,7 +44,6 @@ use windows::{
 
 use crate::surface::{VisualHandle, visual_handle};
 
-static NEXT_ID: AtomicUsize = AtomicUsize::new(1);
 const SUBCLASS_ID: usize = 0x4e_65_73_74_69_78;
 
 thread_local! {
@@ -86,26 +89,12 @@ struct Entry {
     visible: Cell<bool>,
     checked: Cell<bool>,
     shortcut: Cell<Option<Shortcut>>,
-    group: RefCell<Option<String>>,
 }
-
-#[derive(Clone)]
-struct MenuContext(Rc<MenuData>);
 
 #[derive(Clone)]
 struct ContextMenuContext {
     menu: State<Option<Rc<MenuData>>>,
     target: State<Option<Shared<dyn Any>>>,
-}
-
-#[derive(Clone)]
-pub(crate) struct TrayMenuContext {
-    pub menu: State<Option<Rc<MenuData>>>,
-}
-
-#[derive(Clone)]
-struct MenuBarContext {
-    menu: State<Option<Rc<MenuData>>>,
 }
 
 fn new_menu(popup: bool) -> Rc<MenuData> {
@@ -120,6 +109,40 @@ fn new_menu(popup: bool) -> Rc<MenuData> {
         }),
         entries: RefCell::new(Vec::new()),
     })
+}
+
+pub(crate) fn render_menu_model(model: &MenuModel, popup: bool) -> Rc<MenuData> {
+    let menu = new_menu(popup);
+    let entries = model
+        .entries()
+        .into_iter()
+        .filter(|entry| entry.visible())
+        .map(|description| {
+            let kind = match description.kind() {
+                MenuEntryKind::Separator => EntryKind::Separator,
+                MenuEntryKind::Submenu(submenu) => {
+                    EntryKind::Submenu(render_menu_model(&submenu, true))
+                }
+                MenuEntryKind::Item | MenuEntryKind::Check | MenuEntryKind::Radio => {
+                    EntryKind::Item {
+                        id: description.id(),
+                        action: callback!([description] || description.activate()),
+                    }
+                }
+            };
+            Rc::new(Entry {
+                kind,
+                label: RefCell::new(description.label()),
+                enabled: Cell::new(description.enabled()),
+                visible: Cell::new(true),
+                checked: Cell::new(description.checked()),
+                shortcut: Cell::new(description.shortcut()),
+            })
+        })
+        .collect();
+    *menu.entries.borrow_mut() = entries;
+    menu.rebuild();
+    menu
 }
 
 impl MenuData {
@@ -318,66 +341,22 @@ fn shortcut_text(shortcut: Shortcut) -> String {
 }
 
 #[component]
-/// Creates a native Win32 menu containing the supplied menu entries.
-pub fn Menu(props: &MenuProps, element: &Element) -> Element {
-    let menu_bar = element.context::<MenuBarContext>();
-    let menu = new_menu(menu_bar.is_none());
-    if let Some(context) = menu_bar {
-        context.menu.set(Some(menu.clone()));
-        element.on_unmount(closure!(
-            [context, menu] || {
-                if context
-                    .menu
-                    .get()
-                    .as_ref()
-                    .is_some_and(|value| Rc::ptr_eq(value, &menu))
-                {
-                    context.menu.set(None);
-                }
-            }
-        ));
-    } else if let Some(context) = element.context::<ContextMenuContext>() {
-        context.menu.set(Some(menu.clone()));
-        element.on_unmount(closure!(
-            [context, menu] || {
-                if context
-                    .menu
-                    .get()
-                    .as_ref()
-                    .is_some_and(|value| Rc::ptr_eq(value, &menu))
-                {
-                    context.menu.set(None);
-                }
-            }
-        ));
-    } else if let Some(context) = element.context::<TrayMenuContext>() {
-        context.menu.set(Some(menu.clone()));
-        element.on_unmount(closure!(
-            [context, menu] || {
-                if context
-                    .menu
-                    .get()
-                    .as_ref()
-                    .is_some_and(|value| Rc::ptr_eq(value, &menu))
-                {
-                    context.menu.set(None);
-                }
-            }
-        ));
-    }
-    layout! {
-        ContextProvider<MenuContext>(MenuContext(menu)) {
-            $(props.children.clone())
-        }
-    }
-}
-
-#[component]
 /// Installs a native Win32 menu bar on the containing window.
 pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let window = element.context::<crate::WindowContext>();
     let menu = create_state(None::<Rc<MenuData>>);
+    let description = create_state(None::<MenuModel>);
     let attached = Rc::new(RefCell::new(None::<Rc<MenuData>>));
+
+    scoped_effect!(
+        [description, menu] || {
+            menu.set(
+                description
+                    .get()
+                    .map(|model| render_menu_model(&model, false)),
+            );
+        }
+    );
 
     scoped_effect!(
         [window, menu, attached] || {
@@ -410,7 +389,7 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuBarContext>(MenuBarContext { menu }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: description }) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }
@@ -458,234 +437,6 @@ fn detach_menu_bar(hwnd: HWND, menu: &Rc<MenuData>) {
             let _ = DrawMenuBar(hwnd);
         }
     }
-}
-
-fn place_entry(element: &Element, menu: Rc<MenuData>, entry: Rc<Entry>) {
-    element.on_place(closure!(
-        [menu, entry] | placement | {
-            let mut entries = menu.entries.borrow_mut();
-            entries.retain(|current| !Rc::ptr_eq(current, &entry));
-            let index = placement.index.unwrap_or(entries.len()).min(entries.len());
-            entries.insert(index, entry.clone());
-            drop(entries);
-            menu.rebuild();
-        }
-    ));
-    element.on_unmount(closure!(
-        [menu, entry] || {
-            menu.entries
-                .borrow_mut()
-                .retain(|current| !Rc::ptr_eq(current, &entry));
-            menu.rebuild();
-        }
-    ));
-}
-
-fn common_effects(
-    menu: Rc<MenuData>,
-    entry: Rc<Entry>,
-    label: PropValue<String>,
-    enabled: PropValue<bool>,
-    visible: PropValue<bool>,
-    shortcut: PropValue<Option<Shortcut>>,
-) {
-    scoped_effect!(
-        [menu, entry, label, enabled, visible, shortcut] || {
-            *entry.label.borrow_mut() = label.get();
-            entry.enabled.set(enabled.get());
-            entry.visible.set(visible.get());
-            entry.shortcut.set(shortcut.get());
-            menu.rebuild();
-        }
-    );
-}
-
-#[component]
-/// Adds a labeled submenu to its containing native menu.
-pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
-    let parent = element.context::<MenuContext>().unwrap().0.clone();
-    let submenu = new_menu(true);
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Submenu(submenu.clone()),
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(true),
-        visible: Cell::new(true),
-        checked: Cell::new(false),
-        shortcut: Cell::new(None),
-        group: RefCell::new(None),
-    });
-    place_entry(element, parent.clone(), entry.clone());
-    common_effects(
-        parent,
-        entry,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        PropValue::from_plain(None),
-    );
-    layout! {
-        ContextProvider<MenuContext>(MenuContext(submenu)) {
-            $(props.children.clone())
-        }
-    }
-}
-
-#[component]
-/// Adds an actionable item to its containing native menu.
-pub fn MenuItem(props: &MenuItemProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Item {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            action: callback!(
-                [props.on_activate] || {
-                    if let Some(action) = on_activate.get() {
-                        action();
-                    }
-                }
-            ),
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(true),
-        visible: Cell::new(true),
-        checked: Cell::new(false),
-        shortcut: Cell::new(None),
-        group: RefCell::new(None),
-    });
-    place_entry(element, menu.clone(), entry.clone());
-    common_effects(
-        menu,
-        entry,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-}
-
-#[component]
-/// Adds a checkable item to its containing native menu.
-pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let entry_slot = Rc::new(RefCell::new(Weak::<Entry>::new()));
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Item {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            action: callback!(
-                [entry_slot, props.on_checked_change] || {
-                    if let Some(entry) = entry_slot.borrow().upgrade() {
-                        let checked = !entry.checked.get();
-                        entry.checked.set(checked);
-                        if let Some(action) = on_checked_change.get() {
-                            action(checked);
-                        }
-                    }
-                }
-            ),
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(true),
-        visible: Cell::new(true),
-        checked: Cell::new(props.checked.get()),
-        shortcut: Cell::new(None),
-        group: RefCell::new(None),
-    });
-    *entry_slot.borrow_mut() = Rc::downgrade(&entry);
-    place_entry(element, menu.clone(), entry.clone());
-    common_effects(
-        menu.clone(),
-        entry.clone(),
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-    scoped_effect!(
-        [menu, entry, props.checked] || {
-            entry.checked.set(checked.get());
-            menu.rebuild();
-        }
-    );
-}
-
-#[component]
-/// Adds an item in a mutually exclusive group to its containing native menu.
-pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let entry_slot = Rc::new(RefCell::new(Weak::<Entry>::new()));
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Item {
-            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
-            action: callback!(
-                [menu, entry_slot, props.group, props.on_select] || {
-                    if let Some(selected) = entry_slot.borrow().upgrade() {
-                        for item in menu.entries.borrow().iter() {
-                            if !Rc::ptr_eq(item, &selected)
-                                && item.checked.get()
-                                && item.group.borrow().as_deref() == Some(group.get().as_str())
-                            {
-                                item.checked.set(false);
-                            }
-                        }
-                        selected.checked.set(true);
-                        if let Some(action) = on_select.get() {
-                            action();
-                        }
-                        menu.rebuild();
-                    }
-                }
-            ),
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(true),
-        visible: Cell::new(true),
-        checked: Cell::new(props.selected.get()),
-        shortcut: Cell::new(None),
-        group: RefCell::new(Some(props.group.get())),
-    });
-    *entry_slot.borrow_mut() = Rc::downgrade(&entry);
-    place_entry(element, menu.clone(), entry.clone());
-    common_effects(
-        menu.clone(),
-        entry.clone(),
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-    scoped_effect!(
-        [menu, entry, props.selected] || {
-            entry.checked.set(selected.get());
-            menu.rebuild();
-        }
-    );
-    scoped_effect!(
-        [entry, props.group] || {
-            *entry.group.borrow_mut() = Some(group.get());
-        }
-    );
-}
-
-#[component]
-/// Adds a visual separator to its containing native menu.
-pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Separator,
-        label: RefCell::new(String::new()),
-        enabled: Cell::new(true),
-        visible: Cell::new(props.visible.get()),
-        checked: Cell::new(false),
-        shortcut: Cell::new(None),
-        group: RefCell::new(None),
-    });
-    place_entry(element, menu.clone(), entry.clone());
-    scoped_effect!(
-        [menu, entry, props.visible] || {
-            entry.visible.set(visible.get());
-            menu.rebuild();
-        }
-    );
 }
 
 fn show_menu(menu: &MenuData, target: HWND, position: ContextMenuPosition) -> bool {
@@ -796,6 +547,17 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let menu = create_state(None::<Rc<MenuData>>);
     let target = create_state(None::<Shared<dyn Any>>);
     let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
+    let description = create_state(None::<MenuModel>);
+    let native_menu = menu.clone();
+    scoped_effect!(
+        [description, native_menu] || {
+            native_menu.set(
+                description
+                    .get()
+                    .map(|model| render_menu_model(&model, true)),
+            );
+        }
+    );
     let registered_target = Rc::new(RefCell::new(None::<(HWND, Weak<MenuData>)>));
     let context = Rc::new(ContextMenuContext {
         menu: menu.clone(),
@@ -895,7 +657,9 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield $(menu.get())
+            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone() }) {
+                $(menu.get())
+            }
         }
     }
 }
@@ -926,7 +690,6 @@ mod tests {
             visible: Cell::new(true),
             checked: Cell::new(false),
             shortcut: Cell::new(None),
-            group: RefCell::new(None),
         }));
         menu.entries.borrow_mut().push(Rc::new(Entry {
             kind: EntryKind::Submenu(submenu.clone()),
@@ -935,7 +698,6 @@ mod tests {
             visible: Cell::new(true),
             checked: Cell::new(false),
             shortcut: Cell::new(None),
-            group: RefCell::new(None),
         }));
 
         assert!(menu.activate(1));

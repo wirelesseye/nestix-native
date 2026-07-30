@@ -1,13 +1,18 @@
 use std::{any::Any, cell::RefCell, collections::HashMap, rc::Rc};
 
 use nestix::{
-    Element, Layout, PropValue, Shared, State, callback, closure, component,
-    components::ContextProvider, create_state, layout, scoped_effect,
+    Element, Layout, Shared, State, callback, closure, component, components::ContextProvider,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
-    ContextMenuRegistration, MenuBarProps, MenuItemProps, MenuProps, MenuSeparatorProps,
-    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    ContextMenuPosition, ContextMenuPresenter, ContextMenuProps, ContextMenuRegistration,
+    MenuBarProps, MenuEntryKind, MenuHostContext, MenuModel, Shortcut, ShortcutKey,
+    ShortcutModifiers,
+};
+
+pub use nestix_native_core::{
+    CheckMenuItem, CheckMenuItemProps, Menu, MenuItem, MenuItemProps, MenuProps, MenuSeparator,
+    MenuSeparatorProps, RadioMenuItem, RadioMenuItemProps, Submenu, SubmenuProps,
 };
 use objc2::{
     DefinedClass, MainThreadMarker, MainThreadOnly, Message, define_class, msg_send, rc::Retained,
@@ -20,45 +25,10 @@ use objc2_foundation::{NSObject, NSObjectProtocol, NSPoint, NSString};
 
 use crate::{root::RootContext, window::WindowContext};
 
-thread_local! {
-    static HANDLERS: RefCell<HashMap<String, Retained<MenuItemHandler>>> = RefCell::new(HashMap::new());
-}
-
-#[derive(Clone)]
-struct MenuContext {
-    add: Shared<dyn Fn(&NSMenuItem)>,
-    insert: Shared<dyn Fn(&NSMenuItem, usize)>,
-    remove: Shared<dyn Fn(&NSMenuItem)>,
-}
-
 #[derive(Clone)]
 pub(crate) struct ContextMenuContext {
     menu: State<Option<Retained<NSMenu>>>,
     target: State<Option<Shared<dyn Any>>>,
-}
-
-#[derive(Clone)]
-pub(crate) struct TrayMenuContext {
-    pub menu: State<Option<Retained<NSMenu>>>,
-}
-
-#[derive(Clone)]
-struct MenuBarContext {
-    menu: State<Option<Retained<NSMenu>>>,
-}
-
-fn menu_context(menu: &Retained<NSMenu>) -> MenuContext {
-    MenuContext {
-        add: callback!([menu] |item: &NSMenuItem| menu.addItem(item)),
-        insert: callback!([menu] |item: &NSMenuItem, index: usize| {
-            menu.insertItem_atIndex(item, index as _)
-        }),
-        remove: callback!([menu] |item: &NSMenuItem| {
-            if menu.indexOfItem(item) >= 0 {
-                menu.removeItem(item);
-            }
-        }),
-    }
 }
 
 fn new_menu(mtm: MainThreadMarker) -> Retained<NSMenu> {
@@ -68,67 +38,23 @@ fn new_menu(mtm: MainThreadMarker) -> Retained<NSMenu> {
 }
 
 #[component]
-pub fn Menu(props: &MenuProps, element: &Element) -> Element {
-    let mtm = MainThreadMarker::new().unwrap();
-    let menu = new_menu(mtm);
-
-    if let Some(context) = element.context::<MenuBarContext>() {
-        context.menu.set(Some(menu.clone()));
-        element.on_unmount(closure!(
-            [context, menu] || {
-                if contains_menu(&context.menu.get(), &menu) {
-                    context.menu.set(None);
-                }
-            }
-        ));
-    } else if let Some(context) = element.context::<ContextMenuContext>() {
-        context.menu.set(Some(menu.clone()));
-        scoped_effect!(
-            [element, context.target] || {
-                if let Some(handle) = target.get()
-                    && let Some(pointer) = handle.downcast_ref::<*const NSObject>()
-                {
-                    // Make the invisible menu subtree resolve to the wrapped
-                    // view for placement of later visual siblings.
-                    element.provide_handle(*pointer);
-                }
-            }
-        );
-        element.on_unmount(closure!(
-            [context, menu] || {
-                if context
-                    .menu
-                    .get()
-                    .is_some_and(|current| std::ptr::eq::<NSMenu>(current.as_ref(), menu.as_ref()))
-                {
-                    context.menu.set(None);
-                }
-            }
-        ));
-    } else if let Some(context) = element.context::<TrayMenuContext>() {
-        context.menu.set(Some(menu.clone()));
-        element.on_unmount(closure!(
-            [context, menu] || {
-                if contains_menu(&context.menu.get(), &menu) {
-                    context.menu.set(None);
-                }
-            }
-        ));
-    }
-
-    layout! {
-        ContextProvider<MenuContext>(menu_context(&menu)) {
-            $(props.children.clone())
-        }
-    }
-}
-
-#[component]
 pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     let root = element.context::<RootContext>().unwrap();
     let window = element.context::<WindowContext>();
     let menu = create_state(None::<Retained<NSMenu>>);
+    let description = create_state(None::<MenuModel>);
+    let handlers = Rc::new(RefCell::new(HashMap::new()));
     let registered = Rc::new(RefCell::new(None::<Retained<NSMenu>>));
+
+    scoped_effect!(
+        [description, menu, handlers] || {
+            menu.set(
+                description
+                    .get()
+                    .map(|model| render_menu_model(&model, &handlers)),
+            );
+        }
+    );
 
     scoped_effect!(
         [root, window, menu, registered] || {
@@ -158,7 +84,7 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuBarContext>(MenuBarContext { menu }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: description }) {
             $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
         }
     }
@@ -183,136 +109,25 @@ fn unregister_menu(root: &RootContext, window: Option<&WindowContext>, menu: &NS
 }
 
 #[component]
-pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
-    let mtm = MainThreadMarker::new().unwrap();
-    let parent = element.context::<MenuContext>().unwrap();
-    let submenu = new_menu(mtm);
-    let item = new_item(&props.label.get(), None, mtm);
-    item.setSubmenu(Some(&submenu));
-
-    place_item(element, &parent, &item);
-    scoped_effect!(
-        [item, props.label, props.enabled, props.visible] || {
-            item.setTitle(&NSString::from_str(&label.get()));
-            item.setEnabled(enabled.get());
-            item.setHidden(!visible.get());
-        }
-    );
-
-    layout! {
-        ContextProvider<MenuContext>(menu_context(&submenu)) {
-            $(props.children.clone())
-        }
-    }
-}
-
-#[component]
-pub fn MenuItem(props: &MenuItemProps, element: &Element) {
-    let mtm = MainThreadMarker::new().unwrap();
-    let parent = element.context::<MenuContext>().unwrap();
-    let handler = MenuItemHandler::new(
-        mtm,
-        MenuItemHandlerState::Activate(props.on_activate.clone()),
-    );
-    let item = new_item(&props.label.get(), Some(&handler), mtm);
-    retain_handler(element, handler);
-    place_item(element, &parent, &item);
-    update_common_item(
-        &item,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-}
-
-#[component]
-pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
-    let mtm = MainThreadMarker::new().unwrap();
-    let parent = element.context::<MenuContext>().unwrap();
-    let handler = MenuItemHandler::new(
-        mtm,
-        MenuItemHandlerState::Check(props.on_checked_change.clone()),
-    );
-    let item = new_item(&props.label.get(), Some(&handler), mtm);
-    retain_handler(element, handler);
-    place_item(element, &parent, &item);
-    update_common_item(
-        &item,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-    scoped_effect!(
-        [item, props.checked] || {
-            item.setState(if checked.get() {
-                NSControlStateValueOn
-            } else {
-                NSControlStateValueOff
-            });
-        }
-    );
-}
-
-#[component]
-pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
-    let mtm = MainThreadMarker::new().unwrap();
-    let parent = element.context::<MenuContext>().unwrap();
-    let handler = MenuItemHandler::new(
-        mtm,
-        MenuItemHandlerState::Radio {
-            group: props.group.clone(),
-            on_select: props.on_select.clone(),
-        },
-    );
-    let item = new_item(&props.label.get(), Some(&handler), mtm);
-    retain_handler(element, handler);
-    place_item(element, &parent, &item);
-    update_common_item(
-        &item,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-    scoped_effect!(
-        [item, props.selected] || {
-            item.setState(if selected.get() {
-                NSControlStateValueOn
-            } else {
-                NSControlStateValueOff
-            });
-        }
-    );
-    scoped_effect!(
-        [item, props.group] || {
-            let group = NSString::from_str(&group.get());
-            unsafe { item.setRepresentedObject(Some(&group)) };
-        }
-    );
-}
-
-#[component]
-pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
-    let mtm = MainThreadMarker::new().unwrap();
-    let parent = element.context::<MenuContext>().unwrap();
-    let item = NSMenuItem::separatorItem(mtm);
-    place_item(element, &parent, &item);
-    scoped_effect!(
-        [item, props.visible] || {
-            item.setHidden(!visible.get());
-        }
-    );
-}
-
-#[component]
 pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     let context = Rc::new(ContextMenuContext {
         menu: create_state(None),
         target: create_state(None),
     });
     let registration = Rc::new(RefCell::new(None::<ContextMenuRegistration>));
+    let description = create_state(None::<MenuModel>);
+    let handlers = Rc::new(RefCell::new(HashMap::new()));
+    let native_menu = context.menu.clone();
+
+    scoped_effect!(
+        [description, native_menu, handlers] || {
+            native_menu.set(
+                description
+                    .get()
+                    .map(|model| render_menu_model(&model, &handlers)),
+            );
+        }
+    );
 
     scoped_effect!(
         [context, props.children] || {
@@ -388,9 +203,55 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield $(menu.get())
+            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone() }) {
+                $(menu.get())
+            }
         }
     }
+}
+
+pub(crate) fn render_menu_model(
+    model: &MenuModel,
+    handlers: &RefCell<HashMap<usize, Retained<MenuItemHandler>>>,
+) -> Retained<NSMenu> {
+    let mtm = MainThreadMarker::new().unwrap();
+    let menu = new_menu(mtm);
+
+    for entry in model.entries().into_iter().filter(|entry| entry.visible()) {
+        match entry.kind() {
+            MenuEntryKind::Separator => menu.addItem(&NSMenuItem::separatorItem(mtm)),
+            MenuEntryKind::Submenu(submenu) => {
+                let submenu = render_menu_model(&submenu, handlers);
+                let item = new_item(&entry.label(), None, mtm);
+                item.setEnabled(entry.enabled());
+                item.setSubmenu(Some(&submenu));
+                menu.addItem(&item);
+            }
+            MenuEntryKind::Item | MenuEntryKind::Check | MenuEntryKind::Radio => {
+                let existing = handlers.borrow().get(&entry.id()).cloned();
+                let handler = existing.unwrap_or_else(|| {
+                    let activate: Shared<dyn Fn()> = callback!([entry] || entry.activate());
+                    let handler =
+                        MenuItemHandler::new(mtm, MenuItemHandlerState::Activate(activate));
+                    handlers.borrow_mut().insert(entry.id(), handler.clone());
+                    handler
+                });
+                let item = new_item(&entry.label(), Some(&handler), mtm);
+                item.setEnabled(entry.enabled());
+                if matches!(entry.kind(), MenuEntryKind::Check | MenuEntryKind::Radio) {
+                    item.setState(if entry.checked() {
+                        NSControlStateValueOn
+                    } else {
+                        NSControlStateValueOff
+                    });
+                }
+                apply_shortcut(&item, entry.shortcut());
+                menu.addItem(&item);
+            }
+        }
+    }
+
+    menu
 }
 
 fn new_item(
@@ -408,48 +269,6 @@ fn new_item(
     };
     unsafe { item.setTarget(handler.map(|handler| handler.as_ref())) };
     item
-}
-
-fn place_item(element: &Element, parent: &MenuContext, item: &Retained<NSMenuItem>) {
-    element.on_place(closure!(
-        [parent, item] | placement | {
-            if let Some(index) = placement.index {
-                (parent.remove)(&item);
-                (parent.insert)(&item, index);
-            } else {
-                (parent.add)(&item);
-            }
-        }
-    ));
-    element.on_unmount(closure!([parent, item] || (parent.remove)(&item)));
-}
-
-fn retain_handler(element: &Element, handler: Retained<MenuItemHandler>) {
-    let id = nanoid::nanoid!();
-    HANDLERS.with_borrow_mut(|handlers| {
-        handlers.insert(id.clone(), handler);
-    });
-    element.on_unmount(move || {
-        HANDLERS.with_borrow_mut(|handlers| handlers.remove(&id));
-    });
-}
-
-fn update_common_item(
-    item: &Retained<NSMenuItem>,
-    label: PropValue<String>,
-    enabled: PropValue<bool>,
-    visible: PropValue<bool>,
-    shortcut: PropValue<Option<Shortcut>>,
-) {
-    let item = item.clone();
-    scoped_effect!(
-        [item, label, enabled, visible, shortcut] || {
-            item.setTitle(&NSString::from_str(&label.get()));
-            item.setEnabled(enabled.get());
-            item.setHidden(!visible.get());
-            apply_shortcut(&item, shortcut.get());
-        }
-    );
 }
 
 fn apply_shortcut(item: &NSMenuItem, shortcut: Option<Shortcut>) {
@@ -491,13 +310,8 @@ fn apply_shortcut(item: &NSMenuItem, shortcut: Option<Shortcut>) {
     item.setKeyEquivalentModifierMask(flags);
 }
 
-enum MenuItemHandlerState {
-    Activate(PropValue<Option<Shared<dyn Fn()>>>),
-    Check(PropValue<Option<Shared<dyn Fn(bool)>>>),
-    Radio {
-        group: PropValue<String>,
-        on_select: PropValue<Option<Shared<dyn Fn()>>>,
-    },
+pub(crate) enum MenuItemHandlerState {
+    Activate(Shared<dyn Fn()>),
 }
 
 define_class!(
@@ -505,49 +319,15 @@ define_class!(
     #[thread_kind = MainThreadOnly]
     #[name = "NestixMenuItemHandler"]
     #[ivars = MenuItemHandlerState]
-    struct MenuItemHandler;
+    pub(crate) struct MenuItemHandler;
 
     unsafe impl NSObjectProtocol for MenuItemHandler {}
 
     impl MenuItemHandler {
         #[unsafe(method(activate:))]
-        fn activate(&self, sender: &NSMenuItem) {
-            match self.ivars() {
-                MenuItemHandlerState::Activate(callback) => {
-                    if let Some(callback) = callback.get() {
-                        callback();
-                    }
-                }
-                MenuItemHandlerState::Check(callback) => {
-                    let checked = sender.state() != NSControlStateValueOn;
-                    sender.setState(if checked {
-                        NSControlStateValueOn
-                    } else {
-                        NSControlStateValueOff
-                    });
-                    if let Some(callback) = callback.get() {
-                        callback(checked);
-                    }
-                }
-                MenuItemHandlerState::Radio { group, on_select } => {
-                    let group = group.get();
-                    if let Some(menu) = unsafe { sender.menu() } {
-                        for item in menu.itemArray().iter() {
-                            let is_same_group = item
-                                .representedObject()
-                                .and_then(|value| value.downcast::<NSString>().ok())
-                                .is_some_and(|value| value.to_string() == group);
-                            if is_same_group {
-                                item.setState(NSControlStateValueOff);
-                            }
-                        }
-                    }
-                    sender.setState(NSControlStateValueOn);
-                    if let Some(callback) = on_select.get() {
-                        callback();
-                    }
-                }
-            }
+        fn activate(&self, _sender: &NSMenuItem) {
+            let MenuItemHandlerState::Activate(callback) = self.ivars();
+            callback();
         }
     }
 );

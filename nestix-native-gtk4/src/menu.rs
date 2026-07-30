@@ -1,19 +1,24 @@
 use std::{
     any::Any,
     cell::{Cell, RefCell},
-    rc::{Rc, Weak},
+    rc::Rc,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 use gtk4::{gio, glib, prelude::*};
 use nestix::{
-    Element, Layout, PropValue, Shared, State, callback, closure, component,
-    components::ContextProvider, create_state, layout, scoped_effect,
+    Element, Layout, Shared, State, callback, closure, component, components::ContextProvider,
+    create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    CheckMenuItemProps, ContextMenuPosition, ContextMenuPresenter, ContextMenuProps,
-    ContextMenuRegistration, MenuBarProps, MenuItemProps, MenuProps, MenuSeparatorProps,
-    RadioMenuItemProps, Shortcut, ShortcutKey, ShortcutModifiers, SubmenuProps,
+    ContextMenuPosition, ContextMenuPresenter, ContextMenuProps, ContextMenuRegistration,
+    MenuBarProps, MenuEntryKind, MenuHostContext, MenuModel, Shortcut, ShortcutKey,
+    ShortcutModifiers,
+};
+
+pub use nestix_native_core::{
+    CheckMenuItem, CheckMenuItemProps, Menu, MenuItem, MenuItemProps, MenuProps, MenuSeparator,
+    MenuSeparatorProps, RadioMenuItem, RadioMenuItemProps, Submenu, SubmenuProps,
 };
 
 static NEXT_CONTEXT_ID: AtomicUsize = AtomicUsize::new(1);
@@ -36,9 +41,6 @@ struct MenuBarContext {
     revision: State<usize>,
 }
 
-#[derive(Clone)]
-struct MenuContext(Rc<MenuData>);
-
 struct MenuData {
     model: gio::Menu,
     entries: RefCell<Vec<Rc<Entry>>>,
@@ -60,7 +62,6 @@ struct Entry {
     visible: Cell<bool>,
     checked: Cell<bool>,
     shortcut: Cell<Option<Shortcut>>,
-    group: RefCell<Option<String>>,
 }
 
 enum EntryKind {
@@ -202,59 +203,83 @@ impl MenuData {
     }
 }
 
-#[component]
-/// Creates a GTK menu model containing the supplied entries.
-pub fn Menu(props: &MenuProps, element: &Element) -> Element {
-    let menu_bar = element.context::<MenuBarContext>();
-    let context_menu = element.context::<ContextMenuContext>();
-    let (menu_slot, actions, action_prefix, revision) = if let Some(context) = &menu_bar {
-        (
-            context.menu.clone(),
-            context.actions.clone(),
-            context.action_prefix.clone(),
-            context.revision.clone(),
-        )
-    } else {
-        let context = context_menu
-            .as_ref()
-            .expect("Menu must be contained by MenuBar or ContextMenu");
-        (
-            context.menu.clone(),
-            context.actions.clone(),
-            context.action_prefix.clone(),
-            context.revision.clone(),
-        )
-    };
+fn render_menu_model(
+    model: &MenuModel,
+    actions: gio::SimpleActionGroup,
+    action_prefix: String,
+    revision: State<usize>,
+) -> Rc<MenuData> {
     let menu = MenuData::new(actions, action_prefix, revision);
-    menu_slot.set(Some(menu.clone()));
-
-    if let Some(context) = context_menu {
-        scoped_effect!(
-            [element, context.target] || {
-                if let Some(handle) = target.get()
-                    && let Some(widget) = handle.downcast_ref::<gtk4::Widget>()
-                {
-                    element.provide_handle(widget.clone());
+    let mut entries = Vec::new();
+    for description in model.entries().into_iter().filter(|entry| entry.visible()) {
+        let kind = match description.kind() {
+            MenuEntryKind::Separator => EntryKind::Separator,
+            MenuEntryKind::Submenu(submenu) => {
+                let submenu = render_menu_model(
+                    &submenu,
+                    menu.actions.clone(),
+                    menu.action_prefix.clone(),
+                    menu.revision.clone(),
+                );
+                let (action_name, action) = new_action(&menu, false);
+                EntryKind::Submenu {
+                    menu: submenu,
+                    action_name,
+                    action,
                 }
             }
-        );
-    }
-    element.on_unmount(closure!(
-        [menu_slot, menu] || {
-            if menu_slot
-                .get()
-                .as_ref()
-                .is_some_and(|current| Rc::ptr_eq(current, &menu))
-            {
-                menu_slot.set(None);
+            MenuEntryKind::Item => {
+                let (action_name, action) = new_action(&menu, false);
+                action.connect_activate(closure!([description] | _, _ | description.activate()));
+                EntryKind::Item {
+                    action_name,
+                    action,
+                }
             }
-        }
-    ));
+            MenuEntryKind::Check => {
+                let (action_name, action) = new_action(&menu, true);
+                action.set_state(&description.checked().to_variant());
+                action.connect_activate(closure!([description] | _, _ | description.activate()));
+                EntryKind::Check {
+                    action_name,
+                    action,
+                }
+            }
+            MenuEntryKind::Radio => {
+                let (action_name, target, action) = new_radio_action(&menu);
+                action.set_state(
+                    &if description.checked() {
+                        target.clone()
+                    } else {
+                        String::new()
+                    }
+                    .to_variant(),
+                );
+                action.connect_activate(closure!([description] | _, _ | description.activate()));
+                EntryKind::Radio {
+                    action_name,
+                    target,
+                    action,
+                }
+            }
+        };
+        entries.push(Rc::new(Entry {
+            kind,
+            label: RefCell::new(description.label()),
+            enabled: Cell::new(description.enabled()),
+            visible: Cell::new(true),
+            checked: Cell::new(description.checked()),
+            shortcut: Cell::new(description.shortcut()),
+        }));
+    }
+    *menu.entries.borrow_mut() = entries;
+    menu.rebuild();
+    menu
+}
 
-    layout! {
-        ContextProvider<MenuContext>(MenuContext(menu)) {
-            $(props.children.clone())
-        }
+fn clear_actions(actions: &gio::SimpleActionGroup) {
+    for name in actions.list_actions() {
+        actions.remove_action(&name);
     }
 }
 
@@ -269,6 +294,24 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
         action_prefix: format!("nestix-menu-bar-{context_id}"),
         revision: create_state(0),
     });
+    let description = create_state(None::<MenuModel>);
+    let native_menu = context.menu.clone();
+    let actions = context.actions.clone();
+    let action_prefix = context.action_prefix.clone();
+    let revision = context.revision.clone();
+    scoped_effect!(
+        [description, native_menu, actions, action_prefix, revision] || {
+            clear_actions(&actions);
+            native_menu.set(description.get().map(|model| {
+                render_menu_model(
+                    &model,
+                    actions.clone(),
+                    action_prefix.clone(),
+                    revision.clone(),
+                )
+            }));
+        }
+    );
     let menu_bar = gtk4::PopoverMenuBar::from_model(None::<&gio::MenuModel>);
     let shortcuts = Rc::new(RefCell::new(None::<gtk4::ShortcutController>));
 
@@ -335,224 +378,10 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuBarContext>(context) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: description }) {
             $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
         }
     }
-}
-
-#[component]
-/// Adds a labelled submenu to its containing GTK menu.
-pub fn Submenu(props: &SubmenuProps, element: &Element) -> Element {
-    let parent = element.context::<MenuContext>().unwrap().0.clone();
-    let submenu = MenuData::new(
-        parent.actions.clone(),
-        parent.action_prefix.clone(),
-        parent.revision.clone(),
-    );
-    let (action_name, action) = new_action(&parent, false);
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Submenu {
-            menu: submenu.clone(),
-            action_name,
-            action,
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(props.enabled.get()),
-        visible: Cell::new(props.visible.get()),
-        checked: Cell::new(false),
-        shortcut: Cell::new(None),
-        group: RefCell::new(None),
-    });
-    place_entry(element, parent.clone(), entry.clone());
-    common_effects(
-        parent,
-        entry,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        PropValue::from_plain(None),
-    );
-
-    layout! {
-        ContextProvider<MenuContext>(MenuContext(submenu)) {
-            $(props.children.clone())
-        }
-    }
-}
-
-#[component]
-/// Adds an actionable item to its containing GTK menu.
-pub fn MenuItem(props: &MenuItemProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let (action_name, action) = new_action(&menu, false);
-    action.connect_activate(closure!(
-        [props.on_activate] | _,
-        _ | {
-            if let Some(callback) = on_activate.get() {
-                callback();
-            }
-        }
-    ));
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Item {
-            action_name,
-            action,
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(props.enabled.get()),
-        visible: Cell::new(props.visible.get()),
-        checked: Cell::new(false),
-        shortcut: Cell::new(props.shortcut.get()),
-        group: RefCell::new(None),
-    });
-    place_entry(element, menu.clone(), entry.clone());
-    common_effects(
-        menu,
-        entry,
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-}
-
-#[component]
-/// Adds a checkable item to its containing GTK menu.
-pub fn CheckMenuItem(props: &CheckMenuItemProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let (action_name, action) = new_action(&menu, true);
-    let entry_slot = Rc::new(RefCell::new(Weak::<Entry>::new()));
-    action.connect_activate(closure!(
-        [entry_slot, props.on_checked_change] | action,
-        _ | {
-            let Some(entry) = entry_slot.borrow().upgrade() else {
-                return;
-            };
-            let checked = !entry.checked.get();
-            entry.checked.set(checked);
-            action.set_state(&checked.to_variant());
-            if let Some(callback) = on_checked_change.get() {
-                callback(checked);
-            }
-        }
-    ));
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Check {
-            action_name,
-            action,
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(props.enabled.get()),
-        visible: Cell::new(props.visible.get()),
-        checked: Cell::new(props.checked.get()),
-        shortcut: Cell::new(props.shortcut.get()),
-        group: RefCell::new(None),
-    });
-    *entry_slot.borrow_mut() = Rc::downgrade(&entry);
-    place_entry(element, menu.clone(), entry.clone());
-    common_effects(
-        menu.clone(),
-        entry.clone(),
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-    scoped_effect!(
-        [entry, props.checked] || {
-            let checked = checked.get();
-            entry.checked.set(checked);
-            entry.action().unwrap().set_state(&checked.to_variant());
-        }
-    );
-}
-
-#[component]
-/// Adds a mutually exclusive item to its containing GTK menu.
-pub fn RadioMenuItem(props: &RadioMenuItemProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let (action_name, target, action) = new_radio_action(&menu);
-    let entry_slot = Rc::new(RefCell::new(Weak::<Entry>::new()));
-    action.connect_activate(closure!(
-        [menu, entry_slot, target, props.group, props.on_select] | action,
-        _ | {
-            let Some(selected) = entry_slot.borrow().upgrade() else {
-                return;
-            };
-            let group = group.get();
-            for entry in menu.entries.borrow().iter() {
-                if matches!(entry.kind, EntryKind::Radio { .. })
-                    && entry.group.borrow().as_deref() == Some(group.as_str())
-                {
-                    let is_selected = Rc::ptr_eq(entry, &selected);
-                    entry.checked.set(is_selected);
-                    set_checked_state(entry, is_selected);
-                }
-            }
-            action.set_state(&target.to_variant());
-            if let Some(callback) = on_select.get() {
-                callback();
-            }
-        }
-    ));
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Radio {
-            action_name,
-            target,
-            action,
-        },
-        label: RefCell::new(props.label.get()),
-        enabled: Cell::new(props.enabled.get()),
-        visible: Cell::new(props.visible.get()),
-        checked: Cell::new(props.selected.get()),
-        shortcut: Cell::new(props.shortcut.get()),
-        group: RefCell::new(Some(props.group.get())),
-    });
-    *entry_slot.borrow_mut() = Rc::downgrade(&entry);
-    place_entry(element, menu.clone(), entry.clone());
-    common_effects(
-        menu.clone(),
-        entry.clone(),
-        props.label.clone(),
-        props.enabled.clone(),
-        props.visible.clone(),
-        props.shortcut.clone(),
-    );
-    scoped_effect!(
-        [entry, props.selected] || {
-            let selected = selected.get();
-            entry.checked.set(selected);
-            set_checked_state(&entry, selected);
-        }
-    );
-    scoped_effect!(
-        [entry, props.group] || {
-            *entry.group.borrow_mut() = Some(group.get());
-        }
-    );
-}
-
-#[component]
-/// Adds a visual separator to its containing GTK menu.
-pub fn MenuSeparator(props: &MenuSeparatorProps, element: &Element) {
-    let menu = element.context::<MenuContext>().unwrap().0.clone();
-    let entry = Rc::new(Entry {
-        kind: EntryKind::Separator,
-        label: RefCell::new(String::new()),
-        enabled: Cell::new(true),
-        visible: Cell::new(props.visible.get()),
-        checked: Cell::new(false),
-        shortcut: Cell::new(None),
-        group: RefCell::new(None),
-    });
-    place_entry(element, menu.clone(), entry.clone());
-    scoped_effect!(
-        [menu, entry, props.visible] || {
-            entry.visible.set(visible.get());
-            menu.rebuild();
-        }
-    );
 }
 
 #[component]
@@ -566,6 +395,24 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         action_prefix: format!("nestix-context-{context_id}"),
         revision: create_state(0),
     });
+    let description = create_state(None::<MenuModel>);
+    let native_menu = context.menu.clone();
+    let actions = context.actions.clone();
+    let action_prefix = context.action_prefix.clone();
+    let revision = context.revision.clone();
+    scoped_effect!(
+        [description, native_menu, actions, action_prefix, revision] || {
+            clear_actions(&actions);
+            native_menu.set(description.get().map(|model| {
+                render_menu_model(
+                    &model,
+                    actions.clone(),
+                    action_prefix.clone(),
+                    revision.clone(),
+                )
+            }));
+        }
+    );
     let popover = gtk4::PopoverMenu::from_model(None::<&gio::MenuModel>);
     popover.set_has_arrow(false);
     let attached = Rc::new(RefCell::new(None::<AttachedTarget>));
@@ -693,7 +540,9 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield $(menu.get())
+            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone() }) {
+                $(menu.get())
+            }
         }
     }
 }
@@ -768,64 +617,6 @@ fn new_radio_action(menu: &MenuData) -> (String, String, gio::SimpleAction) {
     );
     menu.actions.add_action(&action);
     (name, target, action)
-}
-
-fn set_checked_state(entry: &Entry, checked: bool) {
-    match &entry.kind {
-        EntryKind::Radio { target, action, .. } => action.set_state(
-            &if checked {
-                target.clone()
-            } else {
-                String::new()
-            }
-            .to_variant(),
-        ),
-        EntryKind::Check { action, .. } => action.set_state(&checked.to_variant()),
-        _ => {}
-    }
-}
-
-fn place_entry(element: &Element, menu: Rc<MenuData>, entry: Rc<Entry>) {
-    element.on_place(closure!(
-        [menu, entry] | placement | {
-            let mut entries = menu.entries.borrow_mut();
-            entries.retain(|current| !Rc::ptr_eq(current, &entry));
-            let index = placement.index.unwrap_or(entries.len()).min(entries.len());
-            entries.insert(index, entry.clone());
-            drop(entries);
-            menu.rebuild();
-        }
-    ));
-    element.on_unmount(closure!(
-        [menu, entry] || {
-            menu.entries
-                .borrow_mut()
-                .retain(|current| !Rc::ptr_eq(current, &entry));
-            if let Some(action_name) = entry.action_name() {
-                menu.actions.remove_action(action_name);
-            }
-            menu.rebuild();
-        }
-    ));
-}
-
-fn common_effects(
-    menu: Rc<MenuData>,
-    entry: Rc<Entry>,
-    label: PropValue<String>,
-    enabled: PropValue<bool>,
-    visible: PropValue<bool>,
-    shortcut: PropValue<Option<Shortcut>>,
-) {
-    scoped_effect!(
-        [menu, entry, label, enabled, visible, shortcut] || {
-            *entry.label.borrow_mut() = label.get();
-            entry.enabled.set(enabled.get());
-            entry.visible.set(visible.get());
-            entry.shortcut.set(shortcut.get());
-            menu.rebuild();
-        }
-    );
 }
 
 fn accelerator(shortcut: Shortcut) -> String {

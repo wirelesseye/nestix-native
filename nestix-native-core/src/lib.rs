@@ -246,35 +246,10 @@ pub trait Backend {
         None
     }
 
-    /// Creates a native menu.
-    fn create_menu(&self, _props: MenuProps) -> Option<Element> {
-        None
-    }
     /// Installs a menu as a window menu bar.
     fn create_menu_bar(&self, _props: MenuBarProps) -> Option<Element> {
         None
     }
-    /// Creates a submenu.
-    fn create_submenu(&self, _props: SubmenuProps) -> Option<Element> {
-        None
-    }
-    /// Creates an actionable menu item.
-    fn create_menu_item(&self, _props: MenuItemProps) -> Option<Element> {
-        None
-    }
-    /// Creates a checkable menu item.
-    fn create_check_menu_item(&self, _props: CheckMenuItemProps) -> Option<Element> {
-        None
-    }
-    /// Creates a radio-group menu item.
-    fn create_radio_menu_item(&self, _props: RadioMenuItemProps) -> Option<Element> {
-        None
-    }
-    /// Creates a menu separator.
-    fn create_menu_separator(&self, _props: MenuSeparatorProps) -> Option<Element> {
-        None
-    }
-
     /// The default preserves the wrapped visual target on unsupported backends.
     fn create_context_menu(&self, props: ContextMenuProps) -> Option<Element> {
         Some(props.children.get())

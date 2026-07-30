@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    collections::HashMap,
     path::PathBuf,
     rc::{Rc, Weak},
 };
@@ -9,7 +10,9 @@ use nestix::{
     Element, PropValue, State, callback, closure, component, components::ContextProvider,
     create_state, layout, scoped_effect,
 };
-use nestix_native_core::{ImageSource, TrayIconError, TrayIconEvent, TrayIconProps};
+use nestix_native_core::{
+    ImageSource, MenuHostContext, MenuModel, TrayIconError, TrayIconEvent, TrayIconProps,
+};
 use objc2::{
     AnyThread, DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send,
     rc::Retained, sel,
@@ -20,7 +23,7 @@ use objc2_app_kit::{
 };
 use objc2_foundation::{NSData, NSObject, NSObjectProtocol, NSOperationQueue, NSSize, NSString};
 
-use crate::menu::TrayMenuContext;
+use crate::menu::render_menu_model;
 
 struct TrayIconState {
     status_bar: Retained<NSStatusBar>,
@@ -193,6 +196,17 @@ fn process_name() -> String {
 pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     let mtm = MainThreadMarker::new().unwrap();
     let menu = create_state(None::<Retained<NSMenu>>);
+    let menu_description = create_state(None::<MenuModel>);
+    let menu_handlers = Rc::new(RefCell::new(HashMap::new()));
+    scoped_effect!(
+        [menu_description, menu, menu_handlers] || {
+            menu.set(
+                menu_description
+                    .get()
+                    .map(|model| render_menu_model(&model, &menu_handlers)),
+            );
+        }
+    );
     let state = Rc::new_cyclic(|state| {
         let handler = TrayIconHandler::new(
             mtm,
@@ -271,7 +285,7 @@ pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     element.on_unmount(closure!([state] || state.borrow_mut().remove_item()));
 
     layout! {
-        ContextProvider<TrayMenuContext>(TrayMenuContext { menu }) {
+        ContextProvider<MenuHostContext>(MenuHostContext { menu: menu_description }) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }

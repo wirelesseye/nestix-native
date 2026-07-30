@@ -3,8 +3,8 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    AlignItems, BackendCase, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton,
-    Root, Select, SelectOption, Slider, StyleProvider, Switch, Text, Window, style,
+    AlignItems, BackendCase, Button, Checkbox, FlexDirection, FlexView, Input, RadioButton, Root,
+    Select, SelectOption, Slider, StyleProvider, Switch, Text, Window, style,
 };
 
 fn main() {
