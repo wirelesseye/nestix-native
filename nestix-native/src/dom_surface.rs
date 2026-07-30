@@ -3,7 +3,9 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use nestix::{Element, component, components::ContextProvider, layout};
+use nestix::{
+    ComponentOutput, DetachedTree, Element, component, components::ContextProvider, layout,
+};
 use nestix_native_core::{Backend, WebViewBridge};
 use nestix_native_dom::{
     DomDocumentRoot, DomRendererContext, DomSurfaceId, EmbeddedDomRuntime, ManagedDomBridge,
@@ -36,6 +38,19 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
     let source = dom_template_source(props.template.get());
     let bridge: Rc<dyn WebViewBridge> = ManagedDomBridge::new(runtime.clone());
 
+    // Keep the managed document lifecycle-owned by DomSurface without placing
+    // the WebView in a private list that would hide DomSurface's predecessor.
+    let managed_tree = layout! {
+        DetachedTree {
+            ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {
+                ContextProvider<BackendContext>(BackendContext { backend: &DOM_BACKEND }) {
+                    DomDocumentRoot(.children = props.children.clone())
+                }
+            }
+        }
+    };
+    managed_tree.mount(Some(element));
+
     layout! {
         WebView(
             source,
@@ -45,12 +60,6 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
             .inspectable = props.inspectable.clone(),
             .controller = props.controller.clone(),
             .bridge = Some(bridge),
-        ) {
-            ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {
-                ContextProvider<BackendContext>(BackendContext { backend: &DOM_BACKEND }) {
-                    DomDocumentRoot(.children = props.children.clone())
-                }
-            }
-        }
+        )
     }
 }

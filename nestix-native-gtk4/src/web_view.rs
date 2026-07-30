@@ -6,10 +6,7 @@ use std::{
 
 use cargo_packager_resource_resolver::{PackageFormat, resources_dir};
 use gtk4::{gio, prelude::*};
-use nestix::{
-    Element, callback, closure, component, components::Fragment, create_state, layout,
-    scoped_effect,
-};
+use nestix::{Element, callback, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
     JavaScriptEvaluator, StyleContext, WebViewBridgeScriptContext, WebViewDevToolsError,
     WebViewPresenter, WebViewProps, WebViewRegistration, WebViewSource, dpi::LogicalSize,
@@ -24,7 +21,7 @@ use crate::layout::mount_leaf_with_intrinsic_size;
 
 /// GTK4 web view backed by WebKitGTK.
 #[component]
-pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
+pub fn WebView(props: &WebViewProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__gtk4_WebView"];
 
     let bridge = props.bridge.get();
@@ -201,12 +198,6 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             content_manager.unregister_script_message_handler(&handler_name, None);
             bridge.detach();
         });
-    }
-
-    layout! {
-        Fragment {
-            $(props.children.get())
-        }
     }
 }
 

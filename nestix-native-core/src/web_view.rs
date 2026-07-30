@@ -5,7 +5,7 @@ use std::{
     rc::Rc,
 };
 
-use nestix::{Layout, Shared, props};
+use nestix::{Shared, props};
 
 use crate::{ClassList, ViewProps};
 
@@ -238,11 +238,6 @@ pub struct WebViewProps {
     /// Optional native bridge installed before loading `source`.
     #[doc(hidden)]
     pub bridge: Option<Rc<dyn WebViewBridge>>,
-
-    /// Logical children owned by bridge-managed content.
-    #[doc(hidden)]
-    #[props(default)]
-    pub children: Layout,
 }
 
 #[cfg(test)]

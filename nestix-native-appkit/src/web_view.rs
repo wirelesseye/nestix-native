@@ -4,10 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use nestix::{
-    Element, callback, closure, component, components::Fragment, create_state, layout,
-    scoped_effect,
-};
+use nestix::{Element, callback, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
     JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext,
     WebViewDevToolsError, WebViewPresenter, WebViewProps, WebViewRegistration, WebViewSource,
@@ -33,7 +30,7 @@ use crate::native_control;
 
 /// AppKit web view backed by WebKit.
 #[component]
-pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
+pub fn WebView(props: &WebViewProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__appkit_WebView"];
 
     let bridge = props.bridge.get();
@@ -184,12 +181,6 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             }
             let _ = &handler;
         });
-    }
-
-    layout! {
-        Fragment {
-            $(props.children.get())
-        }
     }
 }
 

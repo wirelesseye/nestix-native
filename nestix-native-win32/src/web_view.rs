@@ -10,10 +10,7 @@ use std::{
     },
 };
 
-use nestix::{
-    Element, callback, closure, component, components::Fragment, create_state, layout,
-    scoped_effect,
-};
+use nestix::{Element, callback, closure, component, create_state, scoped_effect};
 use nestix_native_core::{
     JavaScriptEvaluator, StyleContext, WebViewBridge, WebViewBridgeScriptContext,
     WebViewDevToolsError, WebViewPresenter, WebViewProps, WebViewRegistration, WebViewSource,
@@ -140,7 +137,7 @@ extern "system" fn web_view_proc(
 
 /// Displays web content in a child WebView2 control.
 #[component]
-pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
+pub fn WebView(props: &WebViewProps, element: &Element) {
     const DEFAULT_CLASSES: [&str; 2] = ["__WebView", "__win32_WebView"];
     let parent = element.context::<ParentContext>().unwrap();
     let matched = matched_style(
@@ -302,12 +299,6 @@ pub fn WebView(props: &WebViewProps, element: &Element) -> Element {
             controller_registration.borrow_mut().take();
         }
     ));
-
-    layout! {
-        Fragment {
-            $(props.children.get())
-        }
-    }
 }
 
 fn create_web_view(hwnd: HWND) -> (ICoreWebView2Controller, ICoreWebView2) {
