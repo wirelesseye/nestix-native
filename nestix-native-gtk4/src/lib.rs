@@ -12,6 +12,7 @@ pub mod slider;
 pub mod switch;
 pub mod tab_view;
 pub mod text;
+pub mod web_view;
 pub mod window;
 
 mod allocation_bin;
@@ -32,6 +33,7 @@ pub use slider::*;
 pub use switch::*;
 pub use tab_view::*;
 pub use text::*;
+pub use web_view::*;
 pub use window::*;
 
 use nestix::create_element;
@@ -155,6 +157,10 @@ impl Backend for Gtk4Backend {
         props: nestix_native_core::ImageViewProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<ImageView>(props))
+    }
+
+    fn create_web_view(&self, props: nestix_native_core::WebViewProps) -> Option<nestix::Element> {
+        Some(create_element::<WebView>(props))
     }
 
     fn create_scroll_view(

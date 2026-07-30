@@ -1,8 +1,10 @@
 use gtk4::{Orientation, Widget, prelude::*};
 use nestix::{Element, Readonly, closure, scoped_effect};
 use nestix_native_core::{
-    ResolvedStyle, TreeContext, ViewProps, WithAuto, style_align_self, style_flex_basis,
-    style_flex_grow, style_flex_shrink, style_length_with_auto, style_margin,
+    ResolvedStyle, TreeContext, ViewProps, WithAuto,
+    dpi::LogicalSize,
+    style_align_self, style_flex_basis, style_flex_grow, style_flex_shrink, style_length_with_auto,
+    style_margin,
     utils::{inset_to_taffy, margin_to_taffy},
 };
 use taffy::{NodeId, Size, Style, prelude::FromLength};
@@ -19,7 +21,15 @@ pub(crate) fn mount_leaf(
     props: &ViewProps,
     content_revision: Readonly<usize>,
 ) -> NodeId {
-    mount_leaf_inner(element, widget, style_props, props, content_revision, true)
+    mount_leaf_inner(
+        element,
+        widget,
+        style_props,
+        props,
+        content_revision,
+        true,
+        None,
+    )
 }
 
 pub(crate) fn mount_leaf_with_stretchable_width(
@@ -29,7 +39,34 @@ pub(crate) fn mount_leaf_with_stretchable_width(
     props: &ViewProps,
     content_revision: Readonly<usize>,
 ) -> NodeId {
-    mount_leaf_inner(element, widget, style_props, props, content_revision, false)
+    mount_leaf_inner(
+        element,
+        widget,
+        style_props,
+        props,
+        content_revision,
+        false,
+        None,
+    )
+}
+
+pub(crate) fn mount_leaf_with_intrinsic_size(
+    element: &Element,
+    widget: &Widget,
+    style_props: Readonly<Option<ResolvedStyle>>,
+    props: &ViewProps,
+    content_revision: Readonly<usize>,
+    intrinsic_size: LogicalSize<f32>,
+) -> NodeId {
+    mount_leaf_inner(
+        element,
+        widget,
+        style_props,
+        props,
+        content_revision,
+        true,
+        Some(intrinsic_size),
+    )
 }
 
 fn mount_leaf_inner(
@@ -39,6 +76,7 @@ fn mount_leaf_inner(
     props: &ViewProps,
     content_revision: Readonly<usize>,
     intrinsic_auto_width: bool,
+    intrinsic_size: Option<LogicalSize<f32>>,
 ) -> NodeId {
     let window_context = element.context::<WindowContext>().unwrap();
     let tree_context = element.context::<TreeContext>().unwrap();
@@ -110,21 +148,25 @@ fn mount_leaf_inner(
             );
             let (_, natural_width, _, _) = widget.measure(Orientation::Horizontal, -1);
             let (_, natural_height, _, _) = widget.measure(Orientation::Vertical, natural_width);
-            let width = match width {
-                WithAuto::Auto if !intrinsic_auto_width => taffy::Dimension::auto(),
-                WithAuto::Auto => taffy::Dimension::from_length(natural_width as f32),
-                WithAuto::Value(value) => {
-                    taffy::Dimension::from_length(value.to_logical::<f32>(scale_factor.get()))
-                }
-            };
-            let height = match height {
-                WithAuto::Auto => natural_height as f32,
-                WithAuto::Value(value) => value.to_logical::<f32>(scale_factor.get()).into(),
-            };
+            let (width, min_width) = intrinsic_dimension(
+                width,
+                intrinsic_size.map(|size| size.width),
+                natural_width,
+                intrinsic_auto_width,
+                scale_factor.get(),
+            );
+            let (height, min_height) = intrinsic_dimension(
+                height,
+                intrinsic_size.map(|size| size.height),
+                natural_height,
+                true,
+                scale_factor.get(),
+            );
             tree_context.update_style(node_id, |prev| Style {
-                size: Size {
-                    width,
-                    height: taffy::Dimension::from_length(height),
+                size: Size { width, height },
+                min_size: Size {
+                    width: min_width,
+                    height: min_height,
                 },
                 ..prev
             });
@@ -210,4 +252,81 @@ fn mount_leaf_inner(
         }
     );
     node_id
+}
+
+fn intrinsic_dimension(
+    value: WithAuto<nestix_native_core::Length>,
+    fallback: Option<f32>,
+    measured: i32,
+    intrinsic_auto: bool,
+    scale_factor: f64,
+) -> (taffy::Dimension, taffy::Dimension) {
+    match value {
+        WithAuto::Auto => match fallback {
+            Some(fallback) => (
+                taffy::Dimension::auto(),
+                taffy::Dimension::from_length(fallback),
+            ),
+            None if !intrinsic_auto => (taffy::Dimension::auto(), taffy::Dimension::auto()),
+            None => (
+                taffy::Dimension::from_length(measured as f32),
+                taffy::Dimension::auto(),
+            ),
+        },
+        WithAuto::Value(value) => (
+            taffy::Dimension::from_length(value.to_logical::<f32>(scale_factor)),
+            taffy::Dimension::auto(),
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use taffy::{FlexDirection, TaffyTree};
+
+    #[test]
+    fn intrinsic_fallback_keeps_auto_size_stretchable() {
+        let (size, minimum) = intrinsic_dimension(WithAuto::Auto, Some(300.0), 0, true, 1.0);
+        assert_eq!(size, taffy::Dimension::auto());
+        assert_eq!(minimum, taffy::Dimension::from_length(300.0_f32));
+    }
+
+    #[test]
+    fn intrinsic_fallback_allows_a_leaf_to_grow_and_stretch() {
+        let mut tree = TaffyTree::<()>::new();
+        let leaf = tree
+            .new_leaf(Style {
+                flex_grow: 1.0,
+                size: Size::auto(),
+                min_size: Size {
+                    width: taffy::Dimension::from_length(300.0_f32),
+                    height: taffy::Dimension::from_length(150.0_f32),
+                },
+                ..Style::default()
+            })
+            .unwrap();
+        let root = tree
+            .new_with_children(
+                Style {
+                    size: Size {
+                        width: taffy::Dimension::from_length(900.0_f32),
+                        height: taffy::Dimension::from_length(650.0_f32),
+                    },
+                    flex_direction: FlexDirection::Column,
+                    ..Style::default()
+                },
+                &[leaf],
+            )
+            .unwrap();
+
+        tree.compute_layout(root, Size::max_content()).unwrap();
+        assert_eq!(
+            tree.layout(leaf).unwrap().size,
+            Size {
+                width: 900.0,
+                height: 650.0,
+            }
+        );
+    }
 }
