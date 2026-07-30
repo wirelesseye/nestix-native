@@ -69,7 +69,13 @@ fn MenuBarExample() -> Element {
         Root {
             // macOS only: This menu bar is available application-wide.
             // A window without its own menu bar uses it when focused.
-            MenuBar(.menu = layout!{ Menu { ApplicationMenu(.set_status = set_status.clone()) } })
+            MenuBar(
+                .menu = layout! {
+                    Menu {
+                        ApplicationMenu(.set_status = set_status.clone())
+                    }
+                },
+            )
             Window(
                 $if = window_menu_open.get(),
                 .title = "Window-specific menu",
@@ -80,7 +86,7 @@ fn MenuBarExample() -> Element {
                         [window_menu_open] || {
                             window_menu_open.set(false);
                         }
-                    )
+                    ),
                 ),
             ) {
                 FlexView(
@@ -144,7 +150,7 @@ fn MenuBarExample() -> Element {
                         [plain_window_open] || {
                             plain_window_open.set(false);
                         }
-                    )
+                    ),
                 ),
             ) {
                 FlexView(

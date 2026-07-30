@@ -36,7 +36,7 @@ fn DragDropExample() -> Element {
                     .height = 420,
                     .on_close_requested = callback!(|| {
                         unmount_root().expect("root should be mounted");
-                    })
+                    }),
                 ),
             ) {
                 FlexView(
@@ -52,7 +52,9 @@ fn DragDropExample() -> Element {
                                 Some(DragOperation::Copy)
                             }
                         ),
-                        .on_over = callback!(|_offer: &DragOffer| Some(DragOperation::Copy)),
+                        .on_over = callback!(
+                            |_offer: &DragOffer| Some(DragOperation::Copy)
+                        ),
                         .on_leave = callback!([hovering] || hovering.set(false)),
                         .on_drop = callback!(
                             [hovering, status] |event: DropEvent| {

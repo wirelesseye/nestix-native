@@ -30,7 +30,9 @@ fn remote_components_emit_commands_and_route_events() {
                     Text("Remote controls")
                     Button(
                         .title = "Remote",
-                        .on_click = callback!([clicks] || clicks.update(|value| value + 1)),
+                        .on_click = callback!(
+                            [clicks] || clicks.update(|value| value + 1)
+                        ),
                     )
                     Input(
                         .value = value.clone(),

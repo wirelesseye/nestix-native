@@ -68,7 +68,7 @@ fn FormControlsApp() -> Element {
                         .height = 680,
                         .on_close_requested = callback!(|| {
                             unmount_root().expect("root should be mounted");
-                        })
+                        }),
                     ),
                 ) {
                     FlexView(.class = "content", .view(.flex_grow = 1.0)) {
@@ -108,7 +108,9 @@ fn FormControlsApp() -> Element {
                                 "Compact",
                                 .class = "choice",
                                 .group = "density",
-                                .selected = computed!([density] || density.get() == "compact"),
+                                .selected = computed!(
+                                    [density] || density.get() == "compact"
+                                ),
                                 .on_select = callback!(
                                     [density] || {
                                         density.set("compact".to_string());
@@ -118,7 +120,9 @@ fn FormControlsApp() -> Element {
                             RadioButton(
                                 "Comfortable",
                                 .group = "density",
-                                .selected = computed!([density] || density.get() == "comfortable"),
+                                .selected = computed!(
+                                    [density] || density.get() == "comfortable"
+                                ),
                                 .on_select = callback!(
                                     [density] || {
                                         density.set("comfortable".to_string());
@@ -199,7 +203,9 @@ fn FormControlsApp() -> Element {
                         ) {
                             Button(
                                 .title = "Save",
-                                .disabled = computed!([name] || name.get().trim().is_empty()),
+                                .disabled = computed!(
+                                    [name] || name.get().trim().is_empty()
+                                ),
                                 .on_click = callback!(
                                     [
                                         name,

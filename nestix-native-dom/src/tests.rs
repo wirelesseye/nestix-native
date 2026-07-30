@@ -38,7 +38,9 @@ fn mounts_reacts_and_cleans_up() {
                         Text(nestix::computed!([count] || format!("Count: {}", count.get())))
                         Button(
                             .title = "Increment",
-                            .on_click = callback!([count] || count.update(|value| value + 1)),
+                            .on_click = callback!(
+                                [count] || count.update(|value| value + 1)
+                            ),
                         )
                         Input(
                             .value = input_value.clone(),
@@ -195,7 +197,7 @@ fn custom_elements_support_dom_state_events_and_refs() {
                                 DomAttribute::boolean("disabled", disabled.get()),
                             ]
                     ),
-                    .properties = nestix::computed!([value] || vec![DomProperty::new("value", value.get()), ]),
+                    .properties = nestix::computed!([value] || vec![DomProperty::new("value", value.get())]),
                     .events = vec![DomEvent::new("click", move |_| {
                         clicks_for_event.update(|count| count + 1);
                     })],

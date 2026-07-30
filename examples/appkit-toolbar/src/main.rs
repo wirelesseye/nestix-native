@@ -75,7 +75,7 @@ fn AppKitToolbarExample() -> Element {
                         .title_bar_mode = title_bar_mode.clone(),
                         .on_close_requested = callback!(|| {
                             unmount_root().expect("root should be mounted");
-                        })
+                        }),
                     ),
                 ) {
                     FlexView(.class = "content") {
@@ -93,7 +93,9 @@ fn AppKitToolbarExample() -> Element {
                                 .symbol_name = Some("number".to_string()),
                                 .accessibility_description = Some("Counter page".to_string()),
                                 .selectable = true,
-                                .on_click = callback!([page] || page.set(ExamplePage::Counter)),
+                                .on_click = callback!(
+                                    [page] || page.set(ExamplePage::Counter)
+                                ),
                             )
                             AppKitToolbarItem(
                                 .identifier = "appearance",
@@ -101,7 +103,9 @@ fn AppKitToolbarExample() -> Element {
                                 .symbol_name = Some("paintbrush".to_string()),
                                 .accessibility_description = Some("Appearance page".to_string()),
                                 .selectable = true,
-                                .on_click = callback!([page] || page.set(ExamplePage::Appearance)),
+                                .on_click = callback!(
+                                    [page] || page.set(ExamplePage::Appearance)
+                                ),
                             )
                             AppKitToolbarFlexibleSpace()
                             if toolbar_page.get() == ExamplePage::Counter {

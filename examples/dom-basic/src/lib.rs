@@ -62,7 +62,9 @@ fn App() -> Element {
                         ) {
                             Button(
                                 .title = "Increment",
-                                .on_click = callback!([count] || count.update(|value| value + 1)),
+                                .on_click = callback!(
+                                    [count] || count.update(|value| value + 1)
+                                ),
                             )
                             Button(.title = "Reset", .on_click = callback!([count] || count.set(0)))
                             DomElement(

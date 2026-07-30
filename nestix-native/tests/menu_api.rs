@@ -46,14 +46,14 @@ fn menu_bar_and_context_menu_compile_through_layout() {
     let _window = layout! {
         Window(.visible = visible, .desktop(.resizable = resizable)) {
             FlexView {
-                MenuBar(.menu = layout!{ DocumentMenu })
+                MenuBar(.menu = layout! { DocumentMenu })
                 Target
             }
         }
     };
 
     let _context = layout! {
-        ContextMenu(.menu = layout!{ DocumentMenu }, .controller = context_menu.clone()) {
+        ContextMenu(.menu = layout! { DocumentMenu }, .controller = context_menu.clone()) {
             Target
         }
     };

@@ -98,7 +98,7 @@ fn TrayIconExample() -> Element {
                     .desktop(
                         .width = 460,
                         .height = 300,
-                        .on_close_requested = callback!([show_window] || show_window.set(false))
+                        .on_close_requested = callback!([show_window] || show_window.set(false)),
                     ),
                 ) {
                     FlexView(
