@@ -93,7 +93,6 @@ struct Entry {
 
 #[derive(Clone)]
 struct ContextMenuContext {
-    menu: State<Option<Rc<MenuData>>>,
     target: State<Option<Shared<dyn Any>>>,
 }
 
@@ -560,7 +559,6 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     );
     let registered_target = Rc::new(RefCell::new(None::<(HWND, Weak<MenuData>)>));
     let context = Rc::new(ContextMenuContext {
-        menu: menu.clone(),
         target: target.clone(),
     });
     scoped_effect!(
