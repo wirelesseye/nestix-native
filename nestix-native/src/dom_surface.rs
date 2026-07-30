@@ -6,7 +6,7 @@ use std::{
 use nestix::{
     ComponentOutput, DetachedTree, Element, component, components::ContextProvider, layout,
 };
-use nestix_native_core::WebViewBridge;
+use nestix_native_core::{Backend, WebViewBridge};
 use nestix_native_dom::{
     DOM_BACKEND_ID, DOM_SURFACE_BACKEND, DOM_SURFACE_BACKEND_ID, DomDocumentRoot,
     DomRendererContext, DomSurfaceId, EmbeddedDomRuntime, ManagedDomBridge, dom_template_source,
@@ -14,7 +14,7 @@ use nestix_native_dom::{
 
 pub use nestix_native_core::DomSurfaceProps;
 
-use crate::{BackendContext, WebView};
+use crate::{BackendContext, BackendProvider, WebView};
 
 static NEXT_SURFACE_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -41,6 +41,7 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
     ));
     let source = dom_template_source(props.template.get());
     let bridge: Rc<dyn WebViewBridge> = ManagedDomBridge::new(runtime.clone());
+    let surface_backend: &'static dyn Backend = &DOM_SURFACE_BACKEND;
 
     // Keep the managed document lifecycle-owned by DomSurface without placing
     // the WebView in a private list that would hide DomSurface's predecessor.
@@ -50,9 +51,7 @@ pub fn DomSurface(props: &DomSurfaceProps, element: &Element) -> Element {
                 nestix_native_core::NativeVisualMount::blocked("DomSurface"),
             ) {
                 ContextProvider<DomRendererContext>(DomRendererContext::remote(runtime)) {
-                    ContextProvider<BackendContext>(
-                        BackendContext { backend: &DOM_SURFACE_BACKEND,  },
-                    ) {
+                    BackendProvider(surface_backend) {
                         DomDocumentRoot(.children = props.children.clone())
                     }
                 }

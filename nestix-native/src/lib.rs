@@ -18,11 +18,9 @@ macro_rules! delegate {
                 props: &$props,
                 element: &nestix::Element,
             ) -> Option<nestix::Element> {
-                element
-                    .context::<crate::BackendContext>()
-                    .expect("native components must be mounted beneath Root")
-                    .backend
-                    .$factory(props.clone())
+                crate::create_backend_element(element, stringify!($component), |backend| {
+                    backend.$factory(props.clone())
+                })
             }
         )+
     };

@@ -4,7 +4,7 @@ use nestix::{
     ContextProvider, Element, component, components::Fragment, layout, mount_root, props,
     unmount_root,
 };
-use nestix_native::{Backend, BackendContext, BackendCase, Root, RootProps};
+use nestix_native::{Backend, BackendCase, BackendContext, Root, RootProps};
 
 struct TestBackend(&'static str);
 
@@ -105,7 +105,7 @@ fn renders_default_children_for_a_different_backend() {
 }
 
 #[test]
-#[should_panic(expected = "BackendCase must be mounted beneath Root")]
+#[should_panic(expected = "BackendCase must be mounted beneath Root or BackendProvider")]
 fn requires_backend_context() {
     mount_root(&layout! {
         BackendCase("matching")

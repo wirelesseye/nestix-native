@@ -1,6 +1,6 @@
 use nestix::{Element, Layout, component, components::Fragment, layout, props};
 
-use crate::BackendContext;
+use crate::active_backend;
 
 /// Properties for [`BackendOverride`].
 #[props(debug)]
@@ -21,16 +21,14 @@ pub struct BackendCaseProps {
 
 /// Replaces its default layout for one native backend.
 ///
-/// `BackendOverride` must be mounted beneath [`crate::Root`]. Backend identifiers
-/// are supplied by backend implementations through
+/// `BackendCase` must be mounted beneath [`crate::Root`] or
+/// [`crate::BackendProvider`]. Backend identifiers are supplied through
 /// [`crate::Backend::backend_id`], so third-party backends require no central
 /// registration.
 #[component]
 pub fn BackendCase(props: &BackendCaseProps, element: &Element) -> Element {
-    let backend = element
-        .context::<BackendContext>()
-        .expect("BackendCase must be mounted beneath Root")
-        .backend;
+    let backend = active_backend(element)
+        .expect("BackendCase must be mounted beneath Root or BackendProvider");
     let selected = if backend.backend_id() == props.backend_id.get() {
         props.replacement.clone()
     } else {
