@@ -17,6 +17,8 @@ mod runtime;
 #[cfg(target_arch = "wasm32")]
 mod style;
 mod style_declarations;
+#[cfg(not(target_arch = "wasm32"))]
+mod surface_backend;
 mod text;
 #[cfg(target_arch = "wasm32")]
 mod web_view;
@@ -36,6 +38,8 @@ pub use renderer::DomRendererContext;
 #[cfg(target_arch = "wasm32")]
 pub use root::*;
 pub use runtime::*;
+#[cfg(not(target_arch = "wasm32"))]
+pub use surface_backend::*;
 pub use text::*;
 #[cfg(target_arch = "wasm32")]
 pub use web_view::*;
@@ -51,12 +55,15 @@ use nestix_native_core::Backend;
 /// Shared DOM backend instance.
 pub const DOM_BACKEND: DomBackend = DomBackend;
 
+/// Stable identifier for the browser DOM backend.
+pub const DOM_BACKEND_ID: &str = "nestix-native-dom";
+
 /// Backend that renders Nestix Native components into browser DOM nodes.
 pub struct DomBackend;
 
 impl Backend for DomBackend {
     fn backend_id(&self) -> &'static str {
-        "nestix-native-dom"
+        DOM_BACKEND_ID
     }
 
     #[cfg(target_arch = "wasm32")]
