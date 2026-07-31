@@ -92,6 +92,7 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             styles,
             props.view.width,
             props.view.height,
+            props.view.position,
             props.view.left,
             props.view.top,
             props.view.margin()
@@ -107,6 +108,8 @@ pub fn ScrollView(props: &ScrollViewProps, element: &Element) -> Element {
             let top = style_length_with_auto(style.as_ref(), top.get(), WithAuto::Auto, |s| s.top);
             tree_context.update_style(node, |prev| Style {
                 flex_direction: taffy::FlexDirection::Column,
+                position: nestix_native_core::style_position(style.as_ref(), position.get())
+                    .to_taffy(),
                 size: Size {
                     width: width.to_taffy(scale),
                     height: height.to_taffy(scale),

@@ -121,6 +121,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             layout_refresh,
             parent_context.parent_node,
             style_props,
+            props.view.position,
             props.view.flex_grow,
             props.view.flex_basis,
             props.view.flex_shrink,
@@ -162,6 +163,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                 });
             let gap = gap_to_taffy(style_gap(style_props.as_ref(), gap.get()), scale_factor);
             tree_context.update_style(node_id, |prev| Style {
+                position: nestix_native_core::style_position(style_props.as_ref(), position.get())
+                    .to_taffy(),
                 size: if parent_node.is_some() {
                     Size {
                         width: width.to_taffy(scale_factor),

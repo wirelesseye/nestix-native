@@ -18,7 +18,7 @@ use nestix::{
 
 use crate::{
     AlignItems, AnimationSpec, Appearance, Color, FlexDirection, FlexWrap, FontStyle, FontWeight,
-    JustifyContent, Length, Rect, ResolvedFontProps, WithAuto,
+    JustifyContent, Length, Position, Rect, ResolvedFontProps, WithAuto,
 };
 
 /// Cross-platform fallback used when a backend cannot determine its system UI font size.
@@ -394,6 +394,10 @@ pub enum StyleProperty {
     /// **Available value**: a named color (`white`, `black`, `transparent`, `red`,
     /// `green`, `blue`), or a 6/8 digit hex color (`#RRGGBB` or `#RRGGBBAA`).
     TextColor(StyleValue<Color>),
+    /// Whether the element participates in normal layout flow.
+    ///
+    /// **Available value**: `relative` or `absolute`.
+    Position(StyleValue<Position>),
     /// Horizontal position offset from the left edge of the containing block.
     ///
     /// **Available value**: `auto`, pixels such as `30 px`, or font-relative values such as `2 em`.
@@ -522,6 +526,7 @@ impl StyleProperty {
             Self::FontWeight(_) => StylePropertyName::FontWeight,
             Self::FontStyle(_) => StylePropertyName::FontStyle,
             Self::TextColor(_) => StylePropertyName::TextColor,
+            Self::Position(_) => StylePropertyName::Position,
             Self::Left(_) => StylePropertyName::Left,
             Self::Top(_) => StylePropertyName::Top,
             Self::Width(_) => StylePropertyName::Width,
@@ -567,6 +572,7 @@ impl StyleProperty {
             Self::FontWeight(value) => value.global(),
             Self::FontStyle(value) => value.global(),
             Self::TextColor(value) => value.global(),
+            Self::Position(value) => value.global(),
             Self::Left(value) => value.global(),
             Self::Top(value) => value.global(),
             Self::Width(value) => value.global(),
@@ -650,6 +656,8 @@ pub struct ResolvedStyle {
     pub font_style: Option<FontStyle>,
     /// Resolved foreground text color.
     pub text_color: Option<Color>,
+    /// Resolved layout positioning mode.
+    pub position: Option<Position>,
     /// Resolved left offset.
     pub left: Option<WithAuto<Length>>,
     /// Resolved top offset.
@@ -759,6 +767,7 @@ impl ResolvedStyle {
             "font_weight" => self.font_weight.clone_from(&source.font_weight),
             "font_style" => self.font_style.clone_from(&source.font_style),
             "text_color" => self.text_color.clone_from(&source.text_color),
+            "position" => self.position.clone_from(&source.position),
             "left" => self.left.clone_from(&source.left),
             "top" => self.top.clone_from(&source.top),
             "width" => self.width.clone_from(&source.width),
@@ -866,6 +875,9 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::TextColor(StyleValue::Value(color))) => {
                 self.text_color = Some(color);
+            }
+            StyleDeclaration::Property(StyleProperty::Position(StyleValue::Value(position))) => {
+                self.position = Some(position);
             }
             StyleDeclaration::Property(StyleProperty::Left(StyleValue::Value(
                 length_with_auto,
@@ -1213,6 +1225,15 @@ pub fn style_appearance(style: Option<&ResolvedStyle>, inline: Appearance) -> Ap
         inline,
         Appearance::Native,
         style.and_then(|style| style.appearance),
+    )
+}
+
+/// Resolves the effective positioning mode.
+pub fn style_position(style: Option<&ResolvedStyle>, inline: Position) -> Position {
+    inline_or_style(
+        inline,
+        Position::Relative,
+        style.and_then(|style| style.position),
     )
 }
 

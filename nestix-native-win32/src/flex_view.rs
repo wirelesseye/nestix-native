@@ -131,6 +131,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
             window_context.scale_factor,
             tree_context,
             style_props,
+            props.view.position,
             props.view.left,
             props.view.top
         ] || {
@@ -145,6 +146,8 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                     style.top
                 });
             tree_context.update_style(node_id, |prev| Style {
+                position: nestix_native_core::style_position(style_props.as_ref(), position.get())
+                    .to_taffy(),
                 inset: inset_to_taffy(left, top, scale_factor),
                 ..prev
             });

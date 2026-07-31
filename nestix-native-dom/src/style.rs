@@ -1,12 +1,16 @@
 use nestix_native_core::{
-    AlignItems, Color, Easing, FontStyle, Length, ResolvedFontProps, ResolvedStyle,
+    AlignItems, Color, Easing, FontStyle, Length, Position, ResolvedFontProps, ResolvedStyle,
     TransitionProperty, WithAuto,
 };
 use web_sys::CssStyleDeclaration;
 
 pub(crate) fn apply_view_style(css: &CssStyleDeclaration, style: &ResolvedStyle) {
     set(css, "box-sizing", "border-box");
-    set(css, "position", "relative");
+    set(
+        css,
+        "position",
+        position(style.position.unwrap_or_default()),
+    );
     set_length(css, "left", style.left);
     set_length(css, "top", style.top);
     set_length(css, "width", style.width);
@@ -30,6 +34,13 @@ pub(crate) fn apply_view_style(css: &CssStyleDeclaration, style: &ResolvedStyle)
     apply_font(css, &style.font());
     set_optional(css, "background-color", style.bg_color.map(color));
     apply_transitions(css, style);
+}
+
+fn position(value: Position) -> &'static str {
+    match value {
+        Position::Relative => "relative",
+        Position::Absolute => "absolute",
+    }
 }
 
 pub(crate) fn apply_font(css: &CssStyleDeclaration, font: &ResolvedFontProps) {

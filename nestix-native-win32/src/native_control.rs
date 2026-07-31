@@ -110,6 +110,7 @@ pub(crate) fn mount(
             window_context.scale_factor,
             tree_context,
             style_props,
+            props.position,
             props.left,
             props.top
         ] || {
@@ -118,6 +119,8 @@ pub(crate) fn mount(
                 style_length_with_auto(style.as_ref(), left.get(), WithAuto::Auto, |s| s.left);
             let top = style_length_with_auto(style.as_ref(), top.get(), WithAuto::Auto, |s| s.top);
             tree_context.update_style(node_id, |prev| Style {
+                position: nestix_native_core::style_position(style.as_ref(), position.get())
+                    .to_taffy(),
                 inset: inset_to_taffy(left, top, scale_factor.get()),
                 ..prev
             });

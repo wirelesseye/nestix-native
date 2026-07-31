@@ -5,7 +5,7 @@ use crate::{FlexViewProps, ViewProps, WithAuto};
 use super::{
     ResolvedStyle, style_align_items, style_align_self, style_flex_basis, style_flex_direction,
     style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap, style_justify_content,
-    style_length_with_auto,
+    style_length_with_auto, style_position,
 };
 
 /// Resolves the common view props once so the same effective values can be
@@ -17,6 +17,7 @@ pub fn resolved_view_style(
     computed!(
         [
             style,
+            props.position,
             props.left,
             props.top,
             props.width,
@@ -31,6 +32,7 @@ pub fn resolved_view_style(
             props.align_self
         ] || {
             let mut resolved = style.get().unwrap_or_default();
+            resolved.position = Some(style_position(Some(&resolved), position.get()));
             resolved.left = Some(style_length_with_auto(
                 Some(&resolved),
                 left.get(),

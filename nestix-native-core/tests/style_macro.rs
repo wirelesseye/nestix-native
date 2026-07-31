@@ -188,6 +188,7 @@ fn every_builtin_property_accepts_a_global_value() {
             font_weight: initial;
             font_style: initial;
             text_color: initial;
+            position: initial;
             left: initial;
             top: initial;
             width: initial;
@@ -424,6 +425,27 @@ fn appearance_uses_inline_or_stylesheet_precedence() {
         style_appearance(None, Appearance::Native),
         Appearance::Native
     );
+}
+
+#[test]
+fn position_uses_inline_or_stylesheet_precedence() {
+    let mut style = ResolvedStyle::default();
+    style.position = Some(Position::Absolute);
+
+    assert_eq!(
+        style_position(Some(&style), Position::Relative),
+        Position::Absolute
+    );
+    assert_eq!(
+        style_position(Some(&style), Position::Absolute),
+        Position::Absolute
+    );
+    style.position = Some(Position::Relative);
+    assert_eq!(
+        style_position(Some(&style), Position::Absolute),
+        Position::Absolute
+    );
+    assert_eq!(style_position(None, Position::Relative), Position::Relative);
 }
 
 #[test]
@@ -850,6 +872,7 @@ fn computed_style_macro_allows_omitting_the_capture_list() {
 fn style_macro_supports_view_props() {
     let sheet = style! {
         .panel {
+            position: absolute;
             left: 1 px;
             top: 2 px;
             width: 320 px;
@@ -867,6 +890,7 @@ fn style_macro_supports_view_props() {
 
     let props = sheet.matched_props(&MatchContext::new(ClassList::from("panel")));
 
+    assert_eq!(props.position, Some(Position::Absolute));
     assert_eq!(props.left, Some(WithAuto::from(1.0)));
     assert_eq!(props.top, Some(WithAuto::from(2.0)));
     assert_eq!(props.width, Some(WithAuto::from(320.0)));

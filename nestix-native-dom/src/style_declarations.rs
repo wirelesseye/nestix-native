@@ -1,6 +1,6 @@
 use nestix_native_core::{
     AlignItems, Appearance, Color, Easing, FlexDirection, FlexWrap, FontStyle, JustifyContent,
-    Length, ResolvedFontProps, ResolvedStyle, TransitionProperty, WithAuto,
+    Length, Position, ResolvedFontProps, ResolvedStyle, TransitionProperty, WithAuto,
 };
 
 use crate::DomStyle;
@@ -8,7 +8,13 @@ use crate::DomStyle;
 pub(crate) fn view_styles(style: &ResolvedStyle, scale_factor: f64) -> Vec<DomStyle> {
     let mut styles = vec![
         DomStyle::new("box-sizing", "border-box"),
-        DomStyle::new("position", "relative"),
+        DomStyle::new(
+            "position",
+            match style.position.unwrap_or_default() {
+                Position::Relative => "relative",
+                Position::Absolute => "absolute",
+            },
+        ),
     ];
     push_length(&mut styles, "left", style.left, scale_factor);
     push_length(&mut styles, "top", style.top, scale_factor);

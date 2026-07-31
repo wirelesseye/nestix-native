@@ -624,6 +624,7 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
         "font_weight" => expand_font_weight(value)?,
         "font_style" => expand_font_style(value)?,
         "text_color" => expand_color(value)?,
+        "position" => expand_position(value)?,
         "left" => expand_length_with_auto(value)?,
         "top" => expand_length_with_auto(value)?,
         "width" => expand_length_with_auto(value)?,
@@ -676,6 +677,7 @@ fn expand_property_variant(name: &str, span: Span) -> Result<Ident> {
         "font_weight" => "FontWeight",
         "font_style" => "FontStyle",
         "text_color" => "TextColor",
+        "position" => "Position",
         "left" => "Left",
         "top" => "Top",
         "width" => "Width",
@@ -1115,6 +1117,23 @@ fn expand_flex_direction(value: StyleValueInput) -> Result<TokenStream2> {
         _ => Err(Error::new(
             proc_macro2::Span::call_site(),
             "flex-direction must be row, row-reverse, column, column-reverse, or an inserted FlexDirection",
+        )),
+    }
+}
+
+fn expand_position(value: StyleValueInput) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+
+    match value.as_str() {
+        "relative" => Ok(quote!(#nestix_native_path::Position::Relative)),
+        "absolute" => Ok(quote!(#nestix_native_path::Position::Absolute)),
+        _ => Err(Error::new(
+            proc_macro2::Span::call_site(),
+            "position must be relative, absolute, or an inserted Position",
         )),
     }
 }
