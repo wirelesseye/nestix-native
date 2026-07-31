@@ -1,7 +1,7 @@
 use std::{cell::Cell, rc::Rc};
 
-use nestix::{Element, component, components::Fragment, layout, mount_root, unmount_root};
-use nestix_native::{Backend, BackendProvider, Button, ButtonProps, Root, RootProps};
+use nestix::{Element, component, components::Fragment, layout, mount_root, props, unmount_root};
+use nestix_native::{Backend, BackendProvider, Button, ButtonProps, Root, RootProps, Sidebar};
 
 struct TestBackend {
     id: &'static str,
@@ -11,6 +11,17 @@ struct TestBackend {
 
 #[component]
 fn Empty() {}
+
+#[props]
+struct CountMountsProps {
+    count: Rc<Cell<usize>>,
+}
+
+#[component]
+fn CountMounts(props: &CountMountsProps) {
+    let count = props.count.get();
+    count.set(count.get() + 1);
+}
 
 impl Backend for TestBackend {
     fn backend_id(&self) -> &'static str {
@@ -130,5 +141,29 @@ fn root_uses_the_provider_fallback_chain() {
     mount_root(&tree);
     assert_eq!(inner_calls.get(), 1);
     assert_eq!(outer_calls.get(), 1);
+    unmount_root().unwrap();
+}
+
+#[test]
+fn unsupported_sidebar_omits_only_its_pane_content() {
+    let root_calls = Rc::new(Cell::new(0));
+    let sidebar_mounts = Rc::new(Cell::new(0));
+    let main_mounts = Rc::new(Cell::new(0));
+    let backend = root_backend("root-only", root_calls, true);
+
+    let tree = layout! {
+        BackendProvider(backend) {
+            Root {
+                Sidebar {
+                    CountMounts(.count = sidebar_mounts.clone())
+                }
+                CountMounts(.count = main_mounts.clone())
+            }
+        }
+    };
+
+    mount_root(&tree);
+    assert_eq!(sidebar_mounts.get(), 0);
+    assert_eq!(main_mounts.get(), 1);
     unmount_root().unwrap();
 }

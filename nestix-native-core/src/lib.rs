@@ -21,6 +21,7 @@ pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
 pub mod select;
+pub mod sidebar;
 pub mod slider;
 pub mod style;
 pub mod switch;
@@ -53,6 +54,7 @@ pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
 pub use select::*;
+pub use sidebar::*;
 pub use slider::*;
 pub use style::*;
 pub use switch::*;
@@ -183,6 +185,11 @@ pub trait Backend {
 
     /// Creates an option belonging to a selection control.
     fn create_select_option(&self, _props: SelectOptionProps) -> Option<Element> {
+        None
+    }
+
+    /// Attaches a sidebar to the nearest containing window.
+    fn create_sidebar(&self, _props: SidebarProps) -> Option<Element> {
         None
     }
 

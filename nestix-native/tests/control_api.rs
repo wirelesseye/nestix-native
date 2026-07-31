@@ -2,7 +2,7 @@
 
 use nestix::{Element, callback, component, layout};
 use nestix_native::{
-    Checkbox, FlexView, RadioButton, Select, SelectOption, Slider, Switch, Window,
+    Checkbox, FlexView, RadioButton, Select, SelectOption, Sidebar, Slider, Switch, Window,
 };
 
 #[component]
@@ -39,7 +39,18 @@ fn FormControls() -> Element {
 fn form_controls_compile_through_layout() {
     let _window = layout! {
         Window(.desktop(.on_close_requested = callback!(|| {}))) {
-            FormControls
+            FlexView {
+                Sidebar(
+                    .width = Some(280.0),
+                    .min_width = Some(220.0),
+                    .resizable = false,
+                    .open = Some(true),
+                    .on_open_change = callback!(|_open| {}),
+                ) {
+                    FormControls
+                }
+                FormControls
+            }
         }
     };
 }

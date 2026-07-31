@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use nestix::{
     Element, Layout, PropValue, Readonly, Shared, State, StateSetter, callback, closure, component,
@@ -11,7 +11,7 @@ use nestix_native_core::{
     matched_style, style_length_with_auto,
 };
 use objc2::{
-    DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained,
+    DefinedClass, MainThreadMarker, MainThreadOnly, Message, define_class, msg_send, rc::Retained,
     runtime::ProtocolObject, sel,
 };
 use objc2_app_kit::{
@@ -21,12 +21,14 @@ use objc2_app_kit::{
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString, NSTimer};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
-use crate::{contexts::ParentContext, root::RootContext};
+use crate::{contexts::ParentContext, root::RootContext, sidebar::MountedSidebar};
 
 pub struct WindowContext {
     pub ns_window: Retained<NSWindow>,
     pub scale_factor: Readonly<f64>,
     pub animation: Rc<AnimationRuntime>,
+    pub(crate) main_content_host: Retained<ContentHost>,
+    pub(crate) sidebar: RefCell<Option<MountedSidebar>>,
     pub(crate) menu: State<Option<Retained<NSMenu>>>,
     pub(crate) set_menu: StateSetter<Option<Retained<NSMenu>>>,
     pub(crate) toolbar: State<Option<Retained<NSToolbar>>>,
@@ -46,6 +48,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 
     let ns_window = unsafe { NSWindow::new(mtm) };
     let tree_context = Rc::new(TreeContext::new());
+    let main_content_host = ContentHost::new(mtm, tree_context.clone());
     let animation = Rc::new(AnimationRuntime::new());
     let animation_timer_target = AnimationTimerTarget::new(
         mtm,
@@ -68,6 +71,8 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         ns_window: ns_window.clone(),
         scale_factor: scale_factor.clone().into_readonly(),
         animation: animation.clone(),
+        main_content_host: main_content_host.clone(),
+        sidebar: RefCell::new(None),
         menu: menu.clone(),
         set_menu: set_menu.clone(),
         toolbar,
@@ -77,7 +82,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     let window_delegate = WindowDelegate::new(
         mtm,
         WindowState {
-            tree_context: tree_context.clone(),
+            main_content_host: main_content_host.clone(),
             on_resize: props.on_resize.clone(),
             on_close_requested: props.desktop.on_close_requested.clone(),
             menu,
@@ -92,6 +97,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     ns_window.setStyleMask(style_mask);
     apply_title_bar_mode(&ns_window, props.desktop.title_bar_mode.get());
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
+    ns_window.setContentView(Some(&main_content_host));
 
     // NSWindow does not retain its delegate.
     element.on_unmount(closure!(
@@ -208,28 +214,16 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                     ) {
                         ContextProvider<ParentContext>(
                             ParentContext {
-                                add_child: Some(callback!([ns_window, tree_context] |object: &NSObject,
+                                add_child: Some(callback!([main_content_host] |object: &NSObject,
                                 child_node: Option<NodeId> | {
                                     let view = object.downcast_ref::<NSView>().unwrap();
-                                    ns_window.setContentView(Some(view));
-                                    tree_context.set_root_node(child_node);
-                                    let size = view.frame().size;
-                                    if let Some(child_node) = child_node {
-                                        tree_context.update_style(child_node, |prev| Style {
-                                            size: Size {
-                                                width: Dimension::from_length(size.width as f32),
-                                                height: Dimension::from_length(size.height as f32),
-                                            },
-                                            ..prev
-                                        });
-                                        tree_context.refresh();
-                                    }
+                                    main_content_host.set_child(view, child_node);
                                 })),
                                 insert_child: None,
-                                remove_child: Some(callback!([ns_window] |_: &NSObject,
+                                remove_child: Some(callback!([main_content_host] |object: &NSObject,
                                 _: Option<NodeId> | {
-                                    ns_window.setContentView(None);
-                                    tree_context.set_root_node(None);
+                                    let view = object.downcast_ref::<NSView>().unwrap();
+                                    main_content_host.remove_child(view);
                                 })),
                                 parent_node: None
                             },
@@ -240,6 +234,98 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
                 }
             }
         }
+    }
+}
+
+pub(crate) struct ContentHostState {
+    tree_context: Rc<TreeContext>,
+    child: RefCell<Option<Retained<NSView>>>,
+}
+
+define_class!(
+    #[unsafe(super = NSView)]
+    #[thread_kind = MainThreadOnly]
+    #[ivars = ContentHostState]
+    pub(crate) struct ContentHost;
+
+    unsafe impl NSObjectProtocol for ContentHost {}
+
+    impl ContentHost {
+        #[unsafe(method(layout))]
+        fn layout(&self) {
+            unsafe {
+                let _: () = msg_send![super(self), layout];
+            }
+            self.resize_tree();
+        }
+    }
+);
+
+impl ContentHost {
+    pub(crate) fn new(mtm: MainThreadMarker, tree_context: Rc<TreeContext>) -> Retained<Self> {
+        let this = Self::alloc(mtm).set_ivars(ContentHostState {
+            tree_context,
+            child: RefCell::new(None),
+        });
+        unsafe { msg_send![super(this), init] }
+    }
+
+    pub(crate) fn set_child(&self, child: &NSView, child_node: Option<NodeId>) {
+        let already_mounted = self
+            .ivars()
+            .child
+            .borrow()
+            .as_ref()
+            .is_some_and(|current| std::ptr::eq::<NSView>(current.as_ref(), child));
+        if !already_mounted {
+            if let Some(previous) = self.ivars().child.borrow_mut().take() {
+                previous.removeFromSuperview();
+            }
+            child.removeFromSuperview();
+            self.addSubview(child);
+            self.ivars().child.replace(Some(child.retain()));
+        }
+        self.ivars().tree_context.set_root_node(child_node);
+        self.resize_tree();
+    }
+
+    pub(crate) fn remove_child(&self, child: &NSView) {
+        let owns_child = self
+            .ivars()
+            .child
+            .borrow()
+            .as_ref()
+            .is_some_and(|current| std::ptr::eq::<NSView>(current.as_ref(), child));
+        if !owns_child {
+            return;
+        }
+
+        self.ivars().child.borrow_mut().take();
+        child.removeFromSuperview();
+        self.ivars().tree_context.set_root_node(None);
+    }
+
+    pub(crate) fn resize_tree(&self) {
+        let tree_context = &self.ivars().tree_context;
+        let bounds = self.bounds();
+        if let Some(child) = self.ivars().child.borrow().as_ref() {
+            // A Taffy root has no native parent node, so its component does not
+            // assign its own frame. NSWindow and NSTabView normally size such
+            // roots for us; this intermediate host must do the same.
+            child.setFrame(bounds);
+        }
+        let Some(root_node) = tree_context.root_node() else {
+            return;
+        };
+        let size = bounds.size;
+        tree_context.update_style(root_node, |prev| Style {
+            size: Size {
+                width: Dimension::from_length(size.width.max(0.0) as f32),
+                height: Dimension::from_length(size.height.max(0.0) as f32),
+            },
+            ..prev
+        });
+        tree_context.refresh();
     }
 }
 
@@ -313,7 +399,7 @@ fn apply_title_bar_mode(window: &NSWindow, mode: TitleBarMode) {
 }
 
 struct WindowState {
-    tree_context: Rc<TreeContext>,
+    main_content_host: Retained<ContentHost>,
     on_resize: PropValue<Option<Shared<dyn Fn(dpi::Size)>>>,
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
     menu: State<Option<Retained<NSMenu>>>,
@@ -368,19 +454,13 @@ define_class!(
                 .unwrap()
                 .downcast::<NSWindow>()
                 .unwrap();
-            let size = window.contentView().unwrap().frame().size;
+            // Replacing the window's content view controller can synchronously
+            // deliver a resize notification while AppKit has no content view
+            // installed. Derive the content size from the window frame so the
+            // callback remains valid throughout that transition.
+            let size = window.contentRectForFrameRect(window.frame()).size;
 
-            let tree_context = &self.ivars().tree_context;
-            if let Some(root_node) = tree_context.root_node() {
-                tree_context.update_style(root_node, |prev| Style {
-                    size: Size {
-                        width: Dimension::from_length(size.width as f32),
-                        height: Dimension::from_length(size.height as f32),
-                    },
-                    ..prev
-                });
-                tree_context.refresh();
-            }
+            self.ivars().main_content_host.resize_tree();
 
             if let Some(on_resize) = self.ivars().on_resize.get() {
                 on_resize(dpi::Size::Logical(LogicalSize::new(

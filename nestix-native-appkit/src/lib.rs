@@ -35,6 +35,7 @@ pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
 pub mod select;
+pub mod sidebar;
 pub mod slider;
 pub mod switch;
 pub mod tab_view;
@@ -60,6 +61,7 @@ pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
 pub use select::*;
+pub use sidebar::*;
 pub use slider::*;
 pub use switch::*;
 pub use tab_view::*;
@@ -122,6 +124,10 @@ impl Backend for AppKitBackend {
         props: nestix_native_core::SelectOptionProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<SelectOption>(props))
+    }
+
+    fn create_sidebar(&self, props: nestix_native_core::SidebarProps) -> Option<nestix::Element> {
+        Some(create_element::<Sidebar>(props))
     }
 
     fn create_slider(&self, props: nestix_native_core::SliderProps) -> Option<nestix::Element> {
