@@ -8,6 +8,7 @@ devtools = []
 
 [dependencies]
 block2 = "0.6.2"
+log = "0.4.27"
 nanoid = "0.4.0"
 nestix = { git = "https://github.com/wirelesseye/nestix.git" }
 nestix-native-core = { path = "../nestix-native-core", features = ["taffy"] }
@@ -21,6 +22,7 @@ objc2-app-kit = { version = "0.3.2", features = [
     "NSImageView",
     "NSLayoutConstraint",
     "NSOpenPanel",
+    "NSOutlineView",
     "NSPanGestureRecognizer",
     "NSPasteboard",
     "NSPasteboardItem",

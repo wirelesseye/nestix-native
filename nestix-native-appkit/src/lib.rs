@@ -25,6 +25,7 @@ macro_rules! require_visual_mount {
 
 pub mod button;
 pub mod checkbox;
+pub mod collection_view;
 pub mod drag_drop;
 pub mod file_picker;
 pub mod flex_view;
@@ -73,6 +74,12 @@ pub use toolbar::*;
 pub use tray_icon::*;
 pub use web_view::*;
 pub use window::*;
+
+pub use collection_view::{
+    ListView, ListViewItem, ListViewItemProps, ListViewProps, TableView, TableViewCell,
+    TableViewCellProps, TableViewColumn, TableViewProps, TableViewRow, TableViewRowProps, TreeView,
+    TreeViewItem, TreeViewItemProps, TreeViewProps,
+};
 
 use nestix::create_element;
 use nestix_native_core::Backend;
@@ -127,6 +134,76 @@ impl Backend for AppKitBackend {
         props: nestix_native_core::SelectOptionProps,
     ) -> Option<nestix::Element> {
         Some(create_element::<SelectOption>(props))
+    }
+
+    fn create_list_view(
+        &self,
+        props: nestix_native_core::ListViewHostProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::ListViewHost>(props))
+    }
+
+    fn create_list_view_node(
+        &self,
+        props: nestix_native_core::CollectionNodeProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::ListViewNodeHost>(props))
+    }
+
+    fn create_list_view_item(
+        &self,
+        props: nestix_native_core::ListViewItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::ListViewItemHost>(props))
+    }
+
+    fn create_table_view(
+        &self,
+        props: nestix_native_core::TableViewHostProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TableViewHost>(props))
+    }
+
+    fn create_table_view_node(
+        &self,
+        props: nestix_native_core::CollectionNodeProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TableViewNodeHost>(props))
+    }
+
+    fn create_table_view_row(
+        &self,
+        props: nestix_native_core::TableViewRowProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TableViewRowHost>(props))
+    }
+
+    fn create_table_view_cell(
+        &self,
+        props: nestix_native_core::TableViewCellProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TableViewCellHost>(props))
+    }
+
+    fn create_tree_view(
+        &self,
+        props: nestix_native_core::TreeViewHostProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TreeViewHost>(props))
+    }
+
+    fn create_tree_view_node(
+        &self,
+        props: nestix_native_core::CollectionNodeProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TreeViewNodeHost>(props))
+    }
+
+    fn create_tree_view_item(
+        &self,
+        props: nestix_native_core::TreeViewItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<collection_view::TreeViewItemHost>(props))
     }
 
     fn create_sidebar(&self, props: nestix_native_core::SidebarProps) -> Option<nestix::Element> {

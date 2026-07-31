@@ -5,6 +5,7 @@ pub mod appearance;
 pub mod backend_provider;
 pub mod button;
 pub mod checkbox;
+pub mod collection_view;
 pub mod color;
 pub mod container;
 pub mod contexts;
@@ -40,6 +41,7 @@ pub use appearance::*;
 pub use backend_provider::*;
 pub use button::*;
 pub use checkbox::*;
+pub use collection_view::*;
 pub use color::*;
 pub use container::*;
 pub use contexts::*;
@@ -189,6 +191,56 @@ pub trait Backend {
 
     /// Creates an option belonging to a selection control.
     fn create_select_option(&self, _props: SelectOptionProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a flat list view.
+    fn create_list_view(&self, _props: ListViewHostProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates an internal keyed list item.
+    fn create_list_view_node(&self, _props: CollectionNodeProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates the text descriptor for a list item.
+    fn create_list_view_item(&self, _props: ListViewItemProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a table view.
+    fn create_table_view(&self, _props: TableViewHostProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates an internal keyed table row.
+    fn create_table_view_node(&self, _props: CollectionNodeProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a table row descriptor.
+    fn create_table_view_row(&self, _props: TableViewRowProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a table cell descriptor.
+    fn create_table_view_cell(&self, _props: TableViewCellProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a hierarchical tree view.
+    fn create_tree_view(&self, _props: TreeViewHostProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates an internal keyed tree node.
+    fn create_tree_view_node(&self, _props: CollectionNodeProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates the text descriptor for a tree item.
+    fn create_tree_view_item(&self, _props: TreeViewItemProps) -> Option<Element> {
         None
     }
 

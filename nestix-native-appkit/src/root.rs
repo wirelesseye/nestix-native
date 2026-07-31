@@ -2,7 +2,7 @@ use nestix::{
     Element, State, StateSetter, closure, component, components::ContextProvider, create_state,
     layout, scoped_effect,
 };
-use nestix_native_core::{RootProps, StyleScope};
+use nestix_native_core::{BackendContext, RootProps, StyleScope};
 use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy, NSFont, NSMenu};
 use objc2_foundation::NSObject;
@@ -48,21 +48,23 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<RootContext>(
-            RootContext {
-                ns_application,
-                app_menu,
-                set_app_menu,
-                active_window_menu,
-                set_active_window_menu,
-            },
-        ) {
-            StyleScope(
-                .class = props.class.clone(),
-                .default_classes = DEFAULT_CLASSES,
-                .initial_font_size = Some(NSFont::systemFontSize()),
+        ContextProvider<BackendContext>(BackendContext { backend: &crate::APPKIT_BACKEND }) {
+            ContextProvider<RootContext>(
+                RootContext {
+                    ns_application,
+                    app_menu,
+                    set_app_menu,
+                    active_window_menu,
+                    set_active_window_menu,
+                },
             ) {
-                $(props.children.clone())
+                StyleScope(
+                    .class = props.class.clone(),
+                    .default_classes = DEFAULT_CLASSES,
+                    .initial_font_size = Some(NSFont::systemFontSize()),
+                ) {
+                    $(props.children.clone())
+                }
             }
         }
     }

@@ -29,6 +29,10 @@ macro_rules! delegate {
 pub mod backend_case;
 pub mod button;
 pub mod checkbox;
+/// Shared generic collection views.
+pub mod collection_view {
+    pub use nestix_native_core::collection_view::*;
+}
 #[cfg(all(feature = "dom", not(target_arch = "wasm32")))]
 pub mod dom_surface;
 pub mod drag_drop;

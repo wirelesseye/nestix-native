@@ -898,6 +898,7 @@ version = "0.1.0"
 dependencies = [
  "block2",
  "env_logger",
+ "log",
  "nanoid",
  "nestix",
  "nestix-native-core",
