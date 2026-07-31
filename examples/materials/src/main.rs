@@ -3,8 +3,8 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    AlignItems, Button, FlexDirection, FlexView, FlexWrap, Material, MaterialSource, Root, Text,
-    TitlebarMode, Window,
+    AlignItems, Button, Color, FlexDirection, FlexView, FlexWrap, Material, MaterialSource,
+    Position, RGBColor, Root, Text, TitlebarMode, Window,
 };
 
 fn main() {
@@ -67,16 +67,51 @@ fn MaterialsExample() -> Element {
                             }
                         ),
                     )
-                    FlexView(
-                        .view(.flex_grow = 1.0),
-                        .container(.padding = 28),
-                        .align_items = AlignItems::Center,
-                        .gap = 12,
-                        .material = material.clone(),
-                        .material_source = source.clone(),
-                    ) {
-                        Text("This bounded area owns the selected material.")
-                        Text("Compare within-window sampling with the desktop behind the window.")
+                    FlexView(.view(.flex_grow = 1.0)) {
+                        FlexView(
+                            .view(
+                                .position = Position::Absolute,
+                                .left = 30,
+                                .top = 20,
+                                .width = 310,
+                                .height = 135,
+                            ),
+                            .container(.padding = 18),
+                            .bg_color = Color::RGB(RGBColor::from_rgba(225, 72, 105, 220)),
+                        ) {
+                            Text("IN-WINDOW LAYER A")
+                        }
+                        FlexView(
+                            .view(
+                                .position = Position::Absolute,
+                                .left = 365,
+                                .top = 75,
+                                .width = 300,
+                                .height = 130,
+                            ),
+                            .container(.padding = 18),
+                            .bg_color = Color::RGB(RGBColor::from_rgba(45, 140, 230, 220)),
+                        ) {
+                            Text("IN-WINDOW LAYER B")
+                        }
+                        FlexView(
+                            .view(
+                                .position = Position::Absolute,
+                                .left = 130,
+                                .top = 55,
+                                .width = 500,
+                                .height = 155,
+                            ),
+                            .container(.padding = 28),
+                            .align_items = AlignItems::Center,
+                            .gap = 12,
+                            .material = material.clone(),
+                            .material_source = source.clone(),
+                        ) {
+                            Text("ABSOLUTE MATERIAL LAYER")
+                            Text("Within window samples the overlapping red and blue elements.")
+                            Text("Behind window samples the desktop instead.")
+                        }
                     }
                     Text("Material")
                     FlexView(
