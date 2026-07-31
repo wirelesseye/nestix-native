@@ -56,6 +56,8 @@ pub fn Input(props: &InputProps, element: &Element) {
     let mtm = MainThreadMarker::new().unwrap();
     let string_value = NSString::from_str(&props.value.get());
     let input = NSTextField::textFieldWithString(&string_value, mtm);
+    let placeholder = NSString::from_str(&props.placeholder.get());
+    input.setPlaceholderString(Some(&placeholder));
     element.provide_handle(input.as_ref() as *const NSObject);
 
     let input_id = nanoid::nanoid!();
@@ -119,11 +121,14 @@ pub fn Input(props: &InputProps, element: &Element) {
             props.view.width,
             props.view.height,
             props.value,
+            props.placeholder,
         ] || {
             let scale_factor = scale_factor.get();
             let style_props = style_props.get();
             let string_value = NSString::from_str(&value.get());
             input.setStringValue(&string_value);
+            let placeholder = NSString::from_str(&placeholder.get());
+            input.setPlaceholderString(Some(&placeholder));
             let width = style_length_with_auto(
                 style_props.as_ref(),
                 width.get(),

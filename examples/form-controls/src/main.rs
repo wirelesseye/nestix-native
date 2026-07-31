@@ -82,6 +82,7 @@ fn FormControlsApp() -> Element {
                             .class = "field",
                             .view(.width = 320),
                             .value = name.clone(),
+                            .placeholder = "Enter your name…",
                             .on_text_change = callback!(
                                 [set_name] |value: &str| {
                                     set_name.set(value.to_string());

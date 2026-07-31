@@ -18,6 +18,10 @@ pub struct InputProps {
     #[props(default)]
     pub value: String,
 
+    /// Hint text displayed when the input is empty.
+    #[props(default)]
+    pub placeholder: String,
+
     /// Called with the new text after a user edit.
     pub on_text_change: Option<Shared<dyn Fn(&str)>>,
 }

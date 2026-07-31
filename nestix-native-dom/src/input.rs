@@ -42,8 +42,10 @@ pub fn Input(props: &InputProps, element: &Element) {
         let renderer = renderer.clone();
         let effective_style = effective_style.clone();
         let value = props.value.clone();
+        let placeholder = props.placeholder.clone();
         move || {
             renderer.set_property(node, "value".to_string(), DomValue::String(value.get()));
+            renderer.set_attribute(node, "placeholder".to_string(), Some(placeholder.get()));
             renderer.replace_styles(
                 node,
                 view_styles(

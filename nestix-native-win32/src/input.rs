@@ -14,7 +14,7 @@ use windows::{
         Foundation::{LPARAM, SIZE, WPARAM},
         Graphics::Gdi::{DeleteObject, GetDC, GetTextExtentPoint32W, ReleaseDC, SelectObject},
         UI::{
-            Controls::WC_EDIT,
+            Controls::{EM_SETCUEBANNER, WC_EDIT},
             WindowsAndMessaging::{
                 CreateWindowExW, DestroyWindow, EN_CHANGE, ES_AUTOHSCROLL, GetWindowTextLengthW,
                 GetWindowTextW, SendMessageW, SetWindowTextW, WINDOW_EX_STYLE, WINDOW_STYLE,
@@ -123,6 +123,20 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
 
     scoped_effect!(
+        [props.placeholder] || {
+            let placeholder = HSTRING::from(placeholder.get());
+            unsafe {
+                SendMessageW(
+                    hwnd,
+                    EM_SETCUEBANNER,
+                    Some(WPARAM(0)),
+                    Some(LPARAM(placeholder.as_ptr() as isize)),
+                );
+            }
+        }
+    );
+
+    scoped_effect!(
         [
             tree_context,
             style_props,
@@ -150,6 +164,7 @@ pub fn Input(props: &InputProps, element: &Element) {
             tree_context,
             style_props,
             props.value,
+            props.placeholder,
             props.view.width,
             props.view.height,
         ] || {
@@ -165,7 +180,17 @@ pub fn Input(props: &InputProps, element: &Element) {
             }
 
             let hds = unsafe { GetDC(Some(hwnd)) };
-            let mesure_string = HSTRING::from(if value.is_empty() { "t" } else { &value });
+            let placeholder = placeholder.get();
+            let measured_text = if value.is_empty() {
+                &placeholder
+            } else {
+                &value
+            };
+            let mesure_string = HSTRING::from(if measured_text.is_empty() {
+                "t"
+            } else {
+                measured_text
+            });
             let mut size: SIZE = SIZE::default();
             unsafe {
                 let font = ui_font(12.0, scale_factor);

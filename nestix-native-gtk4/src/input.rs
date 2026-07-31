@@ -34,6 +34,7 @@ pub fn Input(props: &InputProps, element: &Element) {
     );
     let input = gtk4::Entry::new();
     input.set_text(&props.value.get());
+    input.set_placeholder_text(Some(&props.placeholder.get()));
     let (content_revision, set_content_revision) = create_state(0usize);
     let updating_value = Rc::new(Cell::new(false));
 
@@ -48,13 +49,20 @@ pub fn Input(props: &InputProps, element: &Element) {
     ));
 
     scoped_effect!(
-        [input, props.value, content_revision, updating_value] || {
+        [
+            input,
+            props.value,
+            props.placeholder,
+            content_revision,
+            updating_value
+        ] || {
             let value = value.get();
             if input.text().as_str() != value {
                 updating_value.set(true);
                 input.set_text(&value);
                 updating_value.set(false);
             }
+            input.set_placeholder_text(Some(&placeholder.get()));
             set_content_revision.mutate(|revision| *revision += 1);
         }
     );
