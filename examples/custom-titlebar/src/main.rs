@@ -14,7 +14,7 @@ use nestix_native::appkit::{
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("warn")).init();
-    mount_root(&layout! { AppKitToolbarExample });
+    mount_root(&layout! { CustomTitlebarExample });
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,7 +24,7 @@ enum ExamplePage {
 }
 
 #[component]
-fn AppKitToolbarExample() -> Element {
+fn CustomTitlebarExample() -> Element {
     let (count, set_count) = create_state(0_i32);
     let (reset_hidden, set_reset_hidden) = create_state(false);
     let (page, set_page) = create_state(ExamplePage::Counter);
@@ -71,7 +71,7 @@ fn AppKitToolbarExample() -> Element {
         Root {
             StyleProvider(styles) {
                 Window(
-                    .title = "AppKit Toolbar Example",
+                    .title = "Custom Titlebar Example",
                     .desktop(
                         .width = 560,
                         .height = 320,
