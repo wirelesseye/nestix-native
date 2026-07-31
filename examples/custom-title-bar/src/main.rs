@@ -28,7 +28,9 @@ fn AppKitToolbarExample() -> Element {
     let (count, set_count) = create_state(0_i32);
     let (reset_hidden, set_reset_hidden) = create_state(false);
     let (page, set_page) = create_state(ExamplePage::Counter);
+    #[cfg(target_os = "macos")]
     let (display_mode, set_display_mode) = create_state(AppKitToolbarDisplayMode::IconAndLabel);
+    #[cfg(target_os = "macos")]
     let (toolbar_style, set_toolbar_style) = create_state(AppKitToolbarStyle::Expanded);
     let (title_bar_mode, set_title_bar_mode) = create_state(TitleBarMode::System);
 
@@ -170,6 +172,7 @@ fn AppKitToolbarExample() -> Element {
                                 ),
                             )
                         } else {
+                            #[cfg(target_os = "macos")]
                             Button(
                                 .title = "Cycle toolbar display mode",
                                 .on_click = callback!(
@@ -191,6 +194,7 @@ fn AppKitToolbarExample() -> Element {
                                     }
                                 ),
                             )
+                            #[cfg(target_os = "macos")]
                             Button(
                                 .title = "Cycle toolbar style",
                                 .on_click = callback!(

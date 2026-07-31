@@ -72,15 +72,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "appkit-toolbar-example"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "nestix",
- "nestix-native",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,6 +234,15 @@ checksum = "32a2785755761f3ddc1492979ce1e48d2c00d09311c39e4466429188f3dd6501"
 dependencies = [
  "quote",
  "syn 2.0.111",
+]
+
+[[package]]
+name = "custom-title-bar-example"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "nestix",
+ "nestix-native",
 ]
 
 [[package]]
@@ -851,7 +851,7 @@ dependencies = [
 [[package]]
 name = "nestix"
 version = "0.1.0"
-source = "git+https://github.com/wirelesseye/nestix.git#748a3bb49c5f0137efab507fa62c7865f8994e27"
+source = "git+https://github.com/wirelesseye/nestix.git#bc03c0cfaaa378a405f70ff1d2a587d82eb528be"
 dependencies = [
  "log",
  "nestix-macros",
@@ -861,7 +861,7 @@ dependencies = [
 [[package]]
 name = "nestix-macros"
 version = "0.1.0"
-source = "git+https://github.com/wirelesseye/nestix.git#748a3bb49c5f0137efab507fa62c7865f8994e27"
+source = "git+https://github.com/wirelesseye/nestix.git#bc03c0cfaaa378a405f70ff1d2a587d82eb528be"
 dependencies = [
  "convert_case",
  "proc-macro-crate",
@@ -964,7 +964,7 @@ version = "0.1.0"
 [[package]]
 name = "nestix-signal"
 version = "0.1.0"
-source = "git+https://github.com/wirelesseye/nestix.git#748a3bb49c5f0137efab507fa62c7865f8994e27"
+source = "git+https://github.com/wirelesseye/nestix.git#bc03c0cfaaa378a405f70ff1d2a587d82eb528be"
 dependencies = [
  "log",
 ]
