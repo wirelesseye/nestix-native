@@ -5,8 +5,8 @@ use nestix::{
     components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitlebarMode, TreeContext,
-    WindowProps, WithAuto as NativeLengthWithAuto,
+    AnimatedStyle, AnimationRuntime, Length, Material, MaterialSource, StyleContext, StyleScope,
+    TitlebarMode, TreeContext, WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{self, LogicalSize},
     matched_style, style_length_with_auto,
 };
@@ -15,13 +15,16 @@ use objc2::{
     runtime::ProtocolObject, sel,
 };
 use objc2_app_kit::{
-    NSMenu, NSToolbar, NSView, NSWindow, NSWindowDelegate, NSWindowStyleMask,
-    NSWindowTitleVisibility,
+    NSColor, NSMenu, NSToolbar, NSView, NSVisualEffectBlendingMode, NSVisualEffectView, NSWindow,
+    NSWindowDelegate, NSWindowOrderingMode, NSWindowStyleMask, NSWindowTitleVisibility,
 };
 use objc2_foundation::{NSNotification, NSObject, NSObjectProtocol, NSSize, NSString, NSTimer};
 use taffy::{Dimension, NodeId, Size, Style, prelude::FromLength};
 
-use crate::{contexts::ParentContext, root::RootContext, sidebar::MountedSidebar};
+use crate::{
+    contexts::ParentContext, material::visual_effect_view, root::RootContext,
+    sidebar::MountedSidebar,
+};
 
 pub struct WindowContext {
     pub ns_window: Retained<NSWindow>,
@@ -98,6 +101,31 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     apply_titlebar_mode(&ns_window, props.desktop.titlebar_mode.get());
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
     ns_window.setContentView(Some(&main_content_host));
+
+    let original_opaque = ns_window.isOpaque();
+    let original_background_color = ns_window.backgroundColor();
+
+    scoped_effect!(
+        [
+            ns_window,
+            main_content_host,
+            original_background_color,
+            props.desktop.material,
+            props.desktop.material_source
+        ] || {
+            let material = material.get();
+            let has_appkit_material =
+                material.is_some_and(|material| material.appkit_material().is_some());
+            main_content_host.set_material(material, material_source.get());
+            if has_appkit_material {
+                ns_window.setOpaque(false);
+                ns_window.setBackgroundColor(Some(&NSColor::clearColor()));
+            } else {
+                ns_window.setOpaque(original_opaque);
+                ns_window.setBackgroundColor(Some(&original_background_color));
+            }
+        }
+    );
 
     // NSWindow does not retain its delegate.
     element.on_unmount(closure!(
@@ -240,6 +268,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
 pub(crate) struct ContentHostState {
     tree_context: Rc<TreeContext>,
     child: RefCell<Option<Retained<NSView>>>,
+    material: RefCell<Option<Retained<NSVisualEffectView>>>,
 }
 
 define_class!(
@@ -266,6 +295,7 @@ impl ContentHost {
         let this = Self::alloc(mtm).set_ivars(ContentHostState {
             tree_context,
             child: RefCell::new(None),
+            material: RefCell::new(None),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -289,6 +319,25 @@ impl ContentHost {
         self.resize_tree();
     }
 
+    pub(crate) fn set_material(&self, material: Option<Material>, source: MaterialSource) {
+        if let Some(previous) = self.ivars().material.borrow_mut().take() {
+            previous.removeFromSuperview();
+        }
+
+        let Some(material) = material else { return };
+        let Some(effect) = visual_effect_view(
+            MainThreadMarker::new().unwrap(),
+            material,
+            source,
+            NSVisualEffectBlendingMode::BehindWindow,
+        ) else {
+            return;
+        };
+        effect.setFrame(self.bounds());
+        self.addSubview_positioned_relativeTo(&effect, NSWindowOrderingMode::Below, None);
+        self.ivars().material.replace(Some(effect));
+    }
+
     pub(crate) fn remove_child(&self, child: &NSView) {
         let owns_child = self
             .ivars()
@@ -308,6 +357,9 @@ impl ContentHost {
     pub(crate) fn resize_tree(&self) {
         let tree_context = &self.ivars().tree_context;
         let bounds = self.bounds();
+        if let Some(material) = self.ivars().material.borrow().as_ref() {
+            material.setFrame(bounds);
+        }
         if let Some(child) = self.ivars().child.borrow().as_ref() {
             // A Taffy root has no native parent node, so its component does not
             // assign its own frame. NSWindow and NSTabView normally size such

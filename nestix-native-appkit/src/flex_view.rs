@@ -10,11 +10,14 @@ use nestix_native_core::{
     style_justify_content, style_length_with_auto, style_margin, style_padding,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
-use objc2_app_kit::{NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView};
+use objc2_app_kit::{
+    NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView, NSVisualEffectBlendingMode,
+    NSVisualEffectView, NSWindowOrderingMode,
+};
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
 use taffy::{NodeId, Size, Style};
 
-use crate::{WindowContext, contexts::ParentContext};
+use crate::{WindowContext, contexts::ParentContext, material::visual_effect_view};
 use nestix_native_core::utils::{gap_to_taffy, inset_to_taffy, margin_to_taffy, padding_to_taffy};
 
 #[component]
@@ -32,6 +35,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
         mtm,
         FlexViewState {
             ns_box: RefCell::new(None),
+            material: RefCell::new(None),
         },
     );
     element.provide_handle(view.as_ref() as *const NSObject);
@@ -62,6 +66,27 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
+        [view, props.material, props.material_source] || {
+            if let Some(previous) = view.ivars().material.borrow_mut().take() {
+                previous.removeFromSuperview();
+            }
+
+            if let Some(material) = material.get()
+                && let Some(effect) = visual_effect_view(
+                    mtm,
+                    material,
+                    material_source.get(),
+                    NSVisualEffectBlendingMode::WithinWindow,
+                )
+            {
+                view.addSubview_positioned_relativeTo(&effect, NSWindowOrderingMode::Below, None);
+                pin_to_bounds(&view, &effect);
+                view.ivars().material.replace(Some(effect));
+            }
+        }
+    );
+
+    scoped_effect!(
         [view, matched_style_props, props.bg_color] || {
             let style_props = matched_style_props.get();
             let bg_color = bg_color.get().or_else(|| {
@@ -75,23 +100,20 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
                     ns_box.setBoxType(NSBoxType::Custom);
                     ns_box.setBorderWidth(0.0);
 
-                    view.addSubview(&ns_box);
-                    ns_box.setTranslatesAutoresizingMaskIntoConstraints(false);
-                    let constraints = NSArray::from_retained_slice(&[
-                        ns_box
-                            .topAnchor()
-                            .constraintEqualToAnchor(&view.topAnchor()),
-                        ns_box
-                            .bottomAnchor()
-                            .constraintEqualToAnchor(&view.bottomAnchor()),
-                        ns_box
-                            .leadingAnchor()
-                            .constraintEqualToAnchor(&view.leadingAnchor()),
-                        ns_box
-                            .trailingAnchor()
-                            .constraintEqualToAnchor(&view.trailingAnchor()),
-                    ]);
-                    NSLayoutConstraint::activateConstraints(&constraints);
+                    if let Some(material) = view.ivars().material.borrow().as_ref() {
+                        view.addSubview_positioned_relativeTo(
+                            &ns_box,
+                            NSWindowOrderingMode::Above,
+                            Some(material),
+                        );
+                    } else {
+                        view.addSubview_positioned_relativeTo(
+                            &ns_box,
+                            NSWindowOrderingMode::Below,
+                            None,
+                        );
+                    }
+                    pin_to_bounds(&view, &ns_box);
 
                     view.ivars().ns_box.replace(Some(ns_box));
                 }
@@ -406,6 +428,26 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 
 struct FlexViewState {
     ns_box: RefCell<Option<Retained<NSBox>>>,
+    material: RefCell<Option<Retained<NSVisualEffectView>>>,
+}
+
+fn pin_to_bounds(parent: &NSView, child: &NSView) {
+    child.setTranslatesAutoresizingMaskIntoConstraints(false);
+    let constraints = NSArray::from_retained_slice(&[
+        child
+            .topAnchor()
+            .constraintEqualToAnchor(&parent.topAnchor()),
+        child
+            .bottomAnchor()
+            .constraintEqualToAnchor(&parent.bottomAnchor()),
+        child
+            .leadingAnchor()
+            .constraintEqualToAnchor(&parent.leadingAnchor()),
+        child
+            .trailingAnchor()
+            .constraintEqualToAnchor(&parent.trailingAnchor()),
+    ]);
+    NSLayoutConstraint::activateConstraints(&constraints);
 }
 
 define_class!(

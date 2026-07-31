@@ -1,6 +1,6 @@
 use nestix::{Element, Shared, props};
 
-use crate::ClassList;
+use crate::{ClassList, Material, MaterialSource};
 
 /// Controls how a window's native title bar is presented.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -36,6 +36,13 @@ pub struct DesktopWindowProps {
     /// Native title-bar presentation mode.
     #[props(default)]
     pub titlebar_mode: TitlebarMode,
+
+    /// Composited material displayed behind the window content.
+    pub material: Option<Material>,
+
+    /// Content sampled by the composited material.
+    #[props(default)]
+    pub material_source: MaterialSource,
 
     /// Called when the user asks to close the window. The window stays open
     /// until this component is unmounted.

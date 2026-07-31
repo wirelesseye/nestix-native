@@ -48,6 +48,7 @@ pub mod window;
 
 mod contexts;
 mod font;
+mod material;
 mod native_control;
 
 pub use button::*;

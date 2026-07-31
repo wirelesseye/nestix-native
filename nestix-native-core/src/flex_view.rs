@@ -1,6 +1,8 @@
 use nestix::{Layout, props};
 
-use crate::{ClassList, Color, ContainerProps, Length, ViewProps, WithAuto};
+use crate::{
+    ClassList, Color, ContainerProps, Length, Material, MaterialSource, ViewProps, WithAuto,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FlexDirection {
@@ -137,4 +139,11 @@ pub struct FlexViewProps {
 
     /// Optional background fill color.
     pub bg_color: Option<Color>,
+
+    /// Optional composited material behind the background fill and content.
+    pub material: Option<Material>,
+
+    /// Content sampled by the composited material.
+    #[props(default)]
+    pub material_source: MaterialSource,
 }
