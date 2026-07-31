@@ -26,12 +26,11 @@ fn ExampleApp() -> Element {
                 ),
             ) {
                 FlexView(.view(.flex_grow = 1.0)) {
-                    if cfg!(target_os = "macos") {
-                        AppKitToolbar(
-                            .identifier = "dev.nestix.example.sidebar",
-                            .style = AppKitToolbarStyle::Unified,
-                        )
-                    }
+                    #[cfg(target_os = "macos")]
+                    AppKitToolbar(
+                        .identifier = "dev.nestix.example.sidebar",
+                        .style = AppKitToolbarStyle::Unified,
+                    )
                     Sidebar(.width = 260.0, .min_width = 260.0, .resizable = true) {
                         FlexView(
                             .container(

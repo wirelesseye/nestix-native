@@ -3,12 +3,13 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    Button, FlexView, Length, Root, StyleProvider, Text, TitleBarMode, Window,
-    appkit::{
-        AppKitToolbar, AppKitToolbarDisplayMode, AppKitToolbarFlexibleSpace, AppKitToolbarItem,
-        AppKitToolbarSpace, AppKitToolbarStyle,
-    },
-    computed_style,
+    Button, FlexView, Length, Root, StyleProvider, Text, TitleBarMode, Window, computed_style,
+};
+
+#[cfg(target_os = "macos")]
+use nestix_native::appkit::{
+    AppKitToolbar, AppKitToolbarDisplayMode, AppKitToolbarFlexibleSpace, AppKitToolbarItem,
+    AppKitToolbarSpace, AppKitToolbarStyle,
 };
 
 fn main() {
@@ -81,6 +82,7 @@ fn AppKitToolbarExample() -> Element {
                     FlexView(.class = "content") {
                         // AppKitToolbar may be mounted anywhere below its Window.
                         // It attaches to the window and takes no content-layout space.
+                        #[cfg(target_os = "macos")]
                         AppKitToolbar(
                             .identifier = "dev.nestix.example.appkit-toolbar",
                             .selected_identifier = selected_identifier,
