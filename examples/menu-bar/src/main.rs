@@ -1,6 +1,6 @@
 use env_logger::Env;
 use nestix::{
-    Element, Shared, callback, component, computed, create_state, layout, mount_root, props,
+    Element, StateSetter, callback, component, computed, create_state, layout, mount_root, props,
     scoped_effect, unmount_root,
 };
 use nestix_native::{
@@ -16,7 +16,7 @@ fn main() {
 #[props]
 struct ApplicationMenuProps {
     #[props(raw)]
-    set_status: Shared<dyn Fn(String)>,
+    set_status: StateSetter<String>,
 }
 
 // Each menu bar needs its own element tree because cloned elements share mount identity.
@@ -28,7 +28,7 @@ fn ApplicationMenu(props: &ApplicationMenuProps) -> Element {
                 "About Menu Bar Example",
                 .on_activate = callback!(
                     [props.set_status] || {
-                        set_status("Application-wide About selected".to_string());
+                        set_status.set("Application-wide About selected".to_string());
                     }
                 ),
             )
@@ -38,7 +38,7 @@ fn ApplicationMenu(props: &ApplicationMenuProps) -> Element {
                 .shortcut = Shortcut::primary('A'),
                 .on_activate = callback!(
                     [props.set_status] || {
-                        set_status("Application-wide action selected".to_string());
+                        set_status.set("Application-wide action selected".to_string());
                     }
                 ),
             )
@@ -48,7 +48,7 @@ fn ApplicationMenu(props: &ApplicationMenuProps) -> Element {
 
 #[component]
 fn MenuBarExample() -> Element {
-    let (status, write_status) = create_state("Choose a menu command".to_string());
+    let (status, set_status) = create_state("Choose a menu command".to_string());
     let (show_status, set_show_status) = create_state(true);
     let (window_menu_open, set_window_menu_open) = create_state(true);
     let (plain_window_open, set_plain_window_open) = create_state(true);
@@ -60,10 +60,6 @@ fn MenuBarExample() -> Element {
             }
         }
     );
-
-    let set_status = callback!([write_status] |value: String| {
-        write_status.set(value);
-    });
 
     layout! {
         Root {
@@ -106,7 +102,7 @@ fn MenuBarExample() -> Element {
                                         .shortcut = Shortcut::primary('N'),
                                         .on_activate = callback!(
                                             [set_status] || {
-                                                set_status("New Document selected".to_string());
+                                                set_status.set("New Document selected".to_string());
                                             }
                                         ),
                                     )
@@ -115,7 +111,7 @@ fn MenuBarExample() -> Element {
                                         .shortcut = Shortcut::primary('S'),
                                         .on_activate = callback!(
                                             [set_status] || {
-                                                set_status("Save selected".to_string());
+                                                set_status.set("Save selected".to_string());
                                             }
                                         ),
                                     )
