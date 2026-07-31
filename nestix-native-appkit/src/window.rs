@@ -5,7 +5,7 @@ use nestix::{
     components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
+    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitlebarMode, TreeContext,
     WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{self, LogicalSize},
     matched_style, style_length_with_auto,
@@ -95,7 +95,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         | NSWindowStyleMask::Resizable
         | NSWindowStyleMask::Titled;
     ns_window.setStyleMask(style_mask);
-    apply_title_bar_mode(&ns_window, props.desktop.title_bar_mode.get());
+    apply_titlebar_mode(&ns_window, props.desktop.titlebar_mode.get());
     ns_window.setDelegate(Some(ProtocolObject::from_ref(&*window_delegate)));
     ns_window.setContentView(Some(&main_content_host));
 
@@ -149,8 +149,8 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [ns_window, props.desktop.title_bar_mode] || {
-            apply_title_bar_mode(&ns_window, title_bar_mode.get());
+        [ns_window, props.desktop.titlebar_mode] || {
+            apply_titlebar_mode(&ns_window, titlebar_mode.get());
         }
     );
 
@@ -373,22 +373,22 @@ impl AnimationTimerTarget {
     }
 }
 
-fn apply_title_bar_mode(window: &NSWindow, mode: TitleBarMode) {
+fn apply_titlebar_mode(window: &NSWindow, mode: TitlebarMode) {
     let mut style_mask = window.styleMask();
 
     match mode {
-        TitleBarMode::System => {
+        TitlebarMode::System => {
             style_mask.insert(NSWindowStyleMask::Titled);
             style_mask.remove(NSWindowStyleMask::FullSizeContentView);
             window.setTitleVisibility(NSWindowTitleVisibility::Visible);
             window.setTitlebarAppearsTransparent(false);
         }
-        TitleBarMode::Hidden => {
+        TitlebarMode::Hidden => {
             style_mask.remove(NSWindowStyleMask::Titled | NSWindowStyleMask::FullSizeContentView);
             window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
             window.setTitlebarAppearsTransparent(false);
         }
-        TitleBarMode::Overlay => {
+        TitlebarMode::Overlay => {
             style_mask.insert(NSWindowStyleMask::Titled | NSWindowStyleMask::FullSizeContentView);
             window.setTitleVisibility(NSWindowTitleVisibility::Hidden);
             window.setTitlebarAppearsTransparent(true);

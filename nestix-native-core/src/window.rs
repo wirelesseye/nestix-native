@@ -4,7 +4,7 @@ use crate::ClassList;
 
 /// Controls how a window's native title bar is presented.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum TitleBarMode {
+pub enum TitlebarMode {
     /// Use the platform's standard title bar and window controls.
     #[default]
     System,
@@ -35,7 +35,7 @@ pub struct DesktopWindowProps {
 
     /// Native title-bar presentation mode.
     #[props(default)]
-    pub title_bar_mode: TitleBarMode,
+    pub titlebar_mode: TitlebarMode,
 
     /// Called when the user asks to close the window. The window stays open
     /// until this component is unmounted.

@@ -1,6 +1,6 @@
 use env_logger::Env;
 use nestix::{Element, callback, component, layout, mount_root, unmount_root};
-use nestix_native::{FlexView, Input, Root, Sidebar, Text, TitleBarMode, Window};
+use nestix_native::{FlexView, Input, Root, Sidebar, Text, TitlebarMode, Window};
 
 #[cfg(target_os = "macos")]
 use nestix_native::appkit::{AppKitToolbar, AppKitToolbarStyle};
@@ -22,7 +22,7 @@ fn ExampleApp() -> Element {
                     .on_close_requested = callback!(|| {
                         unmount_root().expect("root should be mounted");
                     }),
-                    .title_bar_mode = TitleBarMode::Overlay,
+                    .titlebar_mode = TitlebarMode::Overlay,
                 ),
             ) {
                 FlexView(.view(.flex_grow = 1.0)) {

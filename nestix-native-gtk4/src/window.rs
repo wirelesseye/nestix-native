@@ -9,7 +9,7 @@ use nestix::{
     create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
+    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitlebarMode, TreeContext,
     WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{LogicalSize, Size as DpiSize},
     matched_style, style_length_with_auto,
@@ -178,12 +178,12 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
             decoration_size,
             correct_content_size,
             menu_bar,
-            props.desktop.title_bar_mode
+            props.desktop.titlebar_mode
         ] || {
-            let mode = title_bar_mode.get();
-            apply_title_bar_mode(&window, &header_bar, mode);
+            let mode = titlebar_mode.get();
+            apply_titlebar_mode(&window, &header_bar, mode);
             decoration_size.set((0, 0));
-            correct_content_size.set(mode == TitleBarMode::System || menu_bar.borrow().is_some());
+            correct_content_size.set(mode == TitlebarMode::System || menu_bar.borrow().is_some());
         }
     );
 
@@ -374,21 +374,21 @@ fn logical_length(
     }
 }
 
-fn apply_title_bar_mode(
+fn apply_titlebar_mode(
     window: &gtk4::Window,
     overlay_header: &gtk4::HeaderBar,
-    mode: TitleBarMode,
+    mode: TitlebarMode,
 ) {
     match mode {
-        TitleBarMode::System => {
+        TitlebarMode::System => {
             overlay_header.set_visible(false);
             window.set_decorated(true);
         }
-        TitleBarMode::Hidden => {
+        TitlebarMode::Hidden => {
             overlay_header.set_visible(false);
             window.set_decorated(false);
         }
-        TitleBarMode::Overlay => {
+        TitlebarMode::Overlay => {
             window.set_decorated(false);
             overlay_header.set_visible(true);
         }

@@ -3,7 +3,7 @@ use nestix::{
     Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
 };
 use nestix_native::{
-    Button, FlexView, Length, Root, StyleProvider, Text, TitleBarMode, Window, computed_style,
+    Button, FlexView, Length, Root, StyleProvider, Text, TitlebarMode, Window, computed_style,
 };
 
 #[cfg(target_os = "macos")]
@@ -32,7 +32,7 @@ fn CustomTitlebarExample() -> Element {
     let (display_mode, set_display_mode) = create_state(AppKitToolbarDisplayMode::IconAndLabel);
     #[cfg(target_os = "macos")]
     let (toolbar_style, set_toolbar_style) = create_state(AppKitToolbarStyle::Expanded);
-    let (title_bar_mode, set_title_bar_mode) = create_state(TitleBarMode::System);
+    let (titlebar_mode, set_titlebar_mode) = create_state(TitlebarMode::System);
 
     let selected_identifier = computed!(
         [page] || {
@@ -47,8 +47,8 @@ fn CustomTitlebarExample() -> Element {
     );
 
     let padding_top = computed!(
-        [title_bar_mode]
-            || if title_bar_mode.get() == TitleBarMode::Overlay {
+        [titlebar_mode]
+            || if titlebar_mode.get() == TitlebarMode::Overlay {
                 Length::logical(80).into()
             } else {
                 Length::logical(15).into()
@@ -75,7 +75,7 @@ fn CustomTitlebarExample() -> Element {
                     .desktop(
                         .width = 560,
                         .height = 320,
-                        .title_bar_mode = title_bar_mode.clone(),
+                        .titlebar_mode = titlebar_mode.clone(),
                         .on_close_requested = callback!(|| {
                             unmount_root().expect("root should be mounted");
                         }),
@@ -221,18 +221,18 @@ fn CustomTitlebarExample() -> Element {
                             )
                             Button(
                                 .title = computed!(
-                                    [title_bar_mode]
+                                    [titlebar_mode]
                                         || format!(
                                             "Toggle title bar overlay mode (current: {:?})",
-                                            title_bar_mode.get(),
+                                            titlebar_mode.get(),
                                         )
                                 ),
                                 .on_click = callback!(
-                                    [title_bar_mode] || {
-                                        set_title_bar_mode.set(match title_bar_mode.get() {
-                                            TitleBarMode::System => TitleBarMode::Overlay,
-                                            TitleBarMode::Overlay => TitleBarMode::System,
-                                            _ => TitleBarMode::System,
+                                    [titlebar_mode] || {
+                                        set_titlebar_mode.set(match titlebar_mode.get() {
+                                            TitlebarMode::System => TitlebarMode::Overlay,
+                                            TitlebarMode::Overlay => TitlebarMode::System,
+                                            _ => TitlebarMode::System,
                                         });
                                     }
                                 ),

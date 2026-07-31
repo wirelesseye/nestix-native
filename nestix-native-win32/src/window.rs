@@ -5,7 +5,7 @@ use nestix::{
     components::ContextProvider, computed, create_state, layout, scoped_effect,
 };
 use nestix_native_core::{
-    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitleBarMode, TreeContext,
+    AnimatedStyle, AnimationRuntime, Length, StyleContext, StyleScope, TitlebarMode, TreeContext,
     WindowProps, WithAuto as NativeLengthWithAuto,
     dpi::{LogicalSize, PhysicalSize, Size},
     matched_style, style_length_with_auto,
@@ -169,9 +169,9 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [props.desktop.title_bar_mode]
+        [props.desktop.titlebar_mode]
             || unsafe {
-                apply_title_bar_mode(hwnd, title_bar_mode.get());
+                apply_titlebar_mode(hwnd, titlebar_mode.get());
             }
     );
 
@@ -332,13 +332,13 @@ pub(crate) struct WindowState {
     on_close_requested: PropValue<Option<Shared<dyn Fn()>>>,
 }
 
-unsafe fn apply_title_bar_mode(hwnd: HWND, mode: TitleBarMode) {
+unsafe fn apply_titlebar_mode(hwnd: HWND, mode: TitlebarMode) {
     unsafe {
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE);
         let next_style = match mode {
-            TitleBarMode::Hidden => style & !(WS_CAPTION.0 as isize),
+            TitlebarMode::Hidden => style & !(WS_CAPTION.0 as isize),
             // Custom title-bar overlays are not supported by this backend.
-            TitleBarMode::System | TitleBarMode::Overlay => style | WS_CAPTION.0 as isize,
+            TitlebarMode::System | TitlebarMode::Overlay => style | WS_CAPTION.0 as isize,
         };
         if next_style != style {
             SetWindowLongPtrW(hwnd, GWL_STYLE, next_style);
