@@ -31,6 +31,7 @@ pub mod flex_view;
 pub mod image_view;
 pub mod input;
 pub mod menu;
+pub mod navigation;
 pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
@@ -57,6 +58,7 @@ pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
 pub use menu::*;
+pub use navigation::*;
 pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
@@ -128,6 +130,20 @@ impl Backend for AppKitBackend {
 
     fn create_sidebar(&self, props: nestix_native_core::SidebarProps) -> Option<nestix::Element> {
         Some(create_element::<Sidebar>(props))
+    }
+
+    fn create_sidebar_navigation(
+        &self,
+        props: nestix_native_core::SidebarNavigationProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<SidebarNavigation>(props))
+    }
+
+    fn create_navigation_item(
+        &self,
+        props: nestix_native_core::NavigationItemProps,
+    ) -> Option<nestix::Element> {
+        Some(create_element::<NavigationItem>(props))
     }
 
     fn create_slider(&self, props: nestix_native_core::SliderProps) -> Option<nestix::Element> {

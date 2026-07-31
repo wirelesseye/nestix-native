@@ -17,6 +17,9 @@ use taffy::NodeId;
 
 use crate::{WindowContext, contexts::ParentContext, window::ContentHost};
 
+#[derive(Clone)]
+pub(crate) struct SidebarContext;
+
 pub(crate) struct MountedSidebar {
     owner: String,
     controller: Retained<SidebarSplitViewController>,
@@ -334,24 +337,26 @@ pub fn Sidebar(props: &SidebarProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<TreeContext>(tree_context.clone()) {
-            ContextProvider<ParentContext>(
-                ParentContext {
-                    add_child: Some(callback!([host] |object: &NSObject,
-                    child_node: Option<NodeId> | {
-                        let view = object.downcast_ref::<NSView>().unwrap();
-                        host.set_child(view, child_node);
-                    })),
-                    insert_child: None,
-                    remove_child: Some(callback!([host] |object: &NSObject,
-                    _: Option<NodeId> | {
-                        let view = object.downcast_ref::<NSView>().unwrap();
-                        host.remove_child(view);
-                    })),
-                    parent_node: None
-                },
-            ) {
-                $(props.children.clone().map(|child| Layout::from(child.clone())))
+        ContextProvider<SidebarContext>(SidebarContext) {
+            ContextProvider<TreeContext>(tree_context.clone()) {
+                ContextProvider<ParentContext>(
+                    ParentContext {
+                        add_child: Some(callback!([host] |object: &NSObject,
+                        child_node: Option<NodeId> | {
+                            let view = object.downcast_ref::<NSView>().unwrap();
+                            host.set_child(view, child_node);
+                        })),
+                        insert_child: None,
+                        remove_child: Some(callback!([host] |object: &NSObject,
+                        _: Option<NodeId> | {
+                            let view = object.downcast_ref::<NSView>().unwrap();
+                            host.remove_child(view);
+                        })),
+                        parent_node: None
+                    },
+                ) {
+                    $(props.children.clone().map(|child| Layout::from(child.clone())))
+                }
             }
         }
     }

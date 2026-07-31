@@ -17,6 +17,7 @@ pub mod font;
 pub mod image_view;
 pub mod input;
 pub mod menu;
+pub mod navigation;
 pub mod radio_button;
 pub mod root;
 pub mod scroll_view;
@@ -50,6 +51,7 @@ pub use font::*;
 pub use image_view::*;
 pub use input::*;
 pub use menu::*;
+pub use navigation::*;
 pub use radio_button::*;
 pub use root::*;
 pub use scroll_view::*;
@@ -190,6 +192,16 @@ pub trait Backend {
 
     /// Attaches a sidebar to the nearest containing window.
     fn create_sidebar(&self, _props: SidebarProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates a navigation list for use in a sidebar.
+    fn create_sidebar_navigation(&self, _props: SidebarNavigationProps) -> Option<Element> {
+        None
+    }
+
+    /// Creates an item belonging to a sidebar navigation list.
+    fn create_navigation_item(&self, _props: NavigationItemProps) -> Option<Element> {
         None
     }
 
