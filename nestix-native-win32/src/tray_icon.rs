@@ -321,7 +321,9 @@ pub fn TrayIcon(props: &TrayIconProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: menu_description, set_menu: set_menu_description }) {
+        ContextProvider<MenuHostContext>(
+            MenuHostContext { menu: menu_description, set_menu: set_menu_description },
+        ) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }

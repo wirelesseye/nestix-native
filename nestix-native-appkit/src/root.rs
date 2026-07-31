@@ -48,7 +48,15 @@ pub fn Root(props: &RootProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<RootContext>(RootContext { ns_application, app_menu, set_app_menu, active_window_menu, set_active_window_menu,  }) {
+        ContextProvider<RootContext>(
+            RootContext {
+                ns_application,
+                app_menu,
+                set_app_menu,
+                active_window_menu,
+                set_active_window_menu,
+            },
+        ) {
             StyleScope(
                 .class = props.class.clone(),
                 .default_classes = DEFAULT_CLASSES,

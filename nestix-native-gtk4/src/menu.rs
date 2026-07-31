@@ -401,7 +401,9 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: description, set_menu: set_description }) {
+        ContextProvider<MenuHostContext>(
+            MenuHostContext { menu: description, set_menu: set_description },
+        ) {
             $(props.menu.clone().map(|menu| Layout::from(menu.clone())))
         }
     }
@@ -578,7 +580,9 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone(), set_menu: set_description.clone() }) {
+            yield ContextProvider<MenuHostContext>(
+                MenuHostContext { menu: description.clone(), set_menu: set_description.clone() },
+            ) {
                 $(menu.get())
             }
         }

@@ -71,9 +71,7 @@ pub fn App() -> Element {
                                 Button(
                                     .title = "Increment natively",
                                     .on_click = callback!(
-                                        [set_count] || {
-                                            set_count.update(|value| value + 1)
-                                        }
+                                        [set_count] || { set_count.update(|value| value + 1) }
                                     ),
                                 )
                                 Button(
@@ -160,7 +158,9 @@ pub fn App() -> Element {
                                     )
                                     Button(
                                         .title = "Reset",
-                                        .on_click = callback!([set_count] || set_count.set(0)),
+                                        .on_click = callback!(
+                                            [set_count] || set_count.set(0)
+                                        ),
                                     )
                                 }
                             }

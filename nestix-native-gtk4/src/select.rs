@@ -103,7 +103,9 @@ pub fn Select(props: &SelectProps, element: &Element) -> Element {
     );
 
     layout! {
-        ContextProvider<SelectContext>(SelectContext { combo, options, revision, set_revision, updating }) {
+        ContextProvider<SelectContext>(
+            SelectContext { combo, options, revision, set_revision, updating },
+        ) {
             $(props.children.clone())
         }
     }

@@ -5,8 +5,8 @@ use std::{
 };
 
 use nestix::{
-    Element, StateSetter, callback, closure, component, components::ContextProvider,
-    create_state, layout, scoped_effect,
+    Element, StateSetter, callback, closure, component, components::ContextProvider, create_state,
+    layout, scoped_effect,
 };
 use nestix_native_core::{
     SelectOptionProps, SelectProps, StyleContext, dpi::LogicalSize, matched_style,

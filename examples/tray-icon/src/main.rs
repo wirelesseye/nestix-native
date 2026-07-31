@@ -44,7 +44,9 @@ fn TrayIconExample() -> Element {
                     "Available",
                     .group = "tray-mode",
                     .selected = computed!([mode] || mode.get() == "Available"),
-                    .on_select = callback!([set_mode] || set_mode.set("Available".to_string())),
+                    .on_select = callback!(
+                        [set_mode] || set_mode.set("Available".to_string())
+                    ),
                 )
                 RadioMenuItem(
                     "Busy",
@@ -98,7 +100,9 @@ fn TrayIconExample() -> Element {
                     .desktop(
                         .width = 460,
                         .height = 300,
-                        .on_close_requested = callback!([set_show_window] || set_show_window.set(false)),
+                        .on_close_requested = callback!(
+                            [set_show_window] || set_show_window.set(false)
+                        ),
                     ),
                 ) {
                     FlexView(

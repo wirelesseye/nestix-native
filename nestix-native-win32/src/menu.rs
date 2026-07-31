@@ -388,7 +388,9 @@ pub fn MenuBar(props: &MenuBarProps, element: &Element) -> Element {
     ));
 
     layout! {
-        ContextProvider<MenuHostContext>(MenuHostContext { menu: description, set_menu: set_description }) {
+        ContextProvider<MenuHostContext>(
+            MenuHostContext { menu: description, set_menu: set_description },
+        ) {
             $(props.menu.clone().map(|menu| nestix::Layout::from(menu.clone())))
         }
     }
@@ -558,9 +560,7 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
         }
     );
     let registered_target = Rc::new(RefCell::new(None::<(HWND, Weak<MenuData>)>));
-    let context = Rc::new(ContextMenuContext {
-        set_target,
-    });
+    let context = Rc::new(ContextMenuContext { set_target });
     scoped_effect!(
         [context, props.children] || {
             children.get().on_last_handle_change(closure!(
@@ -655,7 +655,9 @@ pub fn ContextMenu(props: &ContextMenuProps, element: &Element) -> Element {
     layout! {
         ContextProvider<ContextMenuContext>(context) [props.children, props.menu] {
             yield $(children.get())
-            yield ContextProvider<MenuHostContext>(MenuHostContext { menu: description.clone(), set_menu: set_description.clone() }) {
+            yield ContextProvider<MenuHostContext>(
+                MenuHostContext { menu: description.clone(), set_menu: set_description.clone() },
+            ) {
                 $(menu.get())
             }
         }

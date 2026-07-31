@@ -114,15 +114,28 @@ fn AnimationApp() -> Element {
                             Button(
                                 .title = "Animate window",
                                 .on_click = callback!(
-                                    [large_window, set_large_window, set_window_width, set_window_height] || {
+                                    [
+                                        large_window,
+                                        set_large_window,
+                                        set_window_width,
+                                        set_window_height
+                                    ] || {
                                         let next = !large_window.get();
                                         set_large_window.set(next);
                                         animate(
                                             AnimationSpec::new(Duration::from_millis(420))
                                                 .easing(Easing::EaseInOut),
                                             || {
-                                                set_window_width.set(if next { 900.0 } else { 680.0 });
-                                                set_window_height.set(if next { 620.0 } else { 460.0 });
+                                                set_window_width.set(if next {
+                                                    900.0
+                                                } else {
+                                                    680.0
+                                                });
+                                                set_window_height.set(if next {
+                                                    620.0
+                                                } else {
+                                                    460.0
+                                                });
                                             },
                                         );
                                     }

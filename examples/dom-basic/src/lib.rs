@@ -66,7 +66,10 @@ fn App() -> Element {
                                     [count] || set_count.update(|value| value + 1)
                                 ),
                             )
-                            Button(.title = "Reset", .on_click = callback!([count] || set_count.set(0)))
+                            Button(
+                                .title = "Reset",
+                                .on_click = callback!([count] || set_count.set(0)),
+                            )
                             DomElement(
                                 "demo-button",
                                 .attributes = vec![DomAttribute::string("variant", "accent")],
