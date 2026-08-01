@@ -39,32 +39,6 @@ Browser setup and backend-specific APIs are documented in the
 [`nestix-native-dom` README](nestix-native-dom/README.md). Desktop-only window
 options are grouped under `Window(.desktop(...))`.
 
-## Collection views
-
-AppKit provides keyed, controlled `ListView`, `TableView`, and `TreeView`
-components. The views accept reactive application data and a child factory that
-returns a text descriptor for each item:
-
-```rust
-ListView<Person>(
-    .items = people,
-    .key = callback!(|person: &Person| person.id.clone()),
-    .value = selected,
-    .on_value_change = callback!(|value: &str| { /* update selected */ }),
-) |person: Readonly<Person>| {
-    ListViewItem(computed!([person] || person.get().name))
-}
-```
-
-`TableView` maps `TableViewCell` descriptors to stable `TableViewColumn` IDs.
-`TreeView` additionally accepts a `child_items` callback and keeps expansion as
-native, uncontrolled state. Selection values are the globally unique strings
-returned by `key`; double-clicking or pressing Return invokes `on_activate`.
-Other backends currently report these components as unsupported.
-The same API is re-exported by `nestix-native-appkit`, so AppKit-only
-applications can use the collection views without depending on the facade
-crate.
-
 ## Web content
 
 `WebView` accepts a `WebViewSource`, independently of `DomSurface` and
