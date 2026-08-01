@@ -115,7 +115,7 @@ pub fn Window(props: &WindowProps, element: &Element) -> Element {
         ] || {
             let material = material.get();
             let has_appkit_material =
-                material.is_some_and(|material| material.appkit_material().is_some());
+                material.is_some_and(|material| material.macos_material().is_some());
             main_content_host.set_material(material, material_source.get());
             if has_appkit_material {
                 ns_window.setOpaque(false);

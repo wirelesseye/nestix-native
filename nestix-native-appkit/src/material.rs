@@ -1,4 +1,4 @@
-use nestix_native_core::{AppKitMaterial, Material, MaterialSource};
+use nestix_native_core::{MacOSMaterial, Material, MaterialSource};
 use objc2::{MainThreadMarker, rc::Retained};
 use objc2_app_kit::{
     NSVisualEffectBlendingMode, NSVisualEffectMaterial, NSVisualEffectState, NSVisualEffectView,
@@ -10,7 +10,7 @@ pub(crate) fn visual_effect_view(
     source: MaterialSource,
     automatic_source: NSVisualEffectBlendingMode,
 ) -> Option<Retained<NSVisualEffectView>> {
-    let material = native_material(material.appkit_material()?)?;
+    let material = native_material(material.macos_material()?)?;
     let view = NSVisualEffectView::new(mtm);
     view.setMaterial(material);
     view.setBlendingMode(native_source(source, automatic_source));
@@ -29,22 +29,22 @@ fn native_source(
     }
 }
 
-fn native_material(material: AppKitMaterial) -> Option<NSVisualEffectMaterial> {
+fn native_material(material: MacOSMaterial) -> Option<NSVisualEffectMaterial> {
     Some(match material {
-        AppKitMaterial::Titlebar => NSVisualEffectMaterial::Titlebar,
-        AppKitMaterial::Selection => NSVisualEffectMaterial::Selection,
-        AppKitMaterial::Menu => NSVisualEffectMaterial::Menu,
-        AppKitMaterial::Popover => NSVisualEffectMaterial::Popover,
-        AppKitMaterial::Sidebar => NSVisualEffectMaterial::Sidebar,
-        AppKitMaterial::Header => NSVisualEffectMaterial::HeaderView,
-        AppKitMaterial::Sheet => NSVisualEffectMaterial::Sheet,
-        AppKitMaterial::WindowBackground => NSVisualEffectMaterial::WindowBackground,
-        AppKitMaterial::HudWindow => NSVisualEffectMaterial::HUDWindow,
-        AppKitMaterial::FullScreenUi => NSVisualEffectMaterial::FullScreenUI,
-        AppKitMaterial::Tooltip => NSVisualEffectMaterial::ToolTip,
-        AppKitMaterial::ContentBackground => NSVisualEffectMaterial::ContentBackground,
-        AppKitMaterial::UnderWindowBackground => NSVisualEffectMaterial::UnderWindowBackground,
-        AppKitMaterial::UnderPageBackground => NSVisualEffectMaterial::UnderPageBackground,
+        MacOSMaterial::Titlebar => NSVisualEffectMaterial::Titlebar,
+        MacOSMaterial::Selection => NSVisualEffectMaterial::Selection,
+        MacOSMaterial::Menu => NSVisualEffectMaterial::Menu,
+        MacOSMaterial::Popover => NSVisualEffectMaterial::Popover,
+        MacOSMaterial::Sidebar => NSVisualEffectMaterial::Sidebar,
+        MacOSMaterial::Header => NSVisualEffectMaterial::HeaderView,
+        MacOSMaterial::Sheet => NSVisualEffectMaterial::Sheet,
+        MacOSMaterial::WindowBackground => NSVisualEffectMaterial::WindowBackground,
+        MacOSMaterial::HudWindow => NSVisualEffectMaterial::HUDWindow,
+        MacOSMaterial::FullScreenUi => NSVisualEffectMaterial::FullScreenUI,
+        MacOSMaterial::Tooltip => NSVisualEffectMaterial::ToolTip,
+        MacOSMaterial::ContentBackground => NSVisualEffectMaterial::ContentBackground,
+        MacOSMaterial::UnderWindowBackground => NSVisualEffectMaterial::UnderWindowBackground,
+        MacOSMaterial::UnderPageBackground => NSVisualEffectMaterial::UnderPageBackground,
         _ => return None,
     })
 }
@@ -56,20 +56,20 @@ mod tests {
     #[test]
     fn maps_every_current_appkit_material() {
         let materials = [
-            AppKitMaterial::Titlebar,
-            AppKitMaterial::Selection,
-            AppKitMaterial::Menu,
-            AppKitMaterial::Popover,
-            AppKitMaterial::Sidebar,
-            AppKitMaterial::Header,
-            AppKitMaterial::Sheet,
-            AppKitMaterial::WindowBackground,
-            AppKitMaterial::HudWindow,
-            AppKitMaterial::FullScreenUi,
-            AppKitMaterial::Tooltip,
-            AppKitMaterial::ContentBackground,
-            AppKitMaterial::UnderWindowBackground,
-            AppKitMaterial::UnderPageBackground,
+            MacOSMaterial::Titlebar,
+            MacOSMaterial::Selection,
+            MacOSMaterial::Menu,
+            MacOSMaterial::Popover,
+            MacOSMaterial::Sidebar,
+            MacOSMaterial::Header,
+            MacOSMaterial::Sheet,
+            MacOSMaterial::WindowBackground,
+            MacOSMaterial::HudWindow,
+            MacOSMaterial::FullScreenUi,
+            MacOSMaterial::Tooltip,
+            MacOSMaterial::ContentBackground,
+            MacOSMaterial::UnderWindowBackground,
+            MacOSMaterial::UnderPageBackground,
         ];
 
         assert!(
