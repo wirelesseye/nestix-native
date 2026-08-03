@@ -2,13 +2,20 @@
 
 use nestix::{Element, callback, component, layout};
 use nestix_native::{
-    Checkbox, FlexView, RadioButton, Select, SelectOption, Sidebar, Slider, Switch, Window,
+    Checkbox, Color, FlexView, RadioButton, Select, SelectOption, Sidebar, Slider, Switch, Window,
 };
 
 #[component]
 fn FormControls() -> Element {
     layout! {
-        FlexView {
+        FlexView(
+            .border(
+                .horizontal_width = 1,
+                .top_width = 2,
+                .color = Some(Color::RED),
+                .radius = 8,
+            ),
+        ) {
             Checkbox("Show details", .checked = true, .on_checked_change = callback!(|_checked| {}))
             RadioButton(
                 "Compact",

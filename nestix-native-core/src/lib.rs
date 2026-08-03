@@ -3,6 +3,7 @@
 pub mod animation;
 pub mod appearance;
 pub mod backend_provider;
+pub mod border;
 pub mod button;
 pub mod checkbox;
 pub mod collection_view;
@@ -39,6 +40,7 @@ pub mod window;
 pub use animation::*;
 pub use appearance::*;
 pub use backend_provider::*;
+pub use border::*;
 pub use button::*;
 pub use checkbox::*;
 pub use collection_view::*;

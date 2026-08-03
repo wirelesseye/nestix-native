@@ -619,6 +619,15 @@ fn expand_declaration(prop: StylePropInput) -> Result<TokenStream2> {
     let value = match name.as_str() {
         "appearance" => expand_appearance(value)?,
         "bg_color" => expand_color(value)?,
+        "border_color" => expand_color(value)?,
+        "border_radius" => expand_length(value, "border radius")?,
+        "border_width" => expand_length(value, "border width")?,
+        "border_horizontal_width" => expand_length(value, "border width")?,
+        "border_vertical_width" => expand_length(value, "border width")?,
+        "border_left_width" => expand_length(value, "border width")?,
+        "border_right_width" => expand_length(value, "border width")?,
+        "border_top_width" => expand_length(value, "border width")?,
+        "border_bottom_width" => expand_length(value, "border width")?,
         "font_family" => expand_font_family(value)?,
         "font_size" => expand_font_size(value)?,
         "font_weight" => expand_font_weight(value)?,
@@ -672,6 +681,15 @@ fn expand_property_variant(name: &str, span: Span) -> Result<Ident> {
     let variant = match name {
         "appearance" => "Appearance",
         "bg_color" => "BgColor",
+        "border_color" => "BorderColor",
+        "border_radius" => "BorderRadius",
+        "border_width" => "BorderWidth",
+        "border_horizontal_width" => "BorderHorizontalWidth",
+        "border_vertical_width" => "BorderVerticalWidth",
+        "border_left_width" => "BorderLeftWidth",
+        "border_right_width" => "BorderRightWidth",
+        "border_top_width" => "BorderTopWidth",
+        "border_bottom_width" => "BorderBottomWidth",
         "font_family" => "FontFamily",
         "font_size" => "FontSize",
         "font_weight" => "FontWeight",
@@ -788,6 +806,37 @@ fn expand_color(value: StyleValueInput) -> Result<TokenStream2> {
     Ok(quote! {
         #nestix_native_path::Color::RGB(#nestix_native_path::RGBColor::from_rgba(#red, #green, #blue, #alpha))
     })
+}
+
+fn expand_length(value: StyleValueInput, property: &str) -> Result<TokenStream2> {
+    let nestix_native_path = nestix_native_path();
+    let value = match value {
+        StyleValueInput::Inserted(value) => return Ok(quote!(#value)),
+        StyleValueInput::Literal(value) => value,
+    };
+    let (value, constructor) = if let Some(value) = value.strip_suffix("px") {
+        (value, quote!(#nestix_native_path::Length::logical))
+    } else if let Some(value) = value.strip_suffix("em") {
+        (value, quote!(#nestix_native_path::Length::em))
+    } else {
+        return Err(Error::new(
+            Span::call_site(),
+            format!("{property} must be `{{number}}px`, `{{number}} em`, or an inserted Length"),
+        ));
+    };
+    let length = value.trim().parse::<f64>().map_err(|_| {
+        Error::new(
+            Span::call_site(),
+            format!("{property} must be `{{number}}px`, `{{number}} em`, or an inserted Length"),
+        )
+    })?;
+    if !length.is_finite() || length < 0.0 {
+        return Err(Error::new(
+            Span::call_site(),
+            format!("{property} must be a non-negative length"),
+        ));
+    }
+    Ok(quote!(#constructor(#length)))
 }
 
 fn expand_length_with_auto(value: StyleValueInput) -> Result<TokenStream2> {

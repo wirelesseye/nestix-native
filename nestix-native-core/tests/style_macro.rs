@@ -28,6 +28,32 @@ fn style_macro_supports_gap() {
 }
 
 #[test]
+fn style_macro_supports_border_properties_and_width_cascade() {
+    let sheet = style! {
+        .card {
+            font_size: 20 px;
+            border_color: #123456;
+            border_radius: 0.5 em;
+            border_width: 1 px;
+            border_horizontal_width: 2 px;
+            border_left_width: 3 px;
+        }
+    };
+
+    let props = sheet.matched_props(&MatchContext::new(ClassList::from("card")));
+
+    assert_eq!(
+        props.border_color,
+        Some(Color::RGB(RGBColor::from_rgb(0x12, 0x34, 0x56)))
+    );
+    assert_eq!(props.border_radius, Some(Length::logical(10.0)));
+    assert_eq!(props.border_left_width, Some(Length::logical(3.0)));
+    assert_eq!(props.border_right_width, Some(Length::logical(2.0)));
+    assert_eq!(props.border_top_width, Some(Length::logical(1.0)));
+    assert_eq!(props.border_bottom_width, Some(Length::logical(1.0)));
+}
+
+#[test]
 fn style_macro_supports_appearance() {
     let inserted = Appearance::None;
     let sheet = style! {
@@ -183,6 +209,15 @@ fn every_builtin_property_accepts_a_global_value() {
         .all {
             appearance: initial;
             bg_color: initial;
+            border_color: initial;
+            border_radius: initial;
+            border_width: initial;
+            border_horizontal_width: initial;
+            border_vertical_width: initial;
+            border_left_width: initial;
+            border_right_width: initial;
+            border_top_width: initial;
+            border_bottom_width: initial;
             font_family: initial;
             font_size: initial;
             font_weight: initial;

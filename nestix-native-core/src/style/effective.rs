@@ -1,11 +1,11 @@
 use nestix::computed;
 
-use crate::{FlexViewProps, ViewProps, WithAuto};
+use crate::{FlexViewProps, Length, ViewProps, WithAuto};
 
 use super::{
     ResolvedStyle, style_align_items, style_align_self, style_flex_basis, style_flex_direction,
     style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap, style_justify_content,
-    style_length_with_auto, style_position,
+    style_length, style_length_with_auto, style_position,
 };
 
 /// Resolves the common view props once so the same effective values can be
@@ -109,7 +109,13 @@ pub fn resolved_flex_view_style(
             props.container.padding_right,
             props.container.padding_top,
             props.container.padding_bottom,
-            props.bg_color
+            props.bg_color,
+            props.border.left_width,
+            props.border.right_width,
+            props.border.top_width,
+            props.border.bottom_width,
+            props.border.color,
+            props.border.radius
         ] || {
             let mut resolved = style.get().unwrap_or_default();
             resolved.flex_direction =
@@ -146,6 +152,37 @@ pub fn resolved_flex_view_style(
                 |style| style.padding_bottom,
             ));
             resolved.bg_color = bg_color.get().or(resolved.bg_color);
+            resolved.border_left_width = Some(style_length(
+                Some(&resolved),
+                left_width.get(),
+                Length::logical(0),
+                |style| style.border_left_width,
+            ));
+            resolved.border_right_width = Some(style_length(
+                Some(&resolved),
+                right_width.get(),
+                Length::logical(0),
+                |style| style.border_right_width,
+            ));
+            resolved.border_top_width = Some(style_length(
+                Some(&resolved),
+                top_width.get(),
+                Length::logical(0),
+                |style| style.border_top_width,
+            ));
+            resolved.border_bottom_width = Some(style_length(
+                Some(&resolved),
+                bottom_width.get(),
+                Length::logical(0),
+                |style| style.border_bottom_width,
+            ));
+            resolved.border_color = color.get().or(resolved.border_color);
+            resolved.border_radius = Some(style_length(
+                Some(&resolved),
+                radius.get(),
+                Length::logical(0),
+                |style| style.border_radius,
+            ));
             Some(resolved)
         }
     )

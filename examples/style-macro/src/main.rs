@@ -39,13 +39,19 @@ fn StyleMacroApp() -> Element {
                 padding: 1 em;
                 gap: 0.45 em;
                 bg_color: #EEF2F8;
+                border_color: #CBD5E1;
+                border_width: 1 px;
+                border_radius: 0.65 em;
 
                 &:first_child {
                     bg_color: #E5F0FF;
+                    border_left_width: 4 px;
                 }
 
                 &.featured {
                     bg_color: #E8F7EE;
+                    border_color: #8AC7A0;
+                    border_horizontal_width: 4 px;
                 }
 
                 + .card {

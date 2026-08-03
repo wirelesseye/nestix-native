@@ -370,6 +370,24 @@ pub enum StyleProperty {
     /// **Available value**: a named color (`white`, `black`, `transparent`, `red`,
     /// `green`, `blue`), or a 6/8 digit hex color (`#RRGGBB` or `#RRGGBBAA`).
     BgColor(StyleValue<Color>),
+    /// Color shared by all border edges.
+    BorderColor(StyleValue<Color>),
+    /// Radius applied to the border's outer corners.
+    BorderRadius(StyleValue<Length>),
+    /// Border width applied to all four edges.
+    BorderWidth(StyleValue<Length>),
+    /// Border width applied to the left and right edges.
+    BorderHorizontalWidth(StyleValue<Length>),
+    /// Border width applied to the top and bottom edges.
+    BorderVerticalWidth(StyleValue<Length>),
+    /// Border width applied to the left edge.
+    BorderLeftWidth(StyleValue<Length>),
+    /// Border width applied to the right edge.
+    BorderRightWidth(StyleValue<Length>),
+    /// Border width applied to the top edge.
+    BorderTopWidth(StyleValue<Length>),
+    /// Border width applied to the bottom edge.
+    BorderBottomWidth(StyleValue<Length>),
     /// Font family name. This property is inherited.
     ///
     /// **Available value**: a single-word family name (`Arial`), a double-quoted
@@ -521,6 +539,15 @@ impl StyleProperty {
         match self {
             Self::Appearance(_) => StylePropertyName::Appearance,
             Self::BgColor(_) => StylePropertyName::BgColor,
+            Self::BorderColor(_) => StylePropertyName::BorderColor,
+            Self::BorderRadius(_) => StylePropertyName::BorderRadius,
+            Self::BorderWidth(_) => StylePropertyName::BorderWidth,
+            Self::BorderHorizontalWidth(_) => StylePropertyName::BorderHorizontalWidth,
+            Self::BorderVerticalWidth(_) => StylePropertyName::BorderVerticalWidth,
+            Self::BorderLeftWidth(_) => StylePropertyName::BorderLeftWidth,
+            Self::BorderRightWidth(_) => StylePropertyName::BorderRightWidth,
+            Self::BorderTopWidth(_) => StylePropertyName::BorderTopWidth,
+            Self::BorderBottomWidth(_) => StylePropertyName::BorderBottomWidth,
             Self::FontFamily(_) => StylePropertyName::FontFamily,
             Self::FontSize(_) => StylePropertyName::FontSize,
             Self::FontWeight(_) => StylePropertyName::FontWeight,
@@ -567,6 +594,15 @@ impl StyleProperty {
         match self {
             Self::Appearance(value) => value.global(),
             Self::BgColor(value) => value.global(),
+            Self::BorderColor(value) => value.global(),
+            Self::BorderRadius(value) => value.global(),
+            Self::BorderWidth(value) => value.global(),
+            Self::BorderHorizontalWidth(value) => value.global(),
+            Self::BorderVerticalWidth(value) => value.global(),
+            Self::BorderLeftWidth(value) => value.global(),
+            Self::BorderRightWidth(value) => value.global(),
+            Self::BorderTopWidth(value) => value.global(),
+            Self::BorderBottomWidth(value) => value.global(),
             Self::FontFamily(value) => value.global(),
             Self::FontSize(value) => value.global(),
             Self::FontWeight(value) => value.global(),
@@ -646,6 +682,18 @@ pub struct ResolvedStyle {
     pub appearance: Option<Appearance>,
     /// Resolved background color.
     pub bg_color: Option<Color>,
+    /// Resolved border color.
+    pub border_color: Option<Color>,
+    /// Resolved border corner radius.
+    pub border_radius: Option<Length>,
+    /// Resolved left border width.
+    pub border_left_width: Option<Length>,
+    /// Resolved right border width.
+    pub border_right_width: Option<Length>,
+    /// Resolved top border width.
+    pub border_top_width: Option<Length>,
+    /// Resolved bottom border width.
+    pub border_bottom_width: Option<Length>,
     /// Resolved font family.
     pub font_family: Option<String>,
     /// Resolved font size.
@@ -728,6 +776,17 @@ impl ResolvedStyle {
                 *length = length.resolve(font_size);
             }
         }
+        for length in [
+            &mut self.border_radius,
+            &mut self.border_left_width,
+            &mut self.border_right_width,
+            &mut self.border_top_width,
+            &mut self.border_bottom_width,
+        ] {
+            if let Some(length) = length {
+                *length = length.resolve(font_size);
+            }
+        }
     }
 
     pub fn transition_for(&self, property: TransitionProperty) -> Option<AnimationSpec> {
@@ -762,6 +821,16 @@ impl ResolvedStyle {
         match name {
             "appearance" => self.appearance.clone_from(&source.appearance),
             "bg_color" => self.bg_color.clone_from(&source.bg_color),
+            "border_color" => self.border_color.clone_from(&source.border_color),
+            "border_radius" => self.border_radius.clone_from(&source.border_radius),
+            "border_left_width" => self.border_left_width.clone_from(&source.border_left_width),
+            "border_right_width" => self
+                .border_right_width
+                .clone_from(&source.border_right_width),
+            "border_top_width" => self.border_top_width.clone_from(&source.border_top_width),
+            "border_bottom_width" => self
+                .border_bottom_width
+                .clone_from(&source.border_bottom_width),
             "font_family" => self.font_family.clone_from(&source.font_family),
             "font_size" => self.font_size.clone_from(&source.font_size),
             "font_weight" => self.font_weight.clone_from(&source.font_weight),
@@ -849,6 +918,48 @@ impl ResolvedStyle {
             }
             StyleDeclaration::Property(StyleProperty::BgColor(StyleValue::Value(color))) => {
                 self.bg_color = Some(color);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderColor(StyleValue::Value(color))) => {
+                self.border_color = Some(color);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderRadius(StyleValue::Value(radius))) => {
+                self.border_radius = Some(radius);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderWidth(StyleValue::Value(width))) => {
+                self.border_left_width = Some(width);
+                self.border_right_width = Some(width);
+                self.border_top_width = Some(width);
+                self.border_bottom_width = Some(width);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderHorizontalWidth(
+                StyleValue::Value(width),
+            )) => {
+                self.border_left_width = Some(width);
+                self.border_right_width = Some(width);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderVerticalWidth(StyleValue::Value(
+                width,
+            ))) => {
+                self.border_top_width = Some(width);
+                self.border_bottom_width = Some(width);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderLeftWidth(StyleValue::Value(
+                width,
+            ))) => {
+                self.border_left_width = Some(width);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderRightWidth(StyleValue::Value(
+                width,
+            ))) => {
+                self.border_right_width = Some(width);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderTopWidth(StyleValue::Value(width))) => {
+                self.border_top_width = Some(width);
+            }
+            StyleDeclaration::Property(StyleProperty::BorderBottomWidth(StyleValue::Value(
+                width,
+            ))) => {
+                self.border_bottom_width = Some(width);
             }
             StyleDeclaration::Property(StyleProperty::FontFamily(StyleValue::Value(
                 font_family,
@@ -1217,6 +1328,22 @@ pub fn style_length_with_auto(
             ),
         ),
     }
+}
+
+/// Resolves an inline length against a style-derived value.
+///
+/// The inline value wins unless it equals `default`.
+pub fn style_length(
+    style: Option<&ResolvedStyle>,
+    inline: Length,
+    default: Length,
+    f: impl FnOnce(&ResolvedStyle) -> Option<Length>,
+) -> Length {
+    inline_or_style(inline, default, style.and_then(f)).resolve(
+        style
+            .and_then(|style| style.font_size)
+            .unwrap_or(DEFAULT_ROOT_FONT_SIZE),
+    )
 }
 
 /// Resolves the effective appearance, preferring a non-default inline value.

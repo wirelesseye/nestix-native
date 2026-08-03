@@ -4,15 +4,16 @@ use nestix::{
     Element, callback, closure, component, components::ContextProvider, layout, scoped_effect,
 };
 use nestix_native_core::{
-    AnimatedStyle, ChildOrder, FlexViewProps, StyleContext, StyleScope, TreeContext, WithAuto,
-    matched_style, resolved_flex_view_style, style_align_items, style_align_self, style_flex_basis,
-    style_flex_direction, style_flex_grow, style_flex_shrink, style_flex_wrap, style_gap,
-    style_justify_content, style_length_with_auto, style_margin, style_padding,
+    AnimatedStyle, ChildOrder, Color, FlexViewProps, Length, Rect, ResolvedStyle, StyleContext,
+    StyleScope, TreeContext, WithAuto, matched_style, resolved_flex_view_style, style_align_items,
+    style_align_self, style_flex_basis, style_flex_direction, style_flex_grow, style_flex_shrink,
+    style_flex_wrap, style_gap, style_justify_content, style_length_with_auto, style_margin,
+    style_padding,
 };
 use objc2::{DefinedClass, MainThreadMarker, MainThreadOnly, define_class, msg_send, rc::Retained};
 use objc2_app_kit::{
-    NSBox, NSBoxType, NSColor, NSLayoutConstraint, NSView, NSVisualEffectBlendingMode,
-    NSVisualEffectView, NSWindowOrderingMode,
+    NSBezierPath, NSColor, NSLayoutConstraint, NSView, NSVisualEffectBlendingMode,
+    NSVisualEffectView, NSWindingRule, NSWindowOrderingMode,
 };
 use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSPoint, NSRect, NSSize};
 use taffy::{NodeId, Size, Style};
@@ -34,7 +35,7 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     let view = NNFlexView::new(
         mtm,
         FlexViewState {
-            ns_box: RefCell::new(None),
+            decoration: RefCell::new(None),
             material: RefCell::new(None),
         },
     );
@@ -87,50 +88,33 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
     );
 
     scoped_effect!(
-        [view, matched_style_props, props.bg_color] || {
-            let style_props = matched_style_props.get();
-            let bg_color = bg_color.get().or_else(|| {
-                style_props
-                    .as_ref()
-                    .and_then(|style_props| style_props.bg_color)
-            });
-            if let Some(background_color) = bg_color {
-                if view.ivars().ns_box.borrow().is_none() {
-                    let ns_box = NSBox::new(mtm);
-                    ns_box.setBoxType(NSBoxType::Custom);
-                    ns_box.setBorderWidth(0.0);
-
+        [view, style_props, window_context.scale_factor] || {
+            let decoration_style =
+                DecorationStyle::from_resolved(style_props.get().as_ref(), scale_factor.get());
+            if decoration_style.is_visible() {
+                if view.ivars().decoration.borrow().is_none() {
+                    let decoration = NNFlexDecorationView::new(mtm);
                     if let Some(material) = view.ivars().material.borrow().as_ref() {
                         view.addSubview_positioned_relativeTo(
-                            &ns_box,
+                            &decoration,
                             NSWindowOrderingMode::Above,
                             Some(material),
                         );
                     } else {
                         view.addSubview_positioned_relativeTo(
-                            &ns_box,
+                            &decoration,
                             NSWindowOrderingMode::Below,
                             None,
                         );
                     }
-                    pin_to_bounds(&view, &ns_box);
-
-                    view.ivars().ns_box.replace(Some(ns_box));
+                    pin_to_bounds(&view, &decoration);
+                    view.ivars().decoration.replace(Some(decoration));
                 }
-                let ns_box = view.ivars().ns_box.borrow();
-                let ns_box = ns_box.as_ref().unwrap();
-                let rgb = background_color.into_rgb();
-                let fill_color = NSColor::colorWithDeviceRed_green_blue_alpha(
-                    rgb.red as f64 / 255.0,
-                    rgb.green as f64 / 255.0,
-                    rgb.blue as f64 / 255.0,
-                    rgb.alpha as f64 / 255.0,
-                );
-                ns_box.setFillColor(&fill_color);
-            } else {
-                if let Some(ns_box) = view.ivars().ns_box.take() {
-                    ns_box.removeFromSuperview();
+                if let Some(decoration) = view.ivars().decoration.borrow().as_ref() {
+                    decoration.set_style(decoration_style);
                 }
+            } else if let Some(decoration) = view.ivars().decoration.take() {
+                decoration.removeFromSuperview();
             }
         }
     );
@@ -430,8 +414,283 @@ pub fn FlexView(props: &FlexViewProps, element: &Element) -> Element {
 }
 
 struct FlexViewState {
-    ns_box: RefCell<Option<Retained<NSBox>>>,
+    decoration: RefCell<Option<Retained<NNFlexDecorationView>>>,
     material: RefCell<Option<Retained<NSVisualEffectView>>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct DecorationStyle {
+    background_color: Option<Color>,
+    border_color: Option<Color>,
+    widths: Rect<f64>,
+    radius: f64,
+}
+
+impl Default for DecorationStyle {
+    fn default() -> Self {
+        Self {
+            background_color: None,
+            border_color: None,
+            widths: Rect {
+                top: 0.0,
+                right: 0.0,
+                bottom: 0.0,
+                left: 0.0,
+            },
+            radius: 0.0,
+        }
+    }
+}
+
+impl DecorationStyle {
+    fn from_resolved(style: Option<&ResolvedStyle>, scale_factor: f64) -> Self {
+        let logical = |length: Option<Length>| {
+            length
+                .map(|length| length.to_logical::<f64>(scale_factor).0)
+                .unwrap_or(0.0)
+                .max(0.0)
+        };
+        Self {
+            background_color: style.and_then(|style| style.bg_color),
+            border_color: style.and_then(|style| style.border_color),
+            widths: Rect {
+                top: logical(style.and_then(|style| style.border_top_width)),
+                right: logical(style.and_then(|style| style.border_right_width)),
+                bottom: logical(style.and_then(|style| style.border_bottom_width)),
+                left: logical(style.and_then(|style| style.border_left_width)),
+            },
+            radius: logical(style.and_then(|style| style.border_radius)),
+        }
+    }
+
+    fn is_visible(&self) -> bool {
+        self.background_color.is_some()
+            || self.border_color.is_some()
+                && [
+                    self.widths.top,
+                    self.widths.right,
+                    self.widths.bottom,
+                    self.widths.left,
+                ]
+                .into_iter()
+                .any(|width| width > 0.0)
+    }
+}
+
+struct FlexDecorationState {
+    style: RefCell<DecorationStyle>,
+}
+
+define_class!(
+    #[unsafe(super = NSView)]
+    #[thread_kind = MainThreadOnly]
+    #[ivars = FlexDecorationState]
+    struct NNFlexDecorationView;
+
+    unsafe impl NSObjectProtocol for NNFlexDecorationView {}
+
+    impl NNFlexDecorationView {
+        #[unsafe(method(isFlipped))]
+        fn is_flipped(&self) -> bool {
+            true
+        }
+
+        #[unsafe(method_id(hitTest:))]
+        fn hit_test(&self, _point: NSPoint) -> Option<Retained<NSView>> {
+            None
+        }
+
+        #[unsafe(method(drawRect:))]
+        fn draw_rect(&self, _dirty_rect: NSRect) {
+            let bounds = self.bounds();
+            let width = bounds.size.width.max(0.0);
+            let height = bounds.size.height.max(0.0);
+            if width == 0.0 || height == 0.0 {
+                return;
+            }
+
+            let style = self.ivars().style.borrow();
+            let radius = style.radius.min(width / 2.0).min(height / 2.0);
+            let outline = NSBezierPath::bezierPathWithRoundedRect_xRadius_yRadius(
+                bounds, radius, radius,
+            );
+
+            if let Some(color) = style.background_color {
+                ns_color(color).setFill();
+                outline.fill();
+            }
+
+            let Some(color) = style.border_color else {
+                return;
+            };
+            let top = style.widths.top.min(height);
+            let right = style.widths.right.min(width);
+            let bottom = style.widths.bottom.min(height);
+            let left = style.widths.left.min(width);
+            if top == 0.0 && right == 0.0 && bottom == 0.0 && left == 0.0 {
+                return;
+            }
+
+            let border = NSBezierPath::bezierPath();
+            border.appendBezierPath(&outline);
+            if let Some(inner) = inner_border_geometry(bounds, &style.widths, radius) {
+                border.appendBezierPath(&rounded_rect_path(inner));
+                border.setWindingRule(NSWindingRule::EvenOdd);
+            }
+            ns_color(color).setFill();
+            border.fill();
+        }
+    }
+);
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct CornerRadius {
+    x: f64,
+    y: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct RoundedRect {
+    rect: NSRect,
+    top_left: CornerRadius,
+    top_right: CornerRadius,
+    bottom_right: CornerRadius,
+    bottom_left: CornerRadius,
+}
+
+fn inner_border_geometry(
+    bounds: NSRect,
+    widths: &Rect<f64>,
+    outer_radius: f64,
+) -> Option<RoundedRect> {
+    let width = bounds.size.width.max(0.0);
+    let height = bounds.size.height.max(0.0);
+    let top = widths.top.clamp(0.0, height);
+    let right = widths.right.clamp(0.0, width);
+    let bottom = widths.bottom.clamp(0.0, height);
+    let left = widths.left.clamp(0.0, width);
+    let inner_width = width - left - right;
+    let inner_height = height - top - bottom;
+    if inner_width <= 0.0 || inner_height <= 0.0 {
+        return None;
+    }
+
+    let mut top_left = CornerRadius {
+        x: (outer_radius - left).max(0.0),
+        y: (outer_radius - top).max(0.0),
+    };
+    let mut top_right = CornerRadius {
+        x: (outer_radius - right).max(0.0),
+        y: (outer_radius - top).max(0.0),
+    };
+    let mut bottom_right = CornerRadius {
+        x: (outer_radius - right).max(0.0),
+        y: (outer_radius - bottom).max(0.0),
+    };
+    let mut bottom_left = CornerRadius {
+        x: (outer_radius - left).max(0.0),
+        y: (outer_radius - bottom).max(0.0),
+    };
+
+    let ratio = |available: f64, combined: f64| {
+        if combined > available && combined > 0.0 {
+            available / combined
+        } else {
+            1.0
+        }
+    };
+    let scale = ratio(inner_width, top_left.x + top_right.x)
+        .min(ratio(inner_width, bottom_left.x + bottom_right.x))
+        .min(ratio(inner_height, top_left.y + bottom_left.y))
+        .min(ratio(inner_height, top_right.y + bottom_right.y));
+    for radius in [
+        &mut top_left,
+        &mut top_right,
+        &mut bottom_right,
+        &mut bottom_left,
+    ] {
+        radius.x *= scale;
+        radius.y *= scale;
+    }
+
+    Some(RoundedRect {
+        rect: NSRect::new(
+            NSPoint::new(bounds.origin.x + left, bounds.origin.y + top),
+            NSSize::new(inner_width, inner_height),
+        ),
+        top_left,
+        top_right,
+        bottom_right,
+        bottom_left,
+    })
+}
+
+fn rounded_rect_path(rounded: RoundedRect) -> Retained<NSBezierPath> {
+    const KAPPA: f64 = 0.552_284_749_830_793_6;
+
+    let path = NSBezierPath::bezierPath();
+    let x0 = rounded.rect.origin.x;
+    let y0 = rounded.rect.origin.y;
+    let x1 = x0 + rounded.rect.size.width;
+    let y1 = y0 + rounded.rect.size.height;
+    let tl = rounded.top_left;
+    let tr = rounded.top_right;
+    let br = rounded.bottom_right;
+    let bl = rounded.bottom_left;
+
+    path.moveToPoint(NSPoint::new(x0 + tl.x, y0));
+    path.lineToPoint(NSPoint::new(x1 - tr.x, y0));
+    path.curveToPoint_controlPoint1_controlPoint2(
+        NSPoint::new(x1, y0 + tr.y),
+        NSPoint::new(x1 - tr.x * (1.0 - KAPPA), y0),
+        NSPoint::new(x1, y0 + tr.y * (1.0 - KAPPA)),
+    );
+    path.lineToPoint(NSPoint::new(x1, y1 - br.y));
+    path.curveToPoint_controlPoint1_controlPoint2(
+        NSPoint::new(x1 - br.x, y1),
+        NSPoint::new(x1, y1 - br.y * (1.0 - KAPPA)),
+        NSPoint::new(x1 - br.x * (1.0 - KAPPA), y1),
+    );
+    path.lineToPoint(NSPoint::new(x0 + bl.x, y1));
+    path.curveToPoint_controlPoint1_controlPoint2(
+        NSPoint::new(x0, y1 - bl.y),
+        NSPoint::new(x0 + bl.x * (1.0 - KAPPA), y1),
+        NSPoint::new(x0, y1 - bl.y * (1.0 - KAPPA)),
+    );
+    path.lineToPoint(NSPoint::new(x0, y0 + tl.y));
+    path.curveToPoint_controlPoint1_controlPoint2(
+        NSPoint::new(x0 + tl.x, y0),
+        NSPoint::new(x0, y0 + tl.y * (1.0 - KAPPA)),
+        NSPoint::new(x0 + tl.x * (1.0 - KAPPA), y0),
+    );
+    path.closePath();
+    path
+}
+
+impl NNFlexDecorationView {
+    fn new(mtm: MainThreadMarker) -> Retained<Self> {
+        let this = Self::alloc(mtm).set_ivars(FlexDecorationState {
+            style: RefCell::new(DecorationStyle::default()),
+        });
+        unsafe { msg_send![super(this), init] }
+    }
+
+    fn set_style(&self, style: DecorationStyle) {
+        if *self.ivars().style.borrow() != style {
+            self.ivars().style.replace(style);
+            self.setNeedsDisplay(true);
+        }
+    }
+}
+
+fn ns_color(color: Color) -> Retained<NSColor> {
+    let rgb = color.into_rgb();
+    NSColor::colorWithDeviceRed_green_blue_alpha(
+        f64::from(rgb.red) / 255.0,
+        f64::from(rgb.green) / 255.0,
+        f64::from(rgb.blue) / 255.0,
+        f64::from(rgb.alpha) / 255.0,
+    )
 }
 
 fn pin_to_bounds(parent: &NSView, child: &NSView) {
@@ -479,5 +738,58 @@ impl NNFlexView {
     fn new(mtm: MainThreadMarker, state: FlexViewState) -> Retained<Self> {
         let this = Self::alloc(mtm).set_ivars(state);
         unsafe { msg_send![super(this), init] }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decoration_style_resolves_and_clamps_border_lengths() {
+        let mut style = ResolvedStyle::default();
+        style.border_color = Some(Color::RED);
+        style.border_radius = Some(Length::physical(4));
+        style.border_left_width = Some(Length::logical(-2));
+        style.border_right_width = Some(Length::physical(6));
+        style.border_top_width = Some(Length::logical(1));
+
+        let decoration = DecorationStyle::from_resolved(Some(&style), 2.0);
+
+        assert_eq!(decoration.radius, 2.0);
+        assert_eq!(decoration.widths.left, 0.0);
+        assert_eq!(decoration.widths.right, 3.0);
+        assert_eq!(decoration.widths.top, 1.0);
+        assert!(decoration.is_visible());
+    }
+
+    #[test]
+    fn widths_without_a_color_do_not_create_a_decoration() {
+        let mut style = ResolvedStyle::default();
+        style.border_left_width = Some(Length::logical(2));
+
+        assert!(!DecorationStyle::from_resolved(Some(&style), 1.0).is_visible());
+    }
+
+    #[test]
+    fn inner_border_curve_accounts_for_each_adjacent_edge() {
+        let inner = inner_border_geometry(
+            NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(100.0, 50.0)),
+            &Rect {
+                top: 1.0,
+                right: 2.0,
+                bottom: 3.0,
+                left: 4.0,
+            },
+            10.0,
+        )
+        .unwrap();
+
+        assert_eq!(inner.rect.origin, NSPoint::new(4.0, 1.0));
+        assert_eq!(inner.rect.size, NSSize::new(94.0, 46.0));
+        assert_eq!(inner.top_left, CornerRadius { x: 6.0, y: 9.0 });
+        assert_eq!(inner.top_right, CornerRadius { x: 8.0, y: 9.0 });
+        assert_eq!(inner.bottom_right, CornerRadius { x: 8.0, y: 7.0 });
+        assert_eq!(inner.bottom_left, CornerRadius { x: 6.0, y: 7.0 });
     }
 }

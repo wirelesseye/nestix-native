@@ -1,7 +1,8 @@
 use nestix::{Layout, props};
 
 use crate::{
-    ClassList, Color, ContainerProps, Length, Material, MaterialSource, ViewProps, WithAuto,
+    BorderProps, ClassList, Color, ContainerProps, Length, Material, MaterialSource, ViewProps,
+    WithAuto,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,6 +116,10 @@ pub struct FlexViewProps {
     /// Container padding properties.
     #[props(nested, default)]
     pub container: ContainerProps,
+
+    /// Border decoration properties.
+    #[props(nested, default)]
+    pub border: BorderProps,
 
     /// Components arranged by the flex layout.
     #[props(default)]
