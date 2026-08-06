@@ -230,7 +230,7 @@ impl BitOrAssign for ShortcutModifiers {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, nestix::InspectableValue)]
 pub struct Shortcut {
     key: ShortcutKey,
     modifiers: ShortcutModifiers,
@@ -813,6 +813,7 @@ pub struct ContextMenuProps {
     /// Menu element to present.
     pub menu: Element,
     /// Optional imperative presentation controller.
+    #[props(inspect(skip))]
     pub controller: Option<ContextMenuController>,
     /// Visual element that owns the context-menu interaction.
     pub children: Element,

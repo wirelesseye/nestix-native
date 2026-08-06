@@ -2,7 +2,7 @@ use nestix::props;
 
 use crate::{Color, Length};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum FontWeight {
     Thin,
     ExtraLight,
@@ -33,7 +33,7 @@ impl FontWeight {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum FontStyle {
     Normal,
     Italic,

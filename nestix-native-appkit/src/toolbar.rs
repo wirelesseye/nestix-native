@@ -23,7 +23,7 @@ use objc2_foundation::{NSArray, NSObject, NSObjectProtocol, NSString};
 use crate::WindowContext;
 
 /// Controls whether toolbar items show their symbols, labels, or both.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, nestix::InspectableValue)]
 pub enum AppKitToolbarDisplayMode {
     #[default]
     Default,
@@ -44,7 +44,7 @@ impl AppKitToolbarDisplayMode {
 }
 
 /// Controls how AppKit integrates the toolbar with its window title bar.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, nestix::InspectableValue)]
 pub enum AppKitToolbarStyle {
     #[default]
     Automatic,

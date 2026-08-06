@@ -1,9 +1,9 @@
-use nestix::{Computed, computed, props};
+use nestix::{Computed, InspectableValue, computed, props};
 
 use crate::{AlignItems, Length, Rect, WithAuto};
 
 /// Determines whether a view participates in normal layout flow.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, InspectableValue)]
 pub enum Position {
     /// Lay out the view normally, then apply any position offsets.
     #[default]

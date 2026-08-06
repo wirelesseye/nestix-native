@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-inspector = []
+inspector = ["nestix/inspector"]
 
 [dependencies]
 dpi = "0.1.2"

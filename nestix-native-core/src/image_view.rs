@@ -5,7 +5,7 @@ use nestix::props;
 use crate::{ClassList, ViewProps};
 
 /// Encoded image data that can be decoded by the active native backend.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, nestix::InspectableValue)]
 pub enum ImageSource {
     File(PathBuf),
     Bytes(Arc<[u8]>),
@@ -34,7 +34,7 @@ impl From<&[u8]> for ImageSource {
 }
 
 /// How an image is scaled inside the bounds of an [`ImageViewProps`].
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, nestix::InspectableValue)]
 pub enum ContentFit {
     #[default]
     Contain,

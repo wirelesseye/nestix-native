@@ -1,5 +1,5 @@
 /// Controls whether a component uses the default theme provided by its backend.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum Appearance {
     /// Always use the backend's default theme.
     #[default]

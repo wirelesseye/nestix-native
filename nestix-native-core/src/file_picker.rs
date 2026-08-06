@@ -324,6 +324,7 @@ impl Drop for FilePickerRegistration {
 #[derive(Debug, Clone)]
 pub struct FilePickerProps {
     /// Controller used to issue file-picker requests.
+    #[props(inspect(skip))]
     pub controller: FilePickerController,
 }
 

@@ -10,7 +10,7 @@ fn main() {}
 mod app {
     use env_logger::Env;
     use nestix::{
-        Element, callback, component, computed, create_state, layout, mount_root, unmount_root,
+        Element, callback, component, computed, create_state, layout, mount_root, unmount_root, props,
     };
     use nestix_native::{Button, FlexView, LayoutInspector, Root, Text, Window};
 
@@ -85,7 +85,7 @@ mod app {
         }
     }
 
-    #[nestix::props]
+    #[props]
     struct CounterProps {
         count: u32,
     }
@@ -97,7 +97,7 @@ mod app {
         }
     }
 
-    #[nestix::props]
+    #[props]
     struct ListItemProps {
         item: (u32, String),
     }

@@ -1,11 +1,12 @@
 use nestix::{
-    Element, ElementId, PropValue, Readonly, Shared, build_props, callback, component, computed,
-    create_element, create_state, layout, props, scoped_effect,
+    Element, ElementId, InspectProp, InspectPropSource, PropValue, Readonly, Shared, WeakElement,
+    build_props, callback, component, computed, create_element, create_state, layout, props,
+    scoped_effect,
 };
 
 use crate::{
-    Checkbox, FlexDirection, FlexView, ScrollView, Text, TreeView, TreeViewItem, TreeViewItemProps,
-    Window,
+    Checkbox, FlexDirection, FlexView, TableView, TableViewCell, TableViewColumn, TableViewRow,
+    Text, TreeView, TreeViewItem, TreeViewItemProps, Window,
 };
 
 /// Properties for [`LayoutInspector`].
@@ -26,13 +27,27 @@ struct InspectorNode {
     label: String,
     full_name: &'static str,
     internal: bool,
-    props: String,
+    element: WeakElement,
     children: Vec<Self>,
 }
 
 impl InspectorNode {
     fn key(&self) -> String {
         self.id.get().to_string()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct InspectorPropRow {
+    name: String,
+    value: String,
+    source: String,
+    type_name: String,
+}
+
+impl InspectorPropRow {
+    fn key(&self) -> String {
+        self.name.clone()
     }
 }
 
@@ -62,15 +77,32 @@ pub fn LayoutInspector(props: &LayoutInspectorProps, element: &Element) -> Eleme
                 .unwrap_or_default()
         }
     );
-    let details = computed!(
+    let selected_node = computed!(
         [nodes, selection] || {
             let nodes = nodes.get();
             let selected = selection.get();
             selected
                 .as_deref()
                 .and_then(|key| find_node(&nodes, key))
-                .map(format_details)
+                .cloned()
+        }
+    );
+    let details = computed!(
+        [selected_node] || {
+            selected_node
+                .get()
+                .as_ref()
+                .map(format_details_header)
                 .unwrap_or_else(|| "Select a component".to_string())
+        }
+    );
+    let prop_rows = computed!(
+        [selected_node] || {
+            selected_node
+                .get()
+                .as_ref()
+                .map(inspect_prop_rows)
+                .unwrap_or_default()
         }
     );
     scoped_effect!(
@@ -126,9 +158,34 @@ pub fn LayoutInspector(props: &LayoutInspectorProps, element: &Element) -> Eleme
                             )))
                         }),
                     )
-                    ScrollView(.view(.width = 400)) {
-                        FlexView {
-                            Text(details.clone(), .view(.flex_grow = 1.0))
+                    FlexView(.view(.width = 500, .flex_grow = 1.0)) {
+                        Text(details)
+                        TableView<InspectorPropRow>(
+                            .view(.flex_grow = 1.0),
+                            .items = prop_rows,
+                            .key = callback!(|row: &InspectorPropRow| row.key()),
+                            .columns = vec![
+                                TableViewColumn::new("name", "Property"),
+                                TableViewColumn::new("value", "Value"),
+                                TableViewColumn::new("source", "Source"),
+                                TableViewColumn::new("type", "Type"),
+                            ],
+                        ) |row: Readonly<InspectorPropRow>| {
+                            TableViewRow {
+                                TableViewCell(computed!([row] || row.get().name), .column = "name")
+                                TableViewCell(
+                                    computed!([row] || row.get().value),
+                                    .column = "value",
+                                )
+                                TableViewCell(
+                                    computed!([row] || row.get().source),
+                                    .column = "source",
+                                )
+                                TableViewCell(
+                                    computed!([row] || row.get().type_name),
+                                    .column = "type",
+                                )
+                            }
                         }
                     }
                 }
@@ -178,7 +235,7 @@ fn project_element(
         label: short_component_name(full_name).to_string(),
         full_name,
         internal,
-        props: format!("{:#?}", element.props()),
+        element: element.downgrade(),
         children,
     }]
 }
@@ -202,15 +259,67 @@ fn find_node<'a>(nodes: &'a [InspectorNode], key: &str) -> Option<&'a InspectorN
     })
 }
 
-fn format_details(node: &InspectorNode) -> String {
+fn format_details_header(node: &InspectorNode) -> String {
     format!(
-        "Component: {}\nType: {}\nElement ID: {}\nVisibility: {}\n\nProps\n{}",
+        "Component: {}\nType: {}\nElement ID: {}\nVisibility: {}",
         node.label,
         node.full_name,
         node.id.get(),
         if node.internal { "Internal" } else { "Public" },
-        node.props,
     )
+}
+
+fn inspect_prop_rows(node: &InspectorNode) -> Vec<InspectorPropRow> {
+    let Some(element) = node.element.upgrade() else {
+        return vec![InspectorPropRow {
+            name: "Props".to_string(),
+            value: "<component unmounted>".to_string(),
+            source: String::new(),
+            type_name: String::new(),
+        }];
+    };
+
+    if let Some(props) = element.props().as_inspectable() {
+        let entries = props.inspect_props();
+        let mut rows = Vec::new();
+        append_prop_rows(&mut rows, &entries, "");
+        rows
+    } else {
+        vec![InspectorPropRow {
+            name: "Props".to_string(),
+            value: format!("{:#?}", element.props()),
+            source: "Debug".to_string(),
+            type_name: String::new(),
+        }]
+    }
+}
+
+fn append_prop_rows(output: &mut Vec<InspectorPropRow>, props: &[InspectProp], prefix: &str) {
+    for prop in props {
+        let name = if prefix.is_empty() {
+            prop.name.to_string()
+        } else {
+            format!("{prefix}.{}", prop.name)
+        };
+
+        if prop.source == InspectPropSource::Nested {
+            append_prop_rows(output, &prop.children, &name);
+            continue;
+        }
+
+        output.push(InspectorPropRow {
+            name,
+            value: prop.value.summary(),
+            source: match prop.source {
+                InspectPropSource::Plain => "Plain",
+                InspectPropSource::Reactive => "Reactive",
+                InspectPropSource::Raw => "Raw",
+                InspectPropSource::Nested => unreachable!(),
+            }
+            .to_string(),
+            type_name: prop.type_name.to_string(),
+        });
+    }
 }
 
 #[cfg(test)]
@@ -253,6 +362,23 @@ mod tests {
         fn on_mount(_: &Element) {}
     }
 
+    #[props]
+    struct StructuredProps {
+        title: String,
+        enabled: bool,
+        class: crate::ClassList,
+        #[props(nested, default)]
+        view: crate::ViewProps,
+    }
+
+    struct StructuredComponent;
+
+    impl Component for StructuredComponent {
+        type Props = StructuredProps;
+
+        fn on_mount(_: &Element) {}
+    }
+
     #[test]
     fn projection_promotes_hidden_internal_children_and_excludes_subtrees() {
         let root = create_element::<Public>(());
@@ -271,7 +397,11 @@ mod tests {
         assert_eq!(projected[0].id, root.id());
         assert_eq!(projected[0].children.len(), 1);
         assert_eq!(projected[0].children[0].id, visible.id());
-        assert!(projected[0].children[0].props.contains("visible"));
+        assert!(
+            inspect_prop_rows(&projected[0].children[0])[0]
+                .value
+                .contains("visible")
+        );
 
         let detailed = snapshot_children(&root, excluded.id(), true);
         assert_eq!(detailed[0].children.len(), 1);
@@ -279,6 +409,38 @@ mod tests {
         assert_eq!(detailed[0].children[0].children[0].id, visible.id());
 
         root.unmount();
+    }
+
+    #[test]
+    fn details_format_generated_props_as_named_values() {
+        let element = create_element::<StructuredComponent>(build_props!(StructuredProps(
+            .title = "Inspector".to_string(),
+            .enabled = true,
+            .class = "secondary primary",
+            .view(.flex_grow = 2.0),
+        )));
+        element.mount(None);
+
+        let excluded = create_element::<Public>(());
+        let projected = snapshot_children(&element, excluded.id(), false);
+        let rows = inspect_prop_rows(&projected[0]);
+        assert_eq!(rows[0].name, "title");
+        assert_eq!(rows[0].value, "\"Inspector\"");
+        assert_eq!(rows[0].source, "Plain");
+        assert_eq!(rows[1].name, "enabled");
+        assert_eq!(rows[1].value, "true");
+        let class = rows.iter().find(|row| row.name == "class").unwrap();
+        assert_eq!(class.value, "primary secondary");
+        let position = rows.iter().find(|row| row.name == "view.position").unwrap();
+        assert_eq!(position.value, "Relative");
+        let flex_grow = rows
+            .iter()
+            .find(|row| row.name == "view.flex_grow")
+            .unwrap();
+        assert_eq!(flex_grow.value, "2");
+        assert!(!rows[0].value.contains("PropValue"));
+
+        element.unmount();
     }
 
     #[test]

@@ -14,6 +14,7 @@ pub(crate) struct BackendChainContext {
 pub struct BackendProviderProps {
     /// Backend tried before providers inherited from an outer scope.
     #[props(start)]
+    #[props(inspect(skip))]
     pub backend: &'static dyn Backend,
 
     /// Components rendered with this backend preference.

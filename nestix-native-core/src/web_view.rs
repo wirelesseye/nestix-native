@@ -23,7 +23,7 @@ pub struct WebViewBridgeScriptContext<'a> {
 }
 
 /// Content loaded by a web view.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, nestix::InspectableValue)]
 pub enum WebViewSource {
     Url(String),
     Html {
@@ -233,6 +233,7 @@ pub struct WebViewProps {
 
     /// Controller for imperative operations on the mounted web view.
     #[props(default)]
+    #[props(inspect(skip))]
     pub controller: WebViewController,
 
     /// Optional native bridge installed before loading `source`.

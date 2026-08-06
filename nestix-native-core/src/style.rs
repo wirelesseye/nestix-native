@@ -107,6 +107,15 @@ pub struct StyleTransition {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ClassList(HashSet<String>);
 
+#[cfg(feature = "inspector")]
+impl nestix::InspectableValue for ClassList {
+    fn inspect_value(&self) -> nestix::InspectValue {
+        let mut classes = self.0.iter().cloned().collect::<Vec<_>>();
+        classes.sort();
+        nestix::InspectValue::Display(classes.join(" "))
+    }
+}
+
 impl ClassList {
     /// Returns whether this list contains `class`.
     pub fn contains(&self, class: &str) -> bool {
@@ -676,7 +685,7 @@ pub struct StyleRule {
 }
 
 /// Effective values produced by resolving matching declarations.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, nestix::InspectableValue)]
 pub struct ResolvedStyle {
     /// Resolved native appearance mode.
     pub appearance: Option<Appearance>,
@@ -1502,7 +1511,7 @@ pub fn resolve_font_props(
 }
 
 /// An ordered collection of style rules.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, nestix::InspectableValue)]
 pub struct StyleSheet {
     rules: Vec<StyleRule>,
 }

@@ -3,7 +3,7 @@ use nestix::{Element, Shared, props};
 use crate::{ClassList, Material, MaterialSource};
 
 /// Controls how a window's native title bar is presented.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, nestix::InspectableValue)]
 pub enum TitlebarMode {
     /// Use the platform's standard title bar and window controls.
     #[default]

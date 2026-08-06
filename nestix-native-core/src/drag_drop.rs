@@ -14,7 +14,7 @@ pub enum DragDataType {
 }
 
 /// A set of logical drag representations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, nestix::InspectableValue)]
 pub struct DragDataTypes(u8);
 
 impl DragDataTypes {
@@ -80,7 +80,7 @@ impl std::ops::BitOrAssign for DragDataTypes {
 }
 
 /// A drag operation negotiated between the source and target.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, nestix::InspectableValue)]
 pub enum DragOperation {
     /// Copy the dragged data.
     Copy,
@@ -91,7 +91,7 @@ pub enum DragOperation {
 }
 
 /// A set of operations supported by a drag source.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, nestix::InspectableValue)]
 pub struct DragOperations(u8);
 
 impl DragOperations {
@@ -195,7 +195,7 @@ impl DragImage {
 }
 
 /// Eager data supplied by a Nestix drag source.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, nestix::InspectableValue)]
 pub struct DragContent {
     files: Option<Vec<PathBuf>>,
     image: Option<DragImage>,

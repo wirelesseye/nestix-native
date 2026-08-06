@@ -1,7 +1,7 @@
 use dpi::{LogicalUnit, PhysicalUnit, Pixel};
 
 /// An explicit logical, physical, or font-relative length.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, nestix::InspectableValue)]
 pub enum Length {
     /// Device-independent logical pixels.
     Logical(f64),
@@ -88,7 +88,7 @@ impl From<i32> for Length {
 }
 
 /// A value that is either automatic or explicit.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, nestix::InspectableValue)]
 pub enum WithAuto<T> {
     /// Lets the layout engine determine the value.
     Auto,

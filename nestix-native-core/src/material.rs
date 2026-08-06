@@ -1,5 +1,5 @@
 /// Selects which content a material samples to produce its visual effect.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, nestix::InspectableValue)]
 pub enum MaterialSource {
     /// Use the natural source for the material's scope: behind the window for
     /// windows and within the window for bounded areas.
@@ -64,7 +64,7 @@ pub enum WindowsMaterial {
 /// The predefined constants provide portable semantic choices. Use
 /// [`Self::platforms`], [`Self::for_macos`], or [`Self::for_windows`] when an
 /// exact native material is required.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, nestix::InspectableValue)]
 pub struct Material {
     macos: Option<MacOSMaterial>,
     windows: Option<WindowsMaterial>,
@@ -72,7 +72,8 @@ pub struct Material {
 
 impl Material {
     /// Recommended material for a primary application window.
-    pub const WINDOW: Self = Self::platforms(MacOSMaterial::WindowBackground, WindowsMaterial::Mica);
+    pub const WINDOW: Self =
+        Self::platforms(MacOSMaterial::WindowBackground, WindowsMaterial::Mica);
 
     /// Recommended material for a sidebar or navigation pane.
     pub const SIDEBAR: Self = Self::platforms(MacOSMaterial::Sidebar, WindowsMaterial::MicaAlt);
@@ -137,6 +138,9 @@ mod tests {
             Material::WINDOW.macos_material(),
             Some(MacOSMaterial::WindowBackground)
         );
-        assert_eq!(Material::WINDOW.windows_material(), Some(WindowsMaterial::Mica));
+        assert_eq!(
+            Material::WINDOW.windows_material(),
+            Some(WindowsMaterial::Mica)
+        );
     }
 }

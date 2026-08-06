@@ -1,5 +1,5 @@
 /// A platform-independent color value.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, nestix::InspectableValue)]
 pub enum Color {
     /// A color expressed as red, green, blue, and alpha channels.
     RGB(RGBColor),

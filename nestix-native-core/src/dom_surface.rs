@@ -5,7 +5,7 @@ use nestix::{Layout, props};
 use crate::{ClassList, ViewProps, WebViewController};
 
 /// HTML template used by a managed DOM surface.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, nestix::InspectableValue)]
 pub enum DomTemplate {
     /// Nestix's minimal built-in document.
     #[default]
@@ -86,6 +86,7 @@ pub struct DomSurfaceProps {
 
     /// Controller for imperative operations on the managed web view.
     #[props(default)]
+    #[props(inspect(skip))]
     pub controller: WebViewController,
 
     /// Document template loaded before Nestix injects its managed DOM runtime.

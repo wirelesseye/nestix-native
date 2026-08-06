@@ -5,7 +5,7 @@ use crate::{
     WithAuto,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum FlexDirection {
     Row,
     RowReverse,
@@ -25,7 +25,7 @@ impl FlexDirection {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum AlignItems {
     Normal,
     Start,
@@ -53,7 +53,7 @@ impl AlignItems {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum JustifyContent {
     Normal,
     Start,
@@ -85,7 +85,7 @@ impl JustifyContent {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, nestix::InspectableValue)]
 pub enum FlexWrap {
     NoWrap,
     Wrap,
