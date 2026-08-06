@@ -3,6 +3,9 @@ name = "nestix-native-core"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+inspector = []
+
 [dependencies]
 dpi = "0.1.2"
 log = "0.4.28"

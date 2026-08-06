@@ -1827,7 +1827,8 @@ pub struct StyleScopeProps {
 }
 
 /// Adds an element's classes and effective style to descendant match contexts.
-#[component]
+#[cfg_attr(feature = "inspector", component(internal))]
+#[cfg_attr(not(feature = "inspector"), component)]
 pub fn StyleScope(props: &StyleScopeProps, element: &Element) -> Element {
     let parent_style_context = element.context::<StyleContext>();
     let style_sheet = parent_style_context

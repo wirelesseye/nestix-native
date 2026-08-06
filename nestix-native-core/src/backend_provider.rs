@@ -25,7 +25,8 @@ pub struct BackendProviderProps {
 ///
 /// The nearest provider is tried first. When it does not implement a facade
 /// component, Nestix Native continues with each inherited provider in order.
-#[component]
+#[cfg_attr(feature = "inspector", component(internal))]
+#[cfg_attr(not(feature = "inspector"), component)]
 pub fn BackendProvider(props: &BackendProviderProps, element: &Element) -> Element {
     let backend = props.backend.get();
     let mut backends = vec![backend];
@@ -77,6 +78,8 @@ pub fn create_backend_element(
 
     for backend in &backends {
         if let Some(output) = create(*backend) {
+            #[cfg(feature = "inspector")]
+            output.mark_internal();
             return Some(output);
         }
     }

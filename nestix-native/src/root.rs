@@ -18,6 +18,10 @@ pub fn Root(props: &RootProps, element: &Element) -> Option<Element> {
 
     let backend = default_backend();
     let platform_root = backend.create_root(props.clone());
+    #[cfg(feature = "inspector")]
+    if let Some(platform_root) = &platform_root {
+        platform_root.mark_internal();
+    }
     Some(layout! {
         BackendProvider(backend) {
             $(platform_root)

@@ -40,6 +40,8 @@ pub mod file_picker;
 pub mod flex_view;
 pub mod image_view;
 pub mod input;
+#[cfg(all(feature = "inspector", target_os = "macos", feature = "appkit"))]
+pub mod inspector;
 pub mod menu;
 pub mod navigation;
 pub mod radio_button;
@@ -65,6 +67,8 @@ pub use file_picker::*;
 pub use flex_view::*;
 pub use image_view::*;
 pub use input::*;
+#[cfg(all(feature = "inspector", target_os = "macos", feature = "appkit"))]
+pub use inspector::*;
 pub use menu::*;
 pub use navigation::*;
 pub use radio_button::*;
